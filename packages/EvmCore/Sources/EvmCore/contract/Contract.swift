@@ -45,3 +45,54 @@ public protocol Contract {
     ) async throws -> T
     where T: Codable
 }
+
+/// Represents the result of an import callback.
+public struct ImportResult: Codable {
+    /// The file contents if import was successful.
+    public let contents: String?
+    /// The error message if the import failed.
+    public let error: String?
+
+    public init(contents: String? = nil, error: String? = nil) {
+        self.contents = contents
+        self.error = error
+    }
+}
+
+/// A function that resolves import statements by URL and returns the file contents or an error.
+public typealias ImportCallback = (_ url: String) -> ImportResult
+
+public protocol DeployableContract {
+    /**
+    The source code of the contract. Should either provide the bytecode or the source code.
+    */
+    var sourceCode: String? { get }
+
+    /**
+    The bytecode of the contract. Should either provide the bytecode or the source code.
+    */
+    var bytecode: String? { get }
+
+    /**
+    The ABI of the contract
+    */
+    var abi: [AbiItem] { get }
+
+    var signer: Signer { get }
+    var transport: Transport { get }
+
+    /**
+    Deploys the contract
+    - Parameter constructorArgs: The arguments to pass to the constructor
+    - Parameter importCallback: A callback to resolve import statements
+    - Parameter value: The value to send with the deployment
+    - Parameter gasLimit: The gas limit to use for the deployment
+    - Parameter gasPrice: The gas price to use for the deployment
+    - Returns: The deployed contract
+    */
+    func deploy(
+        constructorArgs: [AnyCodable], importCallback: ImportCallback?, value: BigInt,
+        gasLimit: BigInt?, gasPrice: BigInt?
+    )
+        async throws -> Contract
+}
