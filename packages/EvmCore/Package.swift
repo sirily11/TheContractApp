@@ -15,6 +15,10 @@ let package = Package(
             name: "EvmCore",
             targets: ["EvmCore"]
         ),
+        .library(
+            name: "Solidity",
+            targets: ["Solidity"]
+        ),
     ],
     dependencies: [
         .package(url: "https://github.com/attaswift/BigInt.git", from: "5.3.0"),
@@ -27,9 +31,17 @@ let package = Package(
             name: "EvmCore",
             dependencies: ["BigInt", "CryptoSwift"]
         ),
+        .target(
+            name: "Solidity",
+            dependencies: []
+        ),
         .testTarget(
             name: "EvmCoreTests",
             dependencies: ["EvmCore"]
+        ),
+        .testTarget(
+            name: "SolidityTests",
+            dependencies: ["Solidity"]
         ),
     ]
 )
