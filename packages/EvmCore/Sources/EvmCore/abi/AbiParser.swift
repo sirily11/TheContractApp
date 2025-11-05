@@ -36,7 +36,7 @@ public enum StateMutability: String, Codable {
 }
 
 /// Represents the type of an ABI item
-public enum AbiItemType: String, Codable {
+public enum AbiItemType: String, Codable, Sendable {
     case function
     case constructor
     case receive
@@ -74,6 +74,119 @@ public struct AbiItem: Codable, Equatable {
         self.anonymous = anonymous
         self.constant = constant
         self.payable = payable
+    }
+}
+
+/// Represents a function in a contract ABI with type-safe properties
+public struct AbiFunction: Codable, Equatable {
+    public let name: String
+    public let inputs: [AbiParameter]
+    public let outputs: [AbiParameter]
+    public let stateMutability: StateMutability
+    public let constant: Bool?
+    public let payable: Bool?
+
+    public init(
+        name: String,
+        inputs: [AbiParameter] = [],
+        outputs: [AbiParameter] = [],
+        stateMutability: StateMutability,
+        constant: Bool? = nil,
+        payable: Bool? = nil
+    ) {
+        self.name = name
+        self.inputs = inputs
+        self.outputs = outputs
+        self.stateMutability = stateMutability
+        self.constant = constant
+        self.payable = payable
+    }
+
+    /// Convert this function to a generic AbiItem
+    public func toAbiItem() -> AbiItem {
+        AbiItem(
+            type: .function,
+            name: name,
+            inputs: inputs,
+            outputs: outputs,
+            stateMutability: stateMutability,
+            anonymous: nil,
+            constant: constant,
+            payable: payable
+        )
+    }
+
+    /// Create an AbiFunction from an AbiItem if it represents a function
+    /// - Parameter item: The AbiItem to convert
+    /// - Throws: AbiParserError if the item is not a function or missing required fields
+    public static func from(item: AbiItem) throws -> AbiFunction {
+        guard item.type == .function else {
+            throw AbiParserError.invalidItemType(expected: .function, got: item.type)
+        }
+        guard let name = item.name else {
+            throw AbiParserError.missingRequiredField("name")
+        }
+        guard let stateMutability = item.stateMutability else {
+            throw AbiParserError.missingRequiredField("stateMutability")
+        }
+
+        return AbiFunction(
+            name: name,
+            inputs: item.inputs ?? [],
+            outputs: item.outputs ?? [],
+            stateMutability: stateMutability,
+            constant: item.constant,
+            payable: item.payable
+        )
+    }
+}
+
+/// Represents an event in a contract ABI with type-safe properties
+public struct AbiEvent: Codable, Equatable {
+    public let name: String
+    public let inputs: [AbiParameter]
+    public let anonymous: Bool
+
+    public init(
+        name: String,
+        inputs: [AbiParameter] = [],
+        anonymous: Bool = false
+    ) {
+        self.name = name
+        self.inputs = inputs
+        self.anonymous = anonymous
+    }
+
+    /// Convert this event to a generic AbiItem
+    public func toAbiItem() -> AbiItem {
+        AbiItem(
+            type: .event,
+            name: name,
+            inputs: inputs,
+            outputs: nil,
+            stateMutability: nil,
+            anonymous: anonymous,
+            constant: nil,
+            payable: nil
+        )
+    }
+
+    /// Create an AbiEvent from an AbiItem if it represents an event
+    /// - Parameter item: The AbiItem to convert
+    /// - Throws: AbiParserError if the item is not an event or missing required fields
+    public static func from(item: AbiItem) throws -> AbiEvent {
+        guard item.type == .event else {
+            throw AbiParserError.invalidItemType(expected: .event, got: item.type)
+        }
+        guard let name = item.name else {
+            throw AbiParserError.missingRequiredField("name")
+        }
+
+        return AbiEvent(
+            name: name,
+            inputs: item.inputs ?? [],
+            anonymous: item.anonymous ?? false
+        )
     }
 }
 
@@ -188,6 +301,34 @@ public class AbiParser {
         events.filter { $0.name == name }
     }
 
+    // MARK: - Strongly-Typed Query Methods
+
+    /// Returns all functions as strongly-typed AbiFunction objects
+    /// - Returns: Array of AbiFunction, skipping any invalid items
+    public func typedFunctions() -> [AbiFunction] {
+        functions.compactMap { try? AbiFunction.from(item: $0) }
+    }
+
+    /// Returns all events as strongly-typed AbiEvent objects
+    /// - Returns: Array of AbiEvent, skipping any invalid items
+    public func typedEvents() -> [AbiEvent] {
+        events.compactMap { try? AbiEvent.from(item: $0) }
+    }
+
+    /// Finds a function by name and returns strongly-typed objects
+    /// - Parameter name: Name of the function
+    /// - Returns: Array of matching AbiFunction objects
+    public func typedFunction(named name: String) -> [AbiFunction] {
+        function(named: name).compactMap { try? AbiFunction.from(item: $0) }
+    }
+
+    /// Finds an event by name and returns strongly-typed objects
+    /// - Parameter name: Name of the event
+    /// - Returns: Array of matching AbiEvent objects
+    public func typedEvent(named name: String) -> [AbiEvent] {
+        event(named: name).compactMap { try? AbiEvent.from(item: $0) }
+    }
+
     /// Converts the ABI back to JSON string
     /// - Parameter prettyPrinted: Whether to format the JSON
     /// - Returns: JSON string representation
@@ -214,28 +355,6 @@ public class AbiParser {
         }
         let url = URL(fileURLWithPath: filePath)
         try data.write(to: url)
-    }
-}
-
-// MARK: - Errors
-
-public enum AbiParserError: Error, LocalizedError {
-    case invalidString
-    case invalidFormat
-    case encodingFailed
-    case fileNotFound
-
-    public var errorDescription: String? {
-        switch self {
-        case .invalidString:
-            return "Invalid string encoding"
-        case .invalidFormat:
-            return "Invalid ABI format - must be a JSON array or object"
-        case .encodingFailed:
-            return "Failed to encode ABI to JSON"
-        case .fileNotFound:
-            return "ABI file not found"
-        }
     }
 }
 
