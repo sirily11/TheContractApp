@@ -1,4 +1,5 @@
 import BigInt
+import Solidity
 
 public protocol Contract {
     /**
@@ -46,21 +47,12 @@ public protocol Contract {
     where T: Codable
 }
 
+/// Re-export Solidity module's import types for convenience
 /// Represents the result of an import callback.
-public struct ImportResult: Codable {
-    /// The file contents if import was successful.
-    public let contents: String?
-    /// The error message if the import failed.
-    public let error: String?
-
-    public init(contents: String? = nil, error: String? = nil) {
-        self.contents = contents
-        self.error = error
-    }
-}
+public typealias ImportResult = Solidity.ImportResult
 
 /// A function that resolves import statements by URL and returns the file contents or an error.
-public typealias ImportCallback = (_ url: String) -> ImportResult
+public typealias ImportCallback = Solidity.ImportCallback
 
 public protocol DeployableContract {
     /**

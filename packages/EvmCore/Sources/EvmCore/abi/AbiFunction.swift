@@ -1,5 +1,6 @@
 import Foundation
 import CryptoSwift
+import BigInt
 
 // MARK: - ABI Data Models
 
@@ -168,14 +169,27 @@ extension AbiFunction {
             let output = outputs[0]
             let decoded = try decodeParameter(data: cleanData, type: output.type, offset: 0)
 
-            // Try to convert to expected type
+            // Try to convert to expected type directly
             if let result = decoded as? T {
                 return result
             }
 
-            // Try JSON encoding/decoding as fallback
-            let jsonData = try JSONSerialization.data(withJSONObject: decoded)
-            return try JSONDecoder().decode(T.self, from: jsonData)
+            // Handle conversion for numeric types to BigInt
+            if T.self == BigInt.self {
+                if let uint = decoded as? UInt64 {
+                    return BigInt(uint) as! T
+                } else if let int = decoded as? Int64 {
+                    return BigInt(int) as! T
+                }
+            }
+
+            // For other types, wrap in array for JSON serialization
+            let jsonData = try JSONSerialization.data(withJSONObject: [decoded])
+            let array = try JSONDecoder().decode([T].self, from: jsonData)
+            guard let result = array.first else {
+                throw AbiEncodingError.decodingFailed("Failed to decode result")
+            }
+            return result
         }
 
         // Multiple return values - return as tuple/array
@@ -277,29 +291,29 @@ extension AbiFunction {
     }
 
     private func encodeUint(_ value: Any, bits: Int) throws -> String {
-        let intValue: UInt64
+        let hexValue: String
 
         switch value {
+        case let v as BigInt:
+            hexValue = String(v, radix: 16)
         case let v as Int:
-            intValue = UInt64(v)
+            hexValue = String(UInt64(v), radix: 16)
         case let v as UInt:
-            intValue = UInt64(v)
+            hexValue = String(UInt64(v), radix: 16)
         case let v as UInt64:
-            intValue = v
+            hexValue = String(v, radix: 16)
         case let v as String:
             guard let parsed = UInt64(v) else {
                 throw AbiEncodingError.invalidValue(expected: "uint", got: v)
             }
-            intValue = parsed
+            hexValue = String(parsed, radix: 16)
         default:
             throw AbiEncodingError.invalidValue(expected: "uint", got: String(describing: value))
         }
 
-        // Convert to hex and pad to 32 bytes
-        var hex = String(intValue, radix: 16)
-        let padding = 64 - hex.count
-        hex = String(repeating: "0", count: padding) + hex
-        return hex
+        // Pad to 32 bytes (64 hex chars)
+        let padding = max(0, 64 - hexValue.count)
+        return String(repeating: "0", count: padding) + hexValue
     }
 
     private func encodeInt(_ value: Any, bits: Int) throws -> String {
@@ -423,6 +437,7 @@ public enum AbiEncodingError: Error, LocalizedError {
     case invalidHexString
     case insufficientData
     case noOutputs
+    case decodingFailed(String)
 
     public var errorDescription: String? {
         switch self {
@@ -442,6 +457,8 @@ public enum AbiEncodingError: Error, LocalizedError {
             return "Insufficient data for decoding"
         case .noOutputs:
             return "Function has no outputs to decode"
+        case .decodingFailed(let message):
+            return "Decoding failed: \(message)"
         }
     }
 }
@@ -455,10 +472,38 @@ extension String {
         }
         return self
     }
+
+    func ensureHexPrefix() -> String {
+        if self.hasPrefix("0x") || self.hasPrefix("0X") {
+            return self
+        }
+        return "0x" + self
+    }
 }
 
 extension Data {
     func toHexString() -> String {
         return self.map { String(format: "%02x", $0) }.joined()
+    }
+
+    init(hex: String) {
+        var data = Data()
+        var hex = hex
+
+        // Ensure even number of characters
+        if hex.count % 2 != 0 {
+            hex = "0" + hex
+        }
+
+        var index = hex.startIndex
+        while index < hex.endIndex {
+            let nextIndex = hex.index(index, offsetBy: 2)
+            if let byte = UInt8(hex[index..<nextIndex], radix: 16) {
+                data.append(byte)
+            }
+            index = nextIndex
+        }
+
+        self = data
     }
 }
