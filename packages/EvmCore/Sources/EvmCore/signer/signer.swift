@@ -22,6 +22,11 @@ public struct Address {
         // Preserve the case (EIP-55 checksum encoding)
         self.value = cleanValue
     }
+
+    /// Convenience initializer that accepts a hex string
+    public init(_ value: String) throws {
+        try self.init(fromHexString: value)
+    }
 }
 
 /// Errors related to address operations
