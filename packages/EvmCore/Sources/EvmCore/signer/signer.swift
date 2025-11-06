@@ -19,7 +19,8 @@ public struct Address {
             throw AddressError.invalidCharacters("Address contains invalid hex characters")
         }
 
-        self.value = cleanValue.lowercased()
+        // Preserve the case (EIP-55 checksum encoding)
+        self.value = cleanValue
     }
 }
 

@@ -22,30 +22,14 @@ public struct AnvilSigner: Signer {
 
     /// Not used in Anvil testing - Anvil handles signing via eth_sendTransaction
     public func sign(message: Data) async throws -> Data {
-        throw SignerError.unsupportedOperation("AnvilSigner uses implicit signing via eth_sendTransaction")
+        throw SignerError.unsupportedOperation(
+            "AnvilSigner uses implicit signing via eth_sendTransaction")
     }
 
     /// Not used in Anvil testing
     public func verify(address: Address, message: Data, signature: Data) async throws -> Bool {
-        throw SignerError.unsupportedOperation("AnvilSigner uses implicit signing via eth_sendTransaction")
-    }
-}
-
-/// Errors that can occur during signing operations
-public enum SignerError: Error, LocalizedError {
-    case unsupportedOperation(String)
-    case invalidPrivateKey
-    case signingFailed(Error)
-
-    public var errorDescription: String? {
-        switch self {
-        case .unsupportedOperation(let message):
-            return "Unsupported operation: \(message)"
-        case .invalidPrivateKey:
-            return "Invalid private key"
-        case .signingFailed(let error):
-            return "Signing failed: \(error.localizedDescription)"
-        }
+        throw SignerError.unsupportedOperation(
+            "AnvilSigner uses implicit signing via eth_sendTransaction")
     }
 }
 
@@ -69,6 +53,6 @@ public struct AnvilAccounts {
         "0x976EA74026E726554dB657fA54763abd0C3a0aa9",
         "0x14dC79964da2C08b23698B3D3cc7Ca32193d9955",
         "0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f",
-        "0xa0Ee7A142d267C1f36714E4a8F75612F20a79720"
+        "0xa0Ee7A142d267C1f36714E4a8F75612F20a79720",
     ]
 }

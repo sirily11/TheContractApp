@@ -1,6 +1,7 @@
-import Testing
-import Foundation
 import BigInt
+import Foundation
+import Testing
+
 @testable import EvmCore
 @testable import Solidity
 
@@ -10,62 +11,62 @@ struct ContractE2ETests {
 
     // Solidity test contract with multiple function types
     static let testContractSource = """
-    // SPDX-License-Identifier: MIT
-    pragma solidity ^0.8.0;
+        // SPDX-License-Identifier: MIT
+        pragma solidity ^0.8.0;
 
-    contract TestContract {
-        uint256 private value;
-        mapping(address => uint256) private balances;
-        uint256 private totalDeposited;
+        contract TestContract {
+            uint256 private value;
+            mapping(address => uint256) private balances;
+            uint256 private totalDeposited;
 
-        // Constructor to initialize the value
-        constructor(uint256 initialValue) {
-            value = initialValue;
+            // Constructor to initialize the value
+            constructor(uint256 initialValue) {
+                value = initialValue;
+            }
+
+            // Read-only function: get current value
+            function getValue() public view returns (uint256) {
+                return value;
+            }
+
+            // State-changing function: set new value
+            function setValue(uint256 newValue) public {
+                value = newValue;
+            }
+
+            // State-changing function: increment value
+            function increment() public {
+                value += 1;
+            }
+
+            // Payable function: accept ETH deposit
+            function deposit() public payable {
+                balances[msg.sender] += msg.value;
+                totalDeposited += msg.value;
+            }
+
+            // Payable function with parameter: deposit for specific address
+            function depositFor(address recipient) public payable {
+                balances[recipient] += msg.value;
+                totalDeposited += msg.value;
+            }
+
+            // Read-only function: get balance of address
+            function getBalance(address account) public view returns (uint256) {
+                return balances[account];
+            }
+
+            // Read-only function: get total deposited
+            function getTotalDeposited() public view returns (uint256) {
+                return totalDeposited;
+            }
+
+            // Read-only function: get contract balance
+            function getContractBalance() public view returns (uint256) {
+                return address(this).balance;
+            }
         }
-
-        // Read-only function: get current value
-        function getValue() public view returns (uint256) {
-            return value;
-        }
-
-        // State-changing function: set new value
-        function setValue(uint256 newValue) public {
-            value = newValue;
-        }
-
-        // State-changing function: increment value
-        function increment() public {
-            value += 1;
-        }
-
-        // Payable function: accept ETH deposit
-        function deposit() public payable {
-            balances[msg.sender] += msg.value;
-            totalDeposited += msg.value;
-        }
-
-        // Payable function with parameter: deposit for specific address
-        function depositFor(address recipient) public payable {
-            balances[recipient] += msg.value;
-            totalDeposited += msg.value;
-        }
-
-        // Read-only function: get balance of address
-        function getBalance(address account) public view returns (uint256) {
-            return balances[account];
-        }
-
-        // Read-only function: get total deposited
-        function getTotalDeposited() public view returns (uint256) {
-            return totalDeposited;
-        }
-
-        // Read-only function: get contract balance
-        function getContractBalance() public view returns (uint256) {
-            return address(this).balance;
-        }
-    }
-    """
+        """
 
     static let anvilUrl = "http://localhost:8545"
 
@@ -102,7 +103,8 @@ struct ContractE2ETests {
             let errorMessages = errors.filter { $0.severity == "error" }
             if !errorMessages.isEmpty {
                 throw TestError.compilationFailed(
-                    errorMessages.map { $0.formattedMessage ?? "Unknown error" }.joined(separator: "\n")
+                    errorMessages.map { $0.formattedMessage ?? "Unknown error" }.joined(
+                        separator: "\n")
                 )
             }
         }
@@ -142,10 +144,10 @@ struct ContractE2ETests {
 
         let contract = try await deployableContract.deploy(
             constructorArgs: [AnyCodable(initialValue)],
-            importCallback: nil as ((_ url: String) -> EvmCore.ImportResult)?,
+            importCallback: nil,
             value: BigInt(0),
             gasLimit: BigInt(3_000_000),
-            gasPrice: nil as BigInt?
+            gasPrice: nil
         )
 
         print("Contract deployed at: \(contract.address.value)")
@@ -157,8 +159,8 @@ struct ContractE2ETests {
             name: "getValue",
             args: [],
             value: BigInt(0),
-            gasLimit: nil,
-            gasPrice: nil
+            gasLimit: nil as BigInt?,
+            gasPrice: nil as BigInt?
         )
 
         print("Current value: \(currentValue)")
@@ -200,8 +202,8 @@ struct ContractE2ETests {
             name: "getValue",
             args: [],
             value: BigInt(0),
-            gasLimit: nil,
-            gasPrice: nil
+            gasLimit: nil as BigInt?,
+            gasPrice: nil as BigInt?
         )
 
         print("Updated value: \(updatedValue)")
@@ -232,8 +234,8 @@ struct ContractE2ETests {
             name: "getValue",
             args: [],
             value: BigInt(0),
-            gasLimit: nil,
-            gasPrice: nil
+            gasLimit: nil as BigInt?,
+            gasPrice: nil as BigInt?
         )
 
         print("Incremented value: \(incrementedValue)")
@@ -242,7 +244,7 @@ struct ContractE2ETests {
         // MARK: - Test Payable Function (deposit)
         print("\nTesting payable function: deposit()")
 
-        let depositAmount = BigInt(1_000_000_000_000_000_000) // 1 ETH in wei
+        let depositAmount = BigInt(1_000_000_000_000_000_000)  // 1 ETH in wei
 
         guard let depositFunc = contract.functions.first(where: { $0.name == "deposit" }) else {
             throw TestError.testFailed("deposit function not found")
@@ -267,8 +269,8 @@ struct ContractE2ETests {
             name: "getBalance",
             args: [AnyCodable(signer.address.value)],
             value: BigInt(0),
-            gasLimit: nil,
-            gasPrice: nil
+            gasLimit: nil as BigInt?,
+            gasPrice: nil as BigInt?
         )
 
         print("Balance for \(signer.address.value): \(balance)")
@@ -279,8 +281,8 @@ struct ContractE2ETests {
             name: "getContractBalance",
             args: [],
             value: BigInt(0),
-            gasLimit: nil,
-            gasPrice: nil
+            gasLimit: nil as BigInt?,
+            gasPrice: nil as BigInt?
         )
 
         print("Contract balance: \(contractBalance)")
@@ -290,9 +292,10 @@ struct ContractE2ETests {
         print("\nTesting payable function with parameters: depositFor()")
 
         let recipient = AnvilAccounts.account1
-        let depositForAmount = BigInt(500_000_000_000_000_000) // 0.5 ETH in wei
+        let depositForAmount = BigInt(500_000_000_000_000_000)  // 0.5 ETH in wei
 
-        guard let depositForFunc = contract.functions.first(where: { $0.name == "depositFor" }) else {
+        guard let depositForFunc = contract.functions.first(where: { $0.name == "depositFor" })
+        else {
             throw TestError.testFailed("depositFor function not found")
         }
 
@@ -314,20 +317,21 @@ struct ContractE2ETests {
             name: "getBalance",
             args: [AnyCodable(recipient)],
             value: BigInt(0),
-            gasLimit: nil,
-            gasPrice: nil
+            gasLimit: nil as BigInt?,
+            gasPrice: nil as BigInt?
         )
 
         print("Balance for recipient \(recipient): \(recipientBalance)")
-        #expect(recipientBalance == depositForAmount, "Recipient balance should be \(depositForAmount)")
+        #expect(
+            recipientBalance == depositForAmount, "Recipient balance should be \(depositForAmount)")
 
         // Verify total deposited
         let totalDeposited: BigInt = try await contract.callFunction(
             name: "getTotalDeposited",
             args: [],
             value: BigInt(0),
-            gasLimit: nil,
-            gasPrice: nil
+            gasLimit: nil as BigInt?,
+            gasPrice: nil as BigInt?
         )
 
         let expectedTotal = depositAmount + depositForAmount
@@ -339,12 +343,14 @@ struct ContractE2ETests {
             name: "getContractBalance",
             args: [],
             value: BigInt(0),
-            gasLimit: nil,
-            gasPrice: nil
+            gasLimit: nil as BigInt?,
+            gasPrice: nil as BigInt?
         )
 
         print("Final contract balance: \(finalContractBalance)")
-        #expect(finalContractBalance == expectedTotal, "Final contract balance should be \(expectedTotal)")
+        #expect(
+            finalContractBalance == expectedTotal,
+            "Final contract balance should be \(expectedTotal)")
 
         print("\n✅ All tests passed!")
     }
@@ -352,21 +358,21 @@ struct ContractE2ETests {
     @Test("Deploy contract without constructor arguments")
     func testDeploySimpleContract() async throws {
         let simpleContract = """
-        // SPDX-License-Identifier: MIT
-        pragma solidity ^0.8.0;
+            // SPDX-License-Identifier: MIT
+            pragma solidity ^0.8.0;
 
-        contract SimpleStorage {
-            uint256 private value;
+            contract SimpleStorage {
+                uint256 private value;
 
-            function setValue(uint256 newValue) public {
-                value = newValue;
+                function setValue(uint256 newValue) public {
+                    value = newValue;
+                }
+
+                function getValue() public view returns (uint256) {
+                    return value;
+                }
             }
-
-            function getValue() public view returns (uint256) {
-                return value;
-            }
-        }
-        """
+            """
 
         print("Setting up transport and signer...")
         let transport = try HttpTransport(urlString: Self.anvilUrl)
@@ -386,8 +392,9 @@ struct ContractE2ETests {
         let output = try await compiler.compile(input, options: nil)
 
         guard let contractData = output.contracts?["SimpleStorage.sol"]?["SimpleStorage"],
-              let bytecodeHex = contractData.evm?.bytecode?.object,
-              let abiArray = contractData.abi else {
+            let bytecodeHex = contractData.evm?.bytecode?.object,
+            let abiArray = contractData.abi
+        else {
             throw TestError.compilationFailed("Failed to extract contract data")
         }
 
@@ -404,11 +411,11 @@ struct ContractE2ETests {
         )
 
         let contract = try await deployableContract.deploy(
-            constructorArgs: [], // No constructor arguments
-            importCallback: nil as ((_ url: String) -> EvmCore.ImportResult)?,
+            constructorArgs: [],  // No constructor arguments
+            importCallback: nil,
             value: BigInt(0),
             gasLimit: BigInt(1_000_000),
-            gasPrice: nil as BigInt?
+            gasPrice: nil
         )
 
         print("Contract deployed at: \(contract.address.value)")
@@ -418,8 +425,8 @@ struct ContractE2ETests {
             name: "getValue",
             args: [],
             value: BigInt(0),
-            gasLimit: nil,
-            gasPrice: nil
+            gasLimit: nil as BigInt?,
+            gasPrice: nil as BigInt?
         )
 
         print("Initial value: \(initialValue)")
