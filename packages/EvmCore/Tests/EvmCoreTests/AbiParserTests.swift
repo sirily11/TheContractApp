@@ -184,6 +184,38 @@ let complexAbiWithStructs = """
   ]
   """
 
+let sampleAbiObject = """
+  {
+    "abi": [
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "owner",
+            "type": "address"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "spender",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "value",
+            "type": "uint256"
+          }
+        ],
+        "name": "Approval",
+        "type": "event"
+      }
+    ]
+  }
+  """
+
 // MARK: - Basic Parsing Tests
 
 @Test("Parse single function ABI object from string")
@@ -230,6 +262,24 @@ func testParseAbiArray() throws {
   #expect(parser.events.count == 1)
   #expect(parser.errors.count == 1)
   #expect(parser.constructor != nil)
+}
+
+@Test("Parse wrapped ABI object with 'abi' key")
+func testParseWrappedAbiObject() throws {
+  let parser = try AbiParser(fromJsonString: sampleAbiObject)
+
+  #expect(parser.items.count == 1)
+  #expect(parser.events.count == 1)
+
+  let event = parser.events[0]
+  #expect(event.name == "Approval")
+  #expect(event.inputs?.count == 3)
+  #expect(event.inputs?[0].name == "owner")
+  #expect(event.inputs?[0].internalType == "address")
+  #expect(event.inputs?[0].indexed == true)
+  #expect(event.inputs?[1].name == "spender")
+  #expect(event.inputs?[2].name == "value")
+  #expect(event.anonymous == false)
 }
 
 @Test("Parse complex ABI with nested structs")
@@ -442,6 +492,39 @@ func testPrettyPrintedJson() throws {
 
   // Should be parseable
   let parser2 = try AbiParser(fromJsonString: prettyJson)
+  #expect(parser2.items.count == parser.items.count)
+}
+
+@Test("Export ABI in wrapped format")
+func testExportWrappedFormat() throws {
+  let parser = try AbiParser(fromJsonString: sampleAbiArray)
+
+  // Export as wrapped format
+  let wrappedJson = try parser.toWrappedJsonString(prettyPrinted: false)
+
+  // Should contain "abi" key
+  #expect(wrappedJson.contains("\"abi\""))
+
+  // Should be parseable back
+  let parser2 = try AbiParser(fromJsonString: wrappedJson)
+  #expect(parser2.items.count == parser.items.count)
+  #expect(parser2.functions.count == parser.functions.count)
+  #expect(parser2.events.count == parser.events.count)
+}
+
+@Test("Export wrapped format with prettification")
+func testExportWrappedFormatPretty() throws {
+  let parser = try AbiParser(fromJsonString: sampleAbiArray)
+
+  // Export as pretty-printed wrapped format
+  let prettyWrappedJson = try parser.toWrappedJsonString(prettyPrinted: true)
+
+  // Should contain newlines and proper indentation
+  #expect(prettyWrappedJson.contains("\n"))
+  #expect(prettyWrappedJson.contains("  "))  // Check for indentation
+
+  // Should be parseable back
+  let parser2 = try AbiParser(fromJsonString: prettyWrappedJson)
   #expect(parser2.items.count == parser.items.count)
 }
 

@@ -13,14 +13,19 @@ final class EvmAbi {
     var id: Int
     var name: String
     var abiContent: String // JSON string containing the ABI
+    var sourceUrl: String? // Optional URL for remote ABI source
+    var sourceFileName: String? // Optional filename from file upload or URL
     var createdAt: Date
     var updatedAt: Date
-    
-    init(id: Int = 0, name: String, abiContent: String, 
+
+    init(id: Int = 0, name: String, abiContent: String,
+         sourceUrl: String? = nil, sourceFileName: String? = nil,
          createdAt: Date = Date(), updatedAt: Date = Date()) {
         self.id = id
         self.name = name
         self.abiContent = abiContent
+        self.sourceUrl = sourceUrl
+        self.sourceFileName = sourceFileName
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }

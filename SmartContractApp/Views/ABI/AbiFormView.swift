@@ -44,6 +44,11 @@ struct AbiFormView: View {
     @State private var selectedFileURL: URL?
     @State private var selectedFileName: String = ""
 
+    // URL download
+    @State private var remoteUrl: String = ""
+    @State private var isDownloading: Bool = false
+    @State private var downloadError: String = ""
+
     // File import
     @State private var showingFileImporter = false
 
@@ -63,6 +68,7 @@ struct AbiFormView: View {
 
     enum InputMethod: String, CaseIterable, Identifiable {
         case file = "Select File"
+        case url = "Download from URL"
         case paste = "Paste JSON"
 
         var id: String { rawValue }
@@ -128,6 +134,54 @@ struct AbiFormView: View {
                                     Text("Upload")
                                 }
                                 .buttonStyle(.bordered)
+                            }
+                        } else if inputMethod == .url {
+                            // URL download mode
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Remote ABI URL")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+
+                                HStack(spacing: 8) {
+                                    TextField("Enter URL (e.g., https://example.com/abi.json)", text: $remoteUrl)
+                                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                                        .disabled(isDownloading)
+
+                                    Button(action: {
+                                        downloadAbiFromUrl()
+                                    }) {
+                                        if isDownloading {
+                                            ProgressView()
+                                                .scaleEffect(0.7)
+                                                .frame(width: 16, height: 16)
+                                        } else {
+                                            Text("Download")
+                                        }
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .fixedSize()
+                                    .disabled(remoteUrl.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isDownloading)
+                                }
+
+                                if !downloadError.isEmpty {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "exclamationmark.triangle.fill")
+                                            .foregroundColor(.orange)
+                                        Text(downloadError)
+                                            .font(.caption)
+                                            .foregroundColor(.orange)
+                                    }
+                                }
+
+                                if !selectedFileName.isEmpty {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundColor(.green)
+                                        Text("Downloaded: \(selectedFileName)")
+                                            .font(.caption)
+                                            .foregroundColor(.green)
+                                    }
+                                }
                             }
                         } else {
                             // Paste mode
@@ -328,7 +382,19 @@ struct AbiFormView: View {
     private func loadAbi(_ abi: EvmAbi) {
         name = abi.name
         abiContent = abi.abiContent
-        inputMethod = .paste // Default to paste mode when editing
+
+        // Restore the input method based on what was used originally
+        if let sourceUrl = abi.sourceUrl, !sourceUrl.isEmpty {
+            inputMethod = .url
+            remoteUrl = sourceUrl
+            selectedFileName = abi.sourceFileName ?? ""
+        } else if let fileName = abi.sourceFileName, !fileName.isEmpty {
+            inputMethod = .file
+            selectedFileName = fileName
+        } else {
+            inputMethod = .paste
+        }
+
         validateAbi()
     }
 
@@ -357,6 +423,65 @@ struct AbiFormView: View {
                     validationStatus = .invalid
                     parsedParser = nil
                     validationMessage = error.localizedDescription
+                }
+            }
+        }
+    }
+
+    private func downloadAbiFromUrl() {
+        let trimmedUrl = remoteUrl.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !trimmedUrl.isEmpty else {
+            downloadError = "Please enter a URL"
+            return
+        }
+
+        guard let url = URL(string: trimmedUrl) else {
+            downloadError = "Invalid URL format"
+            return
+        }
+
+        isDownloading = true
+        downloadError = ""
+
+        Task {
+            do {
+                let (data, response) = try await URLSession.shared.data(from: url)
+
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    await MainActor.run {
+                        downloadError = "Invalid response from server"
+                        isDownloading = false
+                    }
+                    return
+                }
+
+                guard (200...299).contains(httpResponse.statusCode) else {
+                    await MainActor.run {
+                        downloadError = "Server returned error: \(httpResponse.statusCode)"
+                        isDownloading = false
+                    }
+                    return
+                }
+
+                guard let content = String(data: data, encoding: .utf8) else {
+                    await MainActor.run {
+                        downloadError = "Failed to decode response as UTF-8"
+                        isDownloading = false
+                    }
+                    return
+                }
+
+                await MainActor.run {
+                    abiContent = content
+                    selectedFileName = url.lastPathComponent
+                    isDownloading = false
+                    validateAbi()
+                }
+            } catch {
+                await MainActor.run {
+                    downloadError = "Download failed: \(error.localizedDescription)"
+                    isDownloading = false
                 }
             }
         }
@@ -419,16 +544,36 @@ struct AbiFormView: View {
             return
         }
 
+        // Determine source URL and filename based on input method
+        let sourceUrl: String?
+        let sourceFileName: String?
+
+        switch inputMethod {
+        case .url:
+            sourceUrl = remoteUrl.trimmingCharacters(in: .whitespacesAndNewlines)
+            sourceFileName = selectedFileName.isEmpty ? nil : selectedFileName
+        case .file:
+            sourceUrl = nil
+            sourceFileName = selectedFileName.isEmpty ? nil : selectedFileName
+        case .paste:
+            sourceUrl = nil
+            sourceFileName = nil
+        }
+
         if let existingAbi = abi {
             // Update existing ABI
             existingAbi.name = trimmedName
             existingAbi.abiContent = trimmedContent
+            existingAbi.sourceUrl = sourceUrl
+            existingAbi.sourceFileName = sourceFileName
             existingAbi.updatedAt = Date()
         } else {
             // Create new ABI
             let newAbi = EvmAbi(
                 name: trimmedName,
-                abiContent: trimmedContent
+                abiContent: trimmedContent,
+                sourceUrl: sourceUrl,
+                sourceFileName: sourceFileName
             )
             modelContext.insert(newAbi)
         }

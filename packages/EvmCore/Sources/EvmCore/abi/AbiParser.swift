@@ -44,6 +44,11 @@ public struct AbiItem: Codable, Equatable {
     }
 }
 
+/// Represents a wrapped ABI format where the ABI array is nested under an "abi" key
+struct WrappedAbi: Codable {
+    let abi: [AbiItem]
+}
+
 // MARK: - ABI Parser
 
 /// Parses Ethereum contract ABIs from various sources
@@ -83,6 +88,12 @@ public class AbiParser {
         // Try to decode as single object
         if let item = try? decoder.decode(AbiItem.self, from: data) {
             self.init(items: [item])
+            return
+        }
+
+        // Try to decode as wrapped object with "abi" key
+        if let wrappedAbi = try? decoder.decode(WrappedAbi.self, from: data) {
+            self.init(items: wrappedAbi.abi)
             return
         }
 
@@ -192,6 +203,22 @@ public class AbiParser {
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         }
         let data = try encoder.encode(items)
+        guard let string = String(data: data, encoding: .utf8) else {
+            throw AbiParserError.encodingFailed
+        }
+        return string
+    }
+
+    /// Converts the ABI to wrapped JSON string format with "abi" key
+    /// - Parameter prettyPrinted: Whether to format the JSON
+    /// - Returns: JSON string representation in wrapped format
+    public func toWrappedJsonString(prettyPrinted: Bool = false) throws -> String {
+        let wrapped = WrappedAbi(abi: items)
+        let encoder = JSONEncoder()
+        if prettyPrinted {
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        }
+        let data = try encoder.encode(wrapped)
         guard let string = String(data: data, encoding: .utf8) else {
             throw AbiParserError.encodingFailed
         }
