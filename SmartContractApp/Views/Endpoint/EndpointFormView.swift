@@ -265,8 +265,7 @@ struct EndpointFormView: View {
         name = endpoint.name
         url = endpoint.url
         chainId = endpoint.chainId
-        // When editing, default to manual chain ID entry
-        isAutoDetectingChainId = false
+        isAutoDetectingChainId = endpoint.autoDetectChainId
     }
     
     private func saveEndpoint() {
@@ -301,13 +300,15 @@ struct EndpointFormView: View {
                 existingEndpoint.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
                 existingEndpoint.url = url.trimmingCharacters(in: .whitespacesAndNewlines)
                 existingEndpoint.chainId = finalChainId
+                existingEndpoint.autoDetectChainId = isAutoDetectingChainId
                 existingEndpoint.updatedAt = Date()
             } else {
                 // Create new endpoint
                 let newEndpoint = Endpoint(
                     name: name.trimmingCharacters(in: .whitespacesAndNewlines),
                     url: url.trimmingCharacters(in: .whitespacesAndNewlines),
-                    chainId: finalChainId
+                    chainId: finalChainId,
+                    autoDetectChainId: isAutoDetectingChainId
                 )
                 modelContext.insert(newEndpoint)
             }

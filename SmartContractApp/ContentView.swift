@@ -8,37 +8,11 @@
 import SwiftData
 import SwiftUI
 
-enum SidebarCategory: String, CaseIterable, Hashable, Identifiable {
-    case endpoints
-    case abi
-    case contract
-    case wallet
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .endpoints: return "Endpoints"
-        case .abi: return "ABI"
-        case .contract: return "Contract"
-        case .wallet: return "Wallet"
-        }
-    }
-
-    var systemImage: String {
-        switch self {
-        case .endpoints: return "network"
-        case .abi: return "doc.text"
-        case .contract: return "scroll"
-        case .wallet: return "creditcard"
-        }
-    }
-}
-
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var selectedCategory: SidebarCategory?
     @State private var selectedEndpoint: Endpoint?
+    @State private var selectedAbi: EvmAbi?
 
     var body: some View {
         NavigationSplitView {
@@ -57,7 +31,7 @@ struct ContentView: View {
                 case .endpoints:
                     EndpointContentView(selectedEndpoint: $selectedEndpoint)
                 case .abi:
-                    EmptyPlaceholderView(title: "ABI Management", description: "ABI management features coming soon")
+                    AbiContentView(selectedAbi: $selectedAbi)
                 case .contract:
                     EmptyPlaceholderView(title: "Contract Management", description: "Contract management features coming soon")
                 case .wallet:
@@ -74,6 +48,8 @@ struct ContentView: View {
             // Detail
             if let selectedEndpoint = selectedEndpoint {
                 EndpointDetailView(endpoint: selectedEndpoint)
+            } else if let selectedAbi = selectedAbi {
+                AbiDetailView(abi: selectedAbi)
             } else if selectedCategory != nil {
                 ContentUnavailableView(
                     "No Selection",

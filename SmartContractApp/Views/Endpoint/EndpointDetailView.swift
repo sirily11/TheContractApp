@@ -7,12 +7,57 @@
 
 import SwiftData
 import SwiftUI
+import EvmCore
+
+enum ConnectionStatus {
+    case testing
+    case connected
+    case failed(String)
+    
+    var statusText: String {
+        switch self {
+        case .testing:
+            return "Testing connection..."
+        case .connected:
+            return "Connected"
+        case .failed:
+            return "Connection failed"
+        }
+    }
+    
+    var statusColor: Color {
+        switch self {
+        case .testing:
+            return .orange
+        case .connected:
+            return .green
+        case .failed:
+            return .red
+        }
+    }
+    
+    var statusIcon: String {
+        switch self {
+        case .testing:
+            return "antenna.radiowaves.left.and.right"
+        case .connected:
+            return "checkmark.circle.fill"
+        case .failed:
+            return "xmark.circle.fill"
+        }
+    }
+}
 
 struct EndpointDetailView: View {
     let endpoint: Endpoint
     @Environment(\.modelContext) private var modelContext
     @State private var showingEditSheet = false
     @State private var showingDeleteAlert = false
+
+    // Connection test state
+    @State private var connectionStatus: ConnectionStatus = .testing
+    @State private var detectedChainId: String = ""
+    @State private var connectionTimer: Timer?
     
     var body: some View {
         Form {
@@ -84,20 +129,51 @@ struct EndpointDetailView: View {
                 .frame(maxWidth: .infinity)
             }
             
-            // Test Connection Section
-            Section("Connection Test") {
+            // Connection Status Section
+            Section("Connection Status") {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("Test the connection to this endpoint")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    
-                    Button("Test Connection") {
-                        // TODO: Implement connection test
+                    HStack {
+                        Image(systemName: connectionStatus.statusIcon)
+                            .foregroundColor(connectionStatus.statusColor)
+                            .font(.title2)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(connectionStatus.statusText)
+                                .font(.headline)
+                                .foregroundColor(connectionStatus.statusColor)
+                            
+                            if case .testing = connectionStatus {
+                                Text("Verifying endpoint connectivity...")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            } else if case .connected = connectionStatus {
+                                if !detectedChainId.isEmpty {
+                                    Text("Chain ID: \(detectedChainId)")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            } else if case .failed(let error) = connectionStatus {
+                                Text(error)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.leading)
+                                
+                                Button("Retry Connection") {
+                                    testConnection()
+                                }
+                                .font(.caption)
+                                .foregroundColor(.blue)
+                                .padding(.top, 4)
+                            }
+                        }
+                        
+                        Spacer()
+                        
+                        if case .testing = connectionStatus {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                        }
                     }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(true) // Disabled for now
-                    .frame(maxWidth: .infinity)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -133,6 +209,16 @@ struct EndpointDetailView: View {
         } message: {
             Text("Are you sure you want to delete '\(endpoint.name)'? This action cannot be undone.")
         }
+        .onAppear {
+            testConnection()
+            startPeriodicCheck()
+        }
+        .onDisappear {
+            stopPeriodicCheck()
+        }
+        .refreshable {
+            testConnection()
+        }
     }
     
     private func deleteEndpoint() {
@@ -140,6 +226,42 @@ struct EndpointDetailView: View {
             modelContext.delete(endpoint)
             try? modelContext.save()
         }
+    }
+    
+    private func testConnection() {
+        connectionStatus = .testing
+        detectedChainId = ""
+
+        Task {
+            do {
+                let chainId = try await endpoint.fetchChainId()
+
+                await MainActor.run {
+                    detectedChainId = chainId
+                    connectionStatus = .connected
+                }
+            } catch let error as ChainValidationError {
+                await MainActor.run {
+                    connectionStatus = .failed(error.localizedDescription ?? "Unknown error")
+                }
+            } catch {
+                await MainActor.run {
+                    connectionStatus = .failed("Failed to connect: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+
+    private func startPeriodicCheck() {
+        stopPeriodicCheck() // Clean up any existing timer
+        connectionTimer = Timer.scheduledTimer(withTimeInterval: 60.0, repeats: true) { _ in
+            testConnection()
+        }
+    }
+
+    private func stopPeriodicCheck() {
+        connectionTimer?.invalidate()
+        connectionTimer = nil
     }
 }
 
