@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		DF72D0F12EBDA3F30007C5EB /* EvmCore in Frameworks */ = {isa = PBXBuildFile; productRef = DF72D0F02EBDA3F30007C5EB /* EvmCore */; };
+		DF72D0F32EBDA3F30007C5EB /* Solidity in Frameworks */ = {isa = PBXBuildFile; productRef = DF72D0F22EBDA3F30007C5EB /* Solidity */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		DF72D0842EBB4A1F0007C5EB /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -52,6 +57,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DF72D0F12EBDA3F30007C5EB /* EvmCore in Frameworks */,
+				DF72D0F32EBDA3F30007C5EB /* Solidity in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,6 +119,8 @@
 			);
 			name = SmartContractApp;
 			packageProductDependencies = (
+				DF72D0F02EBDA3F30007C5EB /* EvmCore */,
+				DF72D0F22EBDA3F30007C5EB /* Solidity */,
 			);
 			productName = SmartContractApp;
 			productReference = DF72D0742EBB4A1F0007C5EB /* SmartContractApp.app */;
@@ -195,6 +204,9 @@
 			);
 			mainGroup = DF72D06B2EBB4A1F0007C5EB;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				DF72D0EF2EBDA3F30007C5EB /* XCLocalSwiftPackageReference "packages/EvmCore" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = DF72D0752EBB4A1F0007C5EB /* Products */;
 			projectDirPath = "";
@@ -400,7 +412,17 @@
 				DEVELOPMENT_TEAM = P9KK452K8P;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_INCOMING_NETWORK_CONNECTIONS = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
+				ENABLE_RESOURCE_ACCESS_BLUETOOTH = NO;
+				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
+				ENABLE_RESOURCE_ACCESS_CAMERA = NO;
+				ENABLE_RESOURCE_ACCESS_CONTACTS = NO;
+				ENABLE_RESOURCE_ACCESS_LOCATION = NO;
+				ENABLE_RESOURCE_ACCESS_PRINTING = NO;
+				ENABLE_RESOURCE_ACCESS_USB = NO;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -432,7 +454,17 @@
 				DEVELOPMENT_TEAM = P9KK452K8P;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_INCOMING_NETWORK_CONNECTIONS = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
+				ENABLE_RESOURCE_ACCESS_BLUETOOTH = NO;
+				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
+				ENABLE_RESOURCE_ACCESS_CAMERA = NO;
+				ENABLE_RESOURCE_ACCESS_CONTACTS = NO;
+				ENABLE_RESOURCE_ACCESS_LOCATION = NO;
+				ENABLE_RESOURCE_ACCESS_PRINTING = NO;
+				ENABLE_RESOURCE_ACCESS_USB = NO;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -573,6 +605,24 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		DF72D0EF2EBDA3F30007C5EB /* XCLocalSwiftPackageReference "packages/EvmCore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = packages/EvmCore;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		DF72D0F02EBDA3F30007C5EB /* EvmCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = EvmCore;
+		};
+		DF72D0F22EBDA3F30007C5EB /* Solidity */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Solidity;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = DF72D06C2EBB4A1F0007C5EB /* Project object */;
 }

@@ -5,14 +5,16 @@
 //  Created by Qiwei Li on 11/5/25.
 //
 
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 @main
 struct SmartContractAppApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
-            Item.self,
+            Endpoint.self,
+            EVMContract.self,
+            EvmAbi.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
