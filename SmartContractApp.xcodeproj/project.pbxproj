@@ -10,6 +10,7 @@
 		DF6933422EBDE82C00940F80 /* CodeEditorView in Frameworks */ = {isa = PBXBuildFile; productRef = DF6933412EBDE82C00940F80 /* CodeEditorView */; };
 		DF6933442EBDE82C00940F80 /* LanguageSupport in Frameworks */ = {isa = PBXBuildFile; productRef = DF6933432EBDE82C00940F80 /* LanguageSupport */; };
 		DF69334B2EBDF63000940F80 /* KeychainSwift in Frameworks */ = {isa = PBXBuildFile; productRef = DF69334A2EBDF63000940F80 /* KeychainSwift */; };
+		DF6933692EBF93C100940F80 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = DF6933682EBF93C100940F80 /* AppIcon.icon */; };
 		DF72D0F12EBDA3F30007C5EB /* EvmCore in Frameworks */ = {isa = PBXBuildFile; productRef = DF72D0F02EBDA3F30007C5EB /* EvmCore */; };
 		DF72D0F32EBDA3F30007C5EB /* Solidity in Frameworks */ = {isa = PBXBuildFile; productRef = DF72D0F22EBDA3F30007C5EB /* Solidity */; };
 /* End PBXBuildFile section */
@@ -32,6 +33,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		DF6933682EBF93C100940F80 /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = AppIcon.icon; sourceTree = "<group>"; };
 		DF72D0742EBB4A1F0007C5EB /* SmartContractApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SmartContractApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		DF72D0832EBB4A1F0007C5EB /* SmartContractAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SmartContractAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		DF72D08D2EBB4A1F0007C5EB /* SmartContractAppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SmartContractAppUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -92,6 +94,7 @@
 				DF72D0862EBB4A1F0007C5EB /* SmartContractAppTests */,
 				DF72D0902EBB4A1F0007C5EB /* SmartContractAppUITests */,
 				DF72D0752EBB4A1F0007C5EB /* Products */,
+				DF6933682EBF93C100940F80 /* AppIcon.icon */,
 			);
 			sourceTree = "<group>";
 		};
@@ -235,6 +238,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DF6933692EBF93C100940F80 /* AppIcon.icon in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -436,6 +440,8 @@
 				ENABLE_RESOURCE_ACCESS_USB = NO;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = ContractApp;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -478,6 +484,8 @@
 				ENABLE_RESOURCE_ACCESS_USB = NO;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = ContractApp;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

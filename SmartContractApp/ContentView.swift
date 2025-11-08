@@ -13,6 +13,7 @@ struct ContentView: View {
     @State private var selectedCategory: SidebarCategory?
     @State private var selectedEndpoint: Endpoint?
     @State private var selectedAbi: EvmAbi?
+    @State private var selectedContract: EVMContract?
     @State private var selectedWallet: EVMWallet?
 
     var body: some View {
@@ -34,7 +35,7 @@ struct ContentView: View {
                 case .abi:
                     AbiContentView(selectedAbi: $selectedAbi)
                 case .contract:
-                    EmptyPlaceholderView(title: "Contract Management", description: "Contract management features coming soon")
+                    ContractContentView(selectedContract: $selectedContract)
                 case .wallet:
                     WalletContentView(selectedWallet: $selectedWallet)
                 }
@@ -49,8 +50,16 @@ struct ContentView: View {
             // Detail
             if let selectedEndpoint = selectedEndpoint {
                 EndpointDetailView(endpoint: selectedEndpoint)
+                    .navigationDestination(for: EVMContract.self) { contract in
+                        ContractDetailView(contract: contract)
+                    }
             } else if let selectedAbi = selectedAbi {
                 AbiDetailView(abi: selectedAbi)
+                    .navigationDestination(for: EVMContract.self) { contract in
+                        ContractDetailView(contract: contract)
+                    }
+            } else if let selectedContract = selectedContract {
+                ContractDetailView(contract: selectedContract)
             } else if let selectedWallet = selectedWallet {
                 WalletDetailView(wallet: selectedWallet)
             } else if selectedCategory != nil {
@@ -81,12 +90,14 @@ struct ContentView: View {
             // Clear all item selections when category changes
             selectedEndpoint = nil
             selectedAbi = nil
+            selectedContract = nil
             selectedWallet = nil
         }
         .onChange(of: selectedEndpoint) { _, newValue in
             // Clear other selections when endpoint is selected
             if newValue != nil {
                 selectedAbi = nil
+                selectedContract = nil
                 selectedWallet = nil
             }
         }
@@ -94,6 +105,15 @@ struct ContentView: View {
             // Clear other selections when ABI is selected
             if newValue != nil {
                 selectedEndpoint = nil
+                selectedContract = nil
+                selectedWallet = nil
+            }
+        }
+        .onChange(of: selectedContract) { _, newValue in
+            // Clear other selections when contract is selected
+            if newValue != nil {
+                selectedEndpoint = nil
+                selectedAbi = nil
                 selectedWallet = nil
             }
         }
@@ -102,6 +122,7 @@ struct ContentView: View {
             if newValue != nil {
                 selectedEndpoint = nil
                 selectedAbi = nil
+                selectedContract = nil
             }
         }
     }

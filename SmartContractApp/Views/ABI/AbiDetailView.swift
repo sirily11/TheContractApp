@@ -11,12 +11,28 @@ import SwiftUI
 
 struct AbiDetailView: View {
     let abi: EvmAbi
+    let showConnectedContracts: Bool
+
     @Environment(\.modelContext) private var modelContext
     @State private var showingEditSheet = false
     @State private var showingDeleteAlert = false
 
+    @Query private var allContracts: [EVMContract]
+
+    init(abi: EvmAbi, showConnectedContracts: Bool = true) {
+        self.abi = abi
+        self.showConnectedContracts = showConnectedContracts
+
+        // Query all contracts - will filter in computed property
+        _allContracts = Query(sort: \EVMContract.name)
+    }
+
     private var parser: AbiParser? {
         try? AbiParser(fromJsonString: abi.abiContent)
+    }
+
+    private var connectedContracts: [EVMContract] {
+        allContracts.filter { $0.abiId == abi.id }
     }
 
     var body: some View {
@@ -73,6 +89,48 @@ struct AbiDetailView: View {
                         Text(parser.constructor != nil ? "Yes" : "No")
                             .foregroundColor(.secondary)
                             .textSelection(.enabled)
+                    }
+                }
+
+                // Connected Contracts Section
+                if showConnectedContracts {
+                    Section("Connected Contracts") {
+                        if connectedContracts.isEmpty {
+                            HStack {
+                                Text("No contracts using this ABI")
+                                    .font(.callout)
+                                    .foregroundColor(.secondary)
+                                    .italic()
+                                Spacer()
+                            }
+                        } else {
+                            ForEach(connectedContracts, id: \.id) { contract in
+                                NavigationLink(value: contract) {
+                                    HStack {
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            Text(contract.name)
+                                                .font(.headline)
+
+                                            Text(truncatedAddress(contract.address))
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                        }
+
+                                        Spacer()
+
+                                        // Status badge
+                                        Text(contract.status.rawValue.capitalized)
+                                            .font(.caption2)
+                                            .fontWeight(.medium)
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 2)
+                                            .background(contractStatusColor(contract.status).opacity(0.2))
+                                            .foregroundColor(contractStatusColor(contract.status))
+                                            .cornerRadius(4)
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -383,6 +441,24 @@ struct AbiDetailView: View {
             return "(\(inputs))"
         }
         return "(\(inputs)) → (\(outputs))"
+    }
+
+    private func truncatedAddress(_ address: String) -> String {
+        guard address.count > 10 else { return address }
+        let start = address.prefix(6)
+        let end = address.suffix(4)
+        return "\(start)...\(end)"
+    }
+
+    private func contractStatusColor(_ status: DeploymentStatus) -> Color {
+        switch status {
+        case .deployed:
+            return .green
+        case .pending:
+            return .orange
+        case .failed:
+            return .red
+        }
     }
 }
 

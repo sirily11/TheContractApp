@@ -202,6 +202,97 @@ swift test --package-path packages/EvmCore --skip E2E
 2. Implement required methods: `getAddress()`, `signMessage()`, `signTransaction()`
 3. Add tests following pattern in `PrivateKeySignerTests.swift`
 
+## Code Organization Guidelines
+
+### SwiftUI View File Structure
+
+To maintain readability and maintainability, follow these guidelines when creating SwiftUI views:
+
+#### File Size Limits
+- **Maximum file size**: ~200 lines per file
+- **Recommended**: Split files larger than 150-200 lines into multiple files using extensions
+- Large views should be decomposed into smaller, focused components
+
+#### Extension-Based Organization
+
+When a view file grows large, split it using Swift extensions with clear responsibilities:
+
+**Main View File** (`ViewName.swift`):
+- View struct definition
+- `@State`, `@Binding`, `@Environment` properties
+- Main `body` property
+- Initializers
+- Preview providers
+
+**Sections Extension** (`ViewName+Sections.swift`):
+- View section computed properties
+- Sub-view builders marked with `@ViewBuilder`
+- Reusable UI components specific to this view
+- Example: `editModeSection`, `createModeSection`, `detailSection`
+
+**Validation Extension** (`ViewName+Validation.swift`):
+- Form validation logic
+- Input sanitization
+- Computed validation state properties
+- Example: `isFormValid`, `validateInput()`, `deriveAddress()`
+
+**Data Management Extension** (`ViewName+DataManagement.swift`):
+- SwiftData/CoreData operations
+- Network calls
+- Business logic for creating/updating/deleting data
+- Example: `loadData()`, `saveItem()`, `updateItem()`, `deleteItem()`
+
+**Example Structure**:
+```
+Views/
+  Wallet/
+    WalletFormView.swift              // Main view (100 lines)
+    WalletFormView+Sections.swift     // UI sections (150 lines)
+    WalletFormView+Validation.swift   // Validation logic (80 lines)
+    WalletFormView+DataManagement.swift // Data operations (120 lines)
+```
+
+#### MARK Comments
+
+Use `// MARK: -` comments to organize code sections:
+```swift
+// MARK: - Properties
+// MARK: - Initialization
+// MARK: - Body
+// MARK: - View Sections
+// MARK: - Validation
+// MARK: - Data Management
+// MARK: - Helper Methods
+// MARK: - Previews
+```
+
+#### Access Control
+- Use `private` for view-specific computed properties and methods
+- Use `internal` (default) only when the property/method needs to be accessed from extensions
+- Properties referenced in extensions should not be `private`
+
+#### Documentation
+- Add doc comments (`///`) for complex validation logic
+- Document parameters and return values for reusable methods
+- Add inline comments for non-obvious business logic
+
+### View Decomposition Strategy
+
+When splitting views, consider these responsibilities:
+
+1. **Presentation**: UI layout and styling (main view + sections)
+2. **Validation**: Input validation and derived state
+3. **Business Logic**: Data operations and transformations
+4. **Navigation**: Routing and presentation logic
+
+### Best Practices
+
+- **Single Responsibility**: Each extension should have one clear purpose
+- **No Duplication**: Extract common patterns into reusable components
+- **Testability**: Keep business logic separate from UI code
+- **Readability**: Prefer clarity over cleverness
+- **Consistency**: Follow the same patterns across similar views
+
 ## Platform Requirements
 
 - **macOS**: 12.0+
