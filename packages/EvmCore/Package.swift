@@ -19,6 +19,10 @@ let package = Package(
             name: "Solidity",
             targets: ["Solidity"]
         ),
+        .library(
+            name: "BIP39",
+            targets: ["BIP39"]
+        ),
     ],
     dependencies: [
         .package(url: "https://github.com/attaswift/BigInt.git", from: "5.3.0"),
@@ -40,6 +44,14 @@ let package = Package(
             name: "Solidity",
             dependencies: []
         ),
+        .target(
+            name: "BIP39",
+            dependencies: [
+                "BigInt",
+                "CryptoSwift",
+                .product(name: "P256K", package: "secp256k1.swift")
+            ]
+        ),
         .testTarget(
             name: "EvmCoreTests",
             dependencies: ["EvmCore"]
@@ -47,6 +59,16 @@ let package = Package(
         .testTarget(
             name: "SolidityTests",
             dependencies: ["Solidity"]
+        ),
+        .testTarget(
+            name: "BIP39Tests",
+            dependencies: [
+                "BIP39",
+                "EvmCore"
+            ],
+            resources: [
+                .process("words.json")
+            ]
         ),
     ]
 )

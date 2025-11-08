@@ -122,80 +122,13 @@ struct AbiFormView: View {
                         .pickerStyle(.segmented)
 
                         // Conditional content based on input method
-                        if inputMethod == .file {
-                            // File picker mode
-                            HStack {
-                                Text(selectedFileName.isEmpty ? "No file selected" : selectedFileName)
-                                    .foregroundColor(.primary)
-                                Spacer()
-                                Button(action: {
-                                    showingFileImporter = true
-                                }) {
-                                    Text("Upload")
-                                }
-                                .buttonStyle(.bordered)
-                            }
-                        } else if inputMethod == .url {
-                            // URL download mode
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("Remote ABI URL")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-
-                                HStack(spacing: 8) {
-                                    TextField("Enter URL (e.g., https://example.com/abi.json)", text: $remoteUrl)
-                                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                                        .disabled(isDownloading)
-
-                                    Button(action: {
-                                        downloadAbiFromUrl()
-                                    }) {
-                                        if isDownloading {
-                                            ProgressView()
-                                                .scaleEffect(0.7)
-                                                .frame(width: 16, height: 16)
-                                        } else {
-                                            Text("Download")
-                                        }
-                                    }
-                                    .buttonStyle(.bordered)
-                                    .fixedSize()
-                                    .disabled(remoteUrl.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isDownloading)
-                                }
-
-                                if !downloadError.isEmpty {
-                                    HStack(spacing: 4) {
-                                        Image(systemName: "exclamationmark.triangle.fill")
-                                            .foregroundColor(.orange)
-                                        Text(downloadError)
-                                            .font(.caption)
-                                            .foregroundColor(.orange)
-                                    }
-                                }
-
-                                if !selectedFileName.isEmpty {
-                                    HStack(spacing: 4) {
-                                        Image(systemName: "checkmark.circle.fill")
-                                            .foregroundColor(.green)
-                                        Text("Downloaded: \(selectedFileName)")
-                                            .font(.caption)
-                                            .foregroundColor(.green)
-                                    }
-                                }
-                            }
-                        } else {
-                            // Paste mode
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("Paste JSON ABI")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-
-                                JsonView(content: $abiContent)
-                                    .frame(minHeight: 300)
-                                    .onChange(of: abiContent) { _, _ in
-                                        validateAbi()
-                                    }
-                            }
+                        switch inputMethod {
+                        case .file:
+                            fileUploadSection
+                        case .url:
+                            urlDownloadSection
+                        case .paste:
+                            pasteJsonSection
                         }
 
                         // Validation status
@@ -373,6 +306,90 @@ struct AbiFormView: View {
             }
     }
 
+    // MARK: - Input Method Sections
+
+    private var fileUploadSection: some View {
+        HStack {
+            Text(selectedFileName.isEmpty ? "No file selected" : selectedFileName)
+                .foregroundColor(.primary)
+            Spacer()
+            Button(action: {
+                showingFileImporter = true
+            }) {
+                Text("Upload")
+            }
+            .buttonStyle(.bordered)
+        }
+    }
+
+    private var urlDownloadSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                TextField("Enter URL", text: $remoteUrl)
+                    .frame(maxWidth: .infinity)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .lineLimit(1)
+                    .autocorrectionDisabled()
+#if os(iOS)
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(.URL)
+#endif
+                    .disabled(isDownloading)
+
+                Button(action: {
+                    downloadAbiFromUrl()
+                }) {
+                    if isDownloading {
+                        ProgressView()
+                            .scaleEffect(0.7)
+                            .frame(width: 16, height: 16)
+                    } else {
+                        Text("Download")
+                    }
+                }
+                .buttonStyle(.bordered)
+                .fixedSize()
+                .disabled(remoteUrl.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isDownloading)
+            }
+
+            if !downloadError.isEmpty {
+                HStack(spacing: 4) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundColor(.orange)
+                    Text(downloadError)
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                }
+            }
+
+            if !selectedFileName.isEmpty {
+                HStack(spacing: 4) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.green)
+                    Text("Downloaded: \(selectedFileName)")
+                        .font(.caption)
+                        .foregroundColor(.green)
+                }
+            }
+        }
+    }
+
+    private var pasteJsonSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Paste JSON ABI")
+                .font(.caption)
+                .foregroundColor(.secondary)
+
+            JsonView(content: $abiContent)
+                .frame(minHeight: 300)
+                .onChange(of: abiContent) { _, _ in
+                    validateAbi()
+                }
+        }
+    }
+
+    // MARK: - Form Validation
+
     private var isFormValid: Bool {
         !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
             !abiContent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
@@ -456,7 +473,7 @@ struct AbiFormView: View {
                     return
                 }
 
-                guard (200...299).contains(httpResponse.statusCode) else {
+                guard (200 ... 299).contains(httpResponse.statusCode) else {
                     await MainActor.run {
                         downloadError = "Server returned error: \(httpResponse.statusCode)"
                         isDownloading = false
