@@ -77,6 +77,33 @@ struct ContentView: View {
                 .padding()
             }
         }
+        .onChange(of: selectedCategory) { _, _ in
+            // Clear all item selections when category changes
+            selectedEndpoint = nil
+            selectedAbi = nil
+            selectedWallet = nil
+        }
+        .onChange(of: selectedEndpoint) { _, newValue in
+            // Clear other selections when endpoint is selected
+            if newValue != nil {
+                selectedAbi = nil
+                selectedWallet = nil
+            }
+        }
+        .onChange(of: selectedAbi) { _, newValue in
+            // Clear other selections when ABI is selected
+            if newValue != nil {
+                selectedEndpoint = nil
+                selectedWallet = nil
+            }
+        }
+        .onChange(of: selectedWallet) { _, newValue in
+            // Clear other selections when wallet is selected
+            if newValue != nil {
+                selectedEndpoint = nil
+                selectedAbi = nil
+            }
+        }
     }
 }
 

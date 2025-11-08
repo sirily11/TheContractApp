@@ -55,8 +55,8 @@ struct AbiFormView: View {
     // Validation states
     @State private var showingValidationAlert = false
 
-    // Stepper state
-    @State private var currentStep: Int = 1
+    // Navigation
+    @State private var showingPreview = false
 
     // Edit mode
     private let abi: EvmAbi?
@@ -82,25 +82,14 @@ struct AbiFormView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            if currentStep == 1 {
-                formView
-            } else {
-                previewView
-            }
+        NavigationStack {
+            formView
         }
         .frame(minWidth: 700, minHeight: 400)
     }
 
     var formView: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text(isEditing ? "Edit ABI" : "Create ABI")
-                .font(.largeTitle)
-                .fontWeight(.bold)
-                .padding(.horizontal)
-                .padding(.top)
-
-            Form {
+        Form {
                 Section(header: Text("ABI Details")) {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Name")
@@ -182,11 +171,9 @@ struct AbiFormView: View {
                         }
                     }
                 }
-            }
-            .formStyle(.grouped)
-            .scrollContentBackground(.hidden)
-            .padding()
         }
+        .formStyle(.grouped)
+        .navigationTitle(isEditing ? "Edit ABI" : "Create ABI")
 #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
 #endif
@@ -199,13 +186,10 @@ struct AbiFormView: View {
             }
 
             ToolbarItem(placement: .navigationBarTrailing) {
-                if isFormValid {
-                    Button("Next") {
-                        withAnimation {
-                            currentStep = 2
-                        }
-                    }
+                Button("Next") {
+                    showingPreview = true
                 }
+                .disabled(!isFormValid)
             }
 #else
             ToolbarItem(placement: .cancellationAction) {
@@ -216,13 +200,14 @@ struct AbiFormView: View {
 
             ToolbarItem(placement: .primaryAction) {
                 Button("Next") {
-                    withAnimation {
-                        currentStep = 2
-                    }
+                    showingPreview = true
                 }
                 .disabled(!isFormValid)
             }
 #endif
+        }
+        .navigationDestination(isPresented: $showingPreview) {
+            previewView
         }
         .onAppear {
             if let abi = abi {
@@ -244,13 +229,7 @@ struct AbiFormView: View {
     }
 
     var previewView: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text("Preview")
-                .font(.largeTitle)
-                .fontWeight(.bold)
-                .padding(.horizontal)
-                .padding(.top)
-
+        Group {
             if let parser = parsedParser {
                 ScrollView {
                     AbiPreviewView(parser: parser)
@@ -269,41 +248,28 @@ struct AbiFormView: View {
                 }
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .navigationTitle("Preview")
 #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.inline)
 #endif
-            .toolbar {
+        .toolbar {
 #if os(iOS)
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Back") {
-                        withAnimation {
-                            currentStep = 1
-                        }
-                    }
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button(isEditing ? "Update" : "Create") {
+                    saveAbi()
                 }
-
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(isEditing ? "Update" : "Create") {
-                        saveAbi()
-                    }
-                }
-#else
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Back") {
-                        withAnimation {
-                            currentStep = 1
-                        }
-                    }
-                }
-
-                ToolbarItem(placement: .primaryAction) {
-                    Button(isEditing ? "Update" : "Create") {
-                        saveAbi()
-                    }
-                }
-#endif
             }
+#else
+            ToolbarItem(placement: .confirmationAction) {
+                Button(isEditing ? "Update" : "Create") {
+                    saveAbi()
+                }
+            }
+#endif
+        }
+#if os(macOS)
+        .toolbarRole(.editor)
+#endif
     }
 
     // MARK: - Input Method Sections

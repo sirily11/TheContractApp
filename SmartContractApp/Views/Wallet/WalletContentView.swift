@@ -8,10 +8,12 @@
 import SwiftData
 import SwiftUI
 
-enum WalletCreationMode {
+enum WalletCreationMode: Identifiable {
     case random
     case privateKey
     case mnemonic
+
+    var id: Self { self }
 }
 
 struct WalletContentView: View {
@@ -19,11 +21,10 @@ struct WalletContentView: View {
     @Query(sort: \EVMWallet.createdAt, order: .reverse) private var wallets: [EVMWallet]
     @Binding var selectedWallet: EVMWallet?
 
-    @State private var showingCreateSheet = false
+    @State private var creationMode: WalletCreationMode?
     @State private var showingEditSheet = false
     @State private var showingDeleteAlert = false
     @State private var walletToDelete: EVMWallet?
-    @State private var creationMode: WalletCreationMode = .random
 
     var body: some View {
         List(wallets, selection: $selectedWallet) { wallet in
@@ -57,8 +58,8 @@ struct WalletContentView: View {
             }
             #endif
         }
-        .sheet(isPresented: $showingCreateSheet) {
-            WalletFormView(creationMode: creationMode)
+        .sheet(item: $creationMode) { mode in
+            WalletFormView(creationMode: mode)
         }
         .sheet(isPresented: $showingEditSheet) {
             if let wallet = selectedWallet {
@@ -89,21 +90,18 @@ struct WalletContentView: View {
         Menu {
             Button(action: {
                 creationMode = .random
-                showingCreateSheet = true
             }) {
                 Label("Create Random Wallet", systemImage: "dice")
             }
 
             Button(action: {
                 creationMode = .privateKey
-                showingCreateSheet = true
             }) {
                 Label("Import from Private Key", systemImage: "key")
             }
 
             Button(action: {
                 creationMode = .mnemonic
-                showingCreateSheet = true
             }) {
                 Label("Import from Mnemonic", systemImage: "list.bullet.rectangle")
             }

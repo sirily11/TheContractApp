@@ -23,11 +23,6 @@ struct WalletDetailView: View {
     @State private var errorMessage = ""
     @State private var copiedToClipboard = false
 
-    init(wallet: EVMWallet) {
-        self.wallet = wallet
-        print("Wallet: \(wallet.isFromMnemonic)")
-    }
-
     var body: some View {
         Form {
             walletInfoSection

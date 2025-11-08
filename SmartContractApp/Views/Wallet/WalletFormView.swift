@@ -35,6 +35,7 @@ struct WalletFormView: View {
     init(creationMode: WalletCreationMode = .random, wallet: EVMWallet? = nil) {
         self.creationMode = creationMode
         self.wallet = wallet
+        print("WalletFormView initialized in \(isEditing ? "edit" : "create") mode. Creation mode: \(creationMode)")
     }
 
     var body: some View {
@@ -199,13 +200,13 @@ struct WalletFormView: View {
                 SecureField("0x...", text: $privateKeyInput)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
                     .fontDesign(.monospaced)
-                    #if os(iOS)
-                        .autocapitalization(.none)
-                        .disableAutocorrection(true)
-                    #endif
-                        .onChange(of: privateKeyInput) { _, newValue in
-                            validateAndDeriveAddressFromPrivateKey(newValue)
-                        }
+                #if os(iOS)
+                    .autocapitalization(.none)
+                    .disableAutocorrection(true)
+                #endif
+                    .onChange(of: privateKeyInput) { _, newValue in
+                        validateAndDeriveAddressFromPrivateKey(newValue)
+                    }
             }
 
             Text("⚠️ Never share your private key with anyone. It will be stored securely in the keychain.")
@@ -231,22 +232,25 @@ struct WalletFormView: View {
             }
 
             Section {
-                ForEach(0..<mnemonicWordCount, id: \.self) { index in
+                ForEach(Array(mnemonicWords.enumerated()), id: \.offset) { index, _ in
                     HStack(spacing: 8) {
                         Text("\(index + 1).")
                             .font(.caption)
                             .foregroundColor(.secondary)
                             .frame(width: 30, alignment: .trailing)
 
-                        TextField("word", text: $mnemonicWords[index])
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            #if os(iOS)
-                                .autocapitalization(.none)
-                                .disableAutocorrection(true)
-                            #endif
-                                .onChange(of: mnemonicWords[index]) { _, _ in
-                                    validateAndDeriveAddressFromMnemonic()
-                                }
+                        TextField("word", text: Binding(
+                            get: { mnemonicWords[index] },
+                            set: { newValue in
+                                mnemonicWords[index] = newValue
+                                validateAndDeriveAddressFromMnemonic()
+                            }
+                        ))
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        #if os(iOS)
+                            .autocapitalization(.none)
+                            .disableAutocorrection(true)
+                        #endif
                     }
                 }
             }
