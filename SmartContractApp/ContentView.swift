@@ -13,6 +13,7 @@ struct ContentView: View {
     @State private var selectedCategory: SidebarCategory?
     @State private var selectedEndpoint: Endpoint?
     @State private var selectedAbi: EvmAbi?
+    @State private var selectedWallet: EVMWallet?
 
     var body: some View {
         NavigationSplitView {
@@ -35,7 +36,7 @@ struct ContentView: View {
                 case .contract:
                     EmptyPlaceholderView(title: "Contract Management", description: "Contract management features coming soon")
                 case .wallet:
-                    EmptyPlaceholderView(title: "Wallet Management", description: "Wallet management features coming soon")
+                    WalletContentView(selectedWallet: $selectedWallet)
                 }
             } else {
                 ContentUnavailableView(
@@ -50,6 +51,8 @@ struct ContentView: View {
                 EndpointDetailView(endpoint: selectedEndpoint)
             } else if let selectedAbi = selectedAbi {
                 AbiDetailView(abi: selectedAbi)
+            } else if let selectedWallet = selectedWallet {
+                WalletDetailView(wallet: selectedWallet)
             } else if selectedCategory != nil {
                 ContentUnavailableView(
                     "No Selection",
@@ -79,5 +82,5 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
-        .modelContainer(for: [Endpoint.self, EVMContract.self, EvmAbi.self], inMemory: true)
+        .modelContainer(for: [Endpoint.self, EVMContract.self, EvmAbi.self, EVMWallet.self], inMemory: true)
 }

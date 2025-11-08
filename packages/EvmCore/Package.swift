@@ -37,7 +37,8 @@ let package = Package(
             dependencies: [
                 "BigInt",
                 "CryptoSwift",
-                .product(name: "P256K", package: "secp256k1.swift")
+                .product(name: "P256K", package: "secp256k1.swift"),
+                "BIP39"
             ]
         ),
         .target(

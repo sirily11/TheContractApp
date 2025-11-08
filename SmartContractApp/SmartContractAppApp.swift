@@ -15,6 +15,7 @@ struct SmartContractAppApp: App {
             Endpoint.self,
             EVMContract.self,
             EvmAbi.self,
+            EVMWallet.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
