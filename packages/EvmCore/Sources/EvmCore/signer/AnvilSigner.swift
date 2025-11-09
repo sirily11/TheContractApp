@@ -33,7 +33,7 @@ public struct AnvilSigner: Signer {
     }
 }
 
-/// Anvil's default test accounts with known addresses
+/// Anvil's default test accounts with known addresses and private keys
 public struct AnvilAccounts {
     /// First Anvil test account (has 10000 ETH by default)
     public static let account0 = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
@@ -43,6 +43,18 @@ public struct AnvilAccounts {
 
     /// Third Anvil test account
     public static let account2 = "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC"
+
+    /// Private key for account0
+    public static let privateKey0 =
+        "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+
+    /// Private key for account1
+    public static let privateKey1 =
+        "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
+
+    /// Private key for account2
+    public static let privateKey2 =
+        "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a"
 
     /// All default Anvil test accounts
     public static let allAccounts = [

@@ -28,6 +28,25 @@ make fmt             # Format code using swift format
 make lint            # Lint code using swiftformat
 ```
 
+### Command Execution Guidelines
+
+**IMPORTANT**: When executing bash commands, **DO NOT use the `cd` command**. Shell configuration issues can cause `cd` to fail. Instead:
+
+✅ **Good - Use absolute paths or command options:**
+```bash
+# Run commands with absolute paths
+swift test --package-path /Users/qiweili/Desktop/rxlab/SmartContractApp/packages/EvmCore
+
+# Run scripts with absolute paths
+bun /Users/qiweili/Desktop/rxlab/SmartContractApp/packages/EvmCore/scripts/generate-test-vectors.ts
+```
+
+❌ **Bad - Avoid cd:**
+```bash
+# Don't do this
+cd /path/to/directory && swift test
+```
+
 ## Architecture
 
 The library is organized into five main modules:

@@ -75,6 +75,43 @@ public struct EvmClient: EvmRpcClientProtocol {
         return fee
     }
 
+    /// Gets fee data similar to ethers.js getFeeData()
+    /// Returns recommended fee values for both EIP-1559 and legacy transactions
+    /// - Returns: FeeData containing recommended fee values
+    public func getFeeData() async throws -> FeeData {
+        // Fetch latest block to check for EIP-1559 support
+        let block = try? await getBlockByNumber(.latest, fullTransactions: false)
+
+        // Fetch gas price (may fail on some networks)
+        let gasPrice = try? await self.gasPrice()
+
+        var lastBaseFeePerGas: BigInt? = nil
+        var maxFeePerGas: BigInt? = nil
+        var maxPriorityFeePerGas: BigInt? = nil
+
+        // Check if block has baseFeePerGas (EIP-1559 support)
+        if let block = block, let baseFeeHex = block.baseFeePerGas {
+            // Parse base fee
+            if let baseFee = BigInt(baseFeeHex.stripHexPrefix(), radix: 16) {
+                lastBaseFeePerGas = baseFee
+
+                // Use 1.5 Gwei as default priority fee (same as ethers.js)
+                maxPriorityFeePerGas = BigInt(1_500_000_000)
+
+                // Calculate maxFeePerGas: (baseFee * 2) + maxPriorityFeePerGas
+                // This matches ethers.js formula
+                maxFeePerGas = (baseFee * 2) + maxPriorityFeePerGas!
+            }
+        }
+
+        return FeeData(
+            lastBaseFeePerGas: lastBaseFeePerGas,
+            maxFeePerGas: maxFeePerGas,
+            maxPriorityFeePerGas: maxPriorityFeePerGas,
+            gasPrice: gasPrice
+        )
+    }
+
     // MARK: - Account Methods
 
     public func getBalance(address: Address, block: BlockParameter = .latest) async throws
@@ -596,6 +633,43 @@ public struct EvmClientWithSigner: EvmRpcClientProtocol {
         return fee
     }
 
+    /// Gets fee data similar to ethers.js getFeeData()
+    /// Returns recommended fee values for both EIP-1559 and legacy transactions
+    /// - Returns: FeeData containing recommended fee values
+    public func getFeeData() async throws -> FeeData {
+        // Fetch latest block to check for EIP-1559 support
+        let block = try? await getBlockByNumber(.latest, fullTransactions: false)
+
+        // Fetch gas price (may fail on some networks)
+        let gasPrice = try? await self.gasPrice()
+
+        var lastBaseFeePerGas: BigInt? = nil
+        var maxFeePerGas: BigInt? = nil
+        var maxPriorityFeePerGas: BigInt? = nil
+
+        // Check if block has baseFeePerGas (EIP-1559 support)
+        if let block = block, let baseFeeHex = block.baseFeePerGas {
+            // Parse base fee
+            if let baseFee = BigInt(baseFeeHex.stripHexPrefix(), radix: 16) {
+                lastBaseFeePerGas = baseFee
+
+                // Use 1.5 Gwei as default priority fee (same as ethers.js)
+                maxPriorityFeePerGas = BigInt(1_500_000_000)
+
+                // Calculate maxFeePerGas: (baseFee * 2) + maxPriorityFeePerGas
+                // This matches ethers.js formula
+                maxFeePerGas = (baseFee * 2) + maxPriorityFeePerGas!
+            }
+        }
+
+        return FeeData(
+            lastBaseFeePerGas: lastBaseFeePerGas,
+            maxFeePerGas: maxFeePerGas,
+            maxPriorityFeePerGas: maxPriorityFeePerGas,
+            gasPrice: gasPrice
+        )
+    }
+
     // MARK: - Account Methods
 
     public func getBalance(address: Address, block: BlockParameter = .latest) async throws
@@ -1028,5 +1102,233 @@ public struct EvmClientWithSigner: EvmRpcClientProtocol {
         }
 
         return hash
+    }
+
+    // MARK: - Transaction Signing Methods
+
+    /// Signs a raw transaction and returns the signed transaction
+    /// - Parameter params: The transaction parameters
+    /// - Returns: The signed transaction as a hex string
+    public func signTransaction(params: TransactionParams) async throws -> String {
+        // Get chain ID
+        let chainId = try await self.chainId()
+
+        // Get nonce if not provided
+        let nonce: BigInt
+        if let nonceHex = params.nonce {
+            guard let nonceValue = BigInt(nonceHex.stripHexPrefix(), radix: 16) else {
+                throw TransactionError.invalidResponse("Invalid nonce format")
+            }
+            nonce = nonceValue
+        } else {
+            nonce = try await getTransactionCount(
+                address: signer.address, block: .pending)
+        }
+
+        // Get gas limit, either from params or estimate it
+        let gasLimit: BigInt
+        if let gasHex = params.gas {
+            guard let gasValue = BigInt(gasHex.stripHexPrefix(), radix: 16) else {
+                throw TransactionError.invalidResponse("Invalid gas format")
+            }
+            gasLimit = gasValue
+        } else {
+            gasLimit = try await estimateGas(params: params)
+        }
+
+        // Get gas price parameters for EIP-1559 (Type 2 transactions only)
+        // Note: Legacy transactions (Type 0) are not supported
+        // gasPrice parameter is ignored (legacy only)
+        let maxPriorityFeePerGas: BigInt
+        let maxFeePerGas: BigInt
+
+        // If both fee parameters are provided, use them directly
+        if let priorityFeeHex = params.maxPriorityFeePerGas,
+            let maxFeeHex = params.maxFeePerGas
+        {
+            guard let priorityFeeValue = BigInt(priorityFeeHex.stripHexPrefix(), radix: 16) else {
+                throw TransactionError.invalidResponse("Invalid maxPriorityFeePerGas format")
+            }
+            guard let maxFeeValue = BigInt(maxFeeHex.stripHexPrefix(), radix: 16) else {
+                throw TransactionError.invalidResponse("Invalid maxFeePerGas format")
+            }
+            maxPriorityFeePerGas = priorityFeeValue
+            maxFeePerGas = maxFeeValue
+        } else if let priorityFeeHex = params.maxPriorityFeePerGas {
+            // Only priority fee provided, calculate maxFee
+            guard let priorityFeeValue = BigInt(priorityFeeHex.stripHexPrefix(), radix: 16) else {
+                throw TransactionError.invalidResponse("Invalid maxPriorityFeePerGas format")
+            }
+            maxPriorityFeePerGas = priorityFeeValue
+
+            // Calculate maxFeePerGas: gasPrice + priority fee
+            let baseGasPrice = try await self.gasPrice()
+            maxFeePerGas = baseGasPrice + maxPriorityFeePerGas
+        } else if let maxFeeHex = params.maxFeePerGas {
+            // Only maxFee provided, get priority fee from network
+            guard let maxFeeValue = BigInt(maxFeeHex.stripHexPrefix(), radix: 16) else {
+                throw TransactionError.invalidResponse("Invalid maxFeePerGas format")
+            }
+            maxFeePerGas = maxFeeValue
+
+            // Try to get maxPriorityFeePerGas from network, fallback to 1 gwei if not supported
+            do {
+                maxPriorityFeePerGas = try await self.maxPriorityFeePerGas()
+            } catch {
+                // Fallback to 1 gwei for chains that don't support eth_maxPriorityFeePerGas
+                maxPriorityFeePerGas = BigInt(1_000_000_000)  // 1 gwei
+            }
+        } else {
+            // Neither provided, use getFeeData() for recommended values
+            let feeData = try await self.getFeeData()
+
+            // If EIP-1559 data is available, use it
+            if let maxFee = feeData.maxFeePerGas, let priorityFee = feeData.maxPriorityFeePerGas {
+                maxFeePerGas = maxFee
+                maxPriorityFeePerGas = priorityFee
+            } else if let gasPrice = feeData.gasPrice {
+                // Fallback to legacy gas price for non-EIP-1559 networks
+                maxPriorityFeePerGas = BigInt(1_500_000_000)  // 1.5 gwei default
+                maxFeePerGas = gasPrice + maxPriorityFeePerGas
+            } else {
+                // Last resort: fetch gas price directly
+                let baseGasPrice = try await self.gasPrice()
+                maxPriorityFeePerGas = BigInt(1_500_000_000)  // 1.5 gwei default
+                maxFeePerGas = baseGasPrice + maxPriorityFeePerGas
+            }
+        }
+
+        // Parse value
+        let value: BigInt
+        if let transactionValue = params.value {
+            value = transactionValue.toWei().value
+        } else {
+            value = 0
+        }
+
+        // Get data
+        let data = params.data ?? "0x"
+
+        // EIP-1559 (Type 2) transaction only - legacy transactions are not supported
+        // Transaction fields: [chainId, nonce, maxPriorityFeePerGas, maxFeePerGas, gasLimit, to, value, data, accessList]
+        var txFields: [Any] = [
+            chainId,
+            nonce,
+            maxPriorityFeePerGas,
+            maxFeePerGas,
+            gasLimit,
+        ]
+
+        // Add 'to' address (or empty for contract creation)
+        // The 'to' field must be raw 20-byte address data, not a hex string
+        if let toAddress = params.to {
+            // Convert hex address string to 20-byte Data
+            let cleanAddress =
+                toAddress.hasPrefix("0x") ? String(toAddress.dropFirst(2)) : toAddress
+            guard cleanAddress.count == 40 else {
+                throw TransactionError.invalidResponse("Invalid address length: \(toAddress)")
+            }
+            let toData = Data(hex: cleanAddress)
+            guard toData.count == 20 else {
+                throw TransactionError.invalidResponse("Address must be 20 bytes")
+            }
+            txFields.append(toData)
+        } else {
+            txFields.append(Data())
+        }
+
+        txFields.append(value)
+        txFields.append(data)
+        txFields.append([])  // Empty access list
+
+        // Encode the transaction for signing
+        let encodedTx = RLP.encode(txFields)
+
+        // Prepend transaction type byte (0x02 for EIP-1559)
+        var txForSigning = Data([0x02])
+        txForSigning.append(encodedTx)
+
+        // Sign the transaction (signer will hash with keccak256 and sign)
+        let signature = try await signer.sign(message: txForSigning)
+
+        // Extract v, r, s from signature (signature is 65 bytes: r + s + v)
+        guard signature.count == 65 else {
+            throw TransactionError.invalidResponse("Invalid signature length")
+        }
+
+        // Use explicit byte ranges to ensure we get exactly 32 bytes for r and s
+        let r = signature[0..<32]
+        let s = signature[32..<64]
+        let v = signature[64]
+
+        // For EIP-1559, v is the y parity (0 or 1)
+        // The signature from PrivateKeySigner uses Ethereum format (27/28)
+        // Convert to y parity
+        let yParity = BigInt(v >= 27 ? v - 27 : v)
+
+        // Build signed transaction: [chainId, nonce, maxPriorityFeePerGas, maxFeePerGas, gasLimit, to, value, data, accessList, yParity, r, s]
+        // Note: r and s must remain as Data (32-byte arrays) to preserve leading zeros
+        // Converting to BigInt would strip leading zeros and invalidate the signature
+        var signedTxFields = txFields
+        signedTxFields.append(yParity)
+
+        // Ensure r and s are proper Data objects, not slices, and exactly 32 bytes
+        let rData = Data(r)
+        let sData = Data(s)
+        guard rData.count == 32 else {
+            throw TransactionError.invalidResponse(
+                "Signature r component must be 32 bytes, got \(rData.count)")
+        }
+        guard sData.count == 32 else {
+            throw TransactionError.invalidResponse(
+                "Signature s component must be 32 bytes, got \(sData.count)")
+        }
+
+        // Convert r and s to BigInt for proper RLP encoding as integers
+        // EIP-1559 requires r and s to be encoded as integers, not byte strings
+        // IMPORTANT: Must convert as unsigned (positive) integers
+        let rHex = rData.map { String(format: "%02x", $0) }.joined()
+        let sHex = sData.map { String(format: "%02x", $0) }.joined()
+
+        guard let rBigInt = BigInt(rHex, radix: 16) else {
+            throw TransactionError.invalidResponse("Failed to convert r to BigInt")
+        }
+        guard let sBigInt = BigInt(sHex, radix: 16) else {
+            throw TransactionError.invalidResponse("Failed to convert s to BigInt")
+        }
+
+        signedTxFields.append(rBigInt)
+        signedTxFields.append(sBigInt)
+
+        // Encode the signed transaction
+        let encodedSignedTx = RLP.encode(signedTxFields)
+
+        // Prepend transaction type byte
+        var finalTx = Data([0x02])
+        finalTx.append(encodedSignedTx)
+
+        // Return as hex string
+        return "0x" + finalTx.map { String(format: "%02x", $0) }.joined()
+    }
+
+    /// Signs a transaction and sends it to the network
+    /// - Parameter params: The transaction parameters
+    /// - Returns: The transaction hash
+    public func signAndSendTransaction(params: TransactionParams) async throws -> String {
+        // Sign the transaction
+        let signedTx = try await signTransaction(params: params)
+
+        // Send the raw transaction
+        let request = RpcRequest(
+            method: "eth_sendRawTransaction",
+            params: [AnyCodable(signedTx)]
+        )
+        let response = try await transport.send(request: request)
+
+        guard let txHash = response.result.value as? String else {
+            throw TransactionError.invalidResponse("Expected transaction hash string")
+        }
+
+        return txHash
     }
 }

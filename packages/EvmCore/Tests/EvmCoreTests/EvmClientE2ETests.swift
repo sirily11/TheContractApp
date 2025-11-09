@@ -58,6 +58,39 @@ struct EvmClientE2ETests {
         #expect(maxFee >= 0)
     }
 
+    @Test("Get fee data (EIP-1559)")
+    func testGetFeeData() async throws {
+        let transport = try HttpTransport(urlString: Self.anvilUrl)
+        let client = EvmClient(transport: transport)
+
+        let feeData = try await client.getFeeData()
+        print("Fee data:")
+        print("  lastBaseFeePerGas: \(feeData.lastBaseFeePerGas?.description ?? "nil")")
+        print("  maxFeePerGas: \(feeData.maxFeePerGas?.description ?? "nil")")
+        print("  maxPriorityFeePerGas: \(feeData.maxPriorityFeePerGas?.description ?? "nil")")
+        print("  gasPrice: \(feeData.gasPrice?.description ?? "nil")")
+
+        // Anvil supports EIP-1559, so we should have base fee data
+        #expect(feeData.lastBaseFeePerGas != nil)
+        #expect(feeData.maxFeePerGas != nil)
+        #expect(feeData.maxPriorityFeePerGas != nil)
+
+        // Verify the ethers.js formula: maxFeePerGas = (baseFee * 2) + maxPriorityFeePerGas
+        if let baseFee = feeData.lastBaseFeePerGas,
+            let maxFee = feeData.maxFeePerGas,
+            let priorityFee = feeData.maxPriorityFeePerGas
+        {
+            let expectedMaxFee = (baseFee * 2) + priorityFee
+            #expect(maxFee == expectedMaxFee)
+
+            // Priority fee should be 1.5 gwei (same as ethers.js default)
+            #expect(priorityFee == BigInt(1_500_000_000))
+        }
+
+        // gasPrice should also be available
+        #expect(feeData.gasPrice != nil)
+    }
+
     // MARK: - Account Tests
 
     @Test("Get account balance")
@@ -138,7 +171,7 @@ struct EvmClientE2ETests {
         let txParams = TransactionParams(
             from: AnvilAccounts.account0,
             to: AnvilAccounts.account1,
-            value: "0x1"  // 1 wei
+            value: TransactionValue(wei: Wei(bigInt: BigInt(1)))  // 1 wei
         )
         let txHash = try await client.sendTransaction(params: txParams)
         print("Sent transaction: \(txHash)")
@@ -213,7 +246,7 @@ struct EvmClientE2ETests {
         let txParams = TransactionParams(
             from: AnvilAccounts.account0,
             to: AnvilAccounts.account1,
-            value: "0x100"  // 256 wei
+            value: TransactionValue(wei: Wei(bigInt: BigInt(256)))  // 256 wei
         )
         let txHash = try await client.sendTransaction(params: txParams)
         print("Transaction hash: \(txHash)")
@@ -243,7 +276,7 @@ struct EvmClientE2ETests {
         let txParams = TransactionParams(
             from: AnvilAccounts.account0,
             to: AnvilAccounts.account1,
-            value: "0x200"  // 512 wei
+            value: TransactionValue(wei: Wei(bigInt: BigInt(512)))  // 512 wei
         )
         _ = try await client.sendTransaction(params: txParams)
 
@@ -267,7 +300,7 @@ struct EvmClientE2ETests {
         let txParams = TransactionParams(
             from: AnvilAccounts.account0,
             to: AnvilAccounts.account1,
-            value: "0x300"  // 768 wei
+            value: TransactionValue(wei: Wei(bigInt: BigInt(768)))  // 768 wei
         )
         let txHash = try await client.sendTransaction(params: txParams)
 
@@ -311,7 +344,7 @@ struct EvmClientE2ETests {
         let txParams = TransactionParams(
             from: AnvilAccounts.account0,
             to: AnvilAccounts.account1,
-            value: "0x100"
+            value: TransactionValue(wei: Wei(bigInt: BigInt(256)))
         )
 
         let gasEstimate = try await client.estimateGas(params: txParams)
@@ -375,7 +408,7 @@ struct EvmClientE2ETests {
         let txParams = TransactionParams(
             from: AnvilAccounts.account0,
             to: AnvilAccounts.account1,
-            value: "0x1"
+            value: TransactionValue(wei: Wei(bigInt: BigInt(1)))
         )
         _ = try await client.sendTransaction(params: txParams)
 
@@ -488,7 +521,7 @@ struct EvmClientE2ETests {
         let txParams = TransactionParams(
             from: AnvilAccounts.account0,
             to: AnvilAccounts.account1,
-            value: "0x1000"  // 4096 wei
+            value: TransactionValue(wei: Wei(bigInt: BigInt(4096)))  // 4096 wei
         )
         let txHash = try await client.sendTransaction(params: txParams)
         #expect(txHash.hasPrefix("0x"))
@@ -528,5 +561,210 @@ struct EvmClientE2ETests {
         #expect(balanceAtBlock > 0)
 
         print("All block parameters tested successfully")
+    }
+
+    // MARK: - Transaction Signing Tests
+
+    @Test("Sign transaction and send signed transaction")
+    func testSignAndSendTransaction() async throws {
+        let transport = try HttpTransport(urlString: Self.anvilUrl)
+
+        // Create a PrivateKeySigner with Anvil account 1 private key (to avoid nonce conflicts with other tests)
+        let privateKey = AnvilAccounts.privateKey0
+        let signer = try PrivateKeySigner(hexPrivateKey: privateKey)
+        #expect(signer.address.value == AnvilAccounts.account0, "Signer address is not account0")
+        print("Using signer address: \(signer.address.value)")
+
+        let client = EvmClient(transport: transport).withSigner(signer: signer)
+
+        // Check balance of the signer account
+        let signerBalance = try await client.getBalance(address: signer.address, block: .latest)
+        print("Signer account balance: \(signerBalance)")
+
+        // Get current nonce
+        let currentNonce = try await client.getTransactionCount(
+            address: signer.address, block: .pending)
+        print("Current nonce: \(currentNonce)")
+
+        // Get initial balance of recipient
+        let recipientAddress = try Address(AnvilAccounts.account2)
+        let initialBalance = try await client.getBalance(address: recipientAddress, block: .latest)
+        print("Initial recipient balance: \(initialBalance)")
+
+        // Get gas price parameters
+        let maxPriorityFee = try await client.maxPriorityFeePerGas()
+        let gasPrice = try await client.gasPrice()
+        let maxFee = max(gasPrice + maxPriorityFee, maxPriorityFee * 3)
+        print("Using maxPriorityFeePerGas: \(maxPriorityFee), maxFeePerGas: \(maxFee)")
+        print("Estimated cost: \(21000 * maxFee + 10000) wei")
+
+        // Prepare transaction parameters - let nonce auto-calculate
+        let txParams = TransactionParams(
+            from: signer.address.value,
+            to: AnvilAccounts.account2,
+            value: TransactionValue(wei: Wei(bigInt: BigInt(10000)))  // 10000 wei
+        )
+
+        print("About to call signAndSendTransaction...")
+        // Sign and send the transaction
+        let txHash = try await client.signAndSendTransaction(params: txParams)
+        print("Transaction hash: \(txHash)")
+
+        #expect(txHash.hasPrefix("0x"))
+        #expect(txHash.count == 66)  // 0x + 64 hex chars
+
+        // Wait for transaction to be mined
+        try await Task.sleep(nanoseconds: 1_000_000_000)  // 1 second
+
+        // Verify the transaction was successful
+        let receipt = try await client.getTransactionReceipt(txHash)
+        #expect(receipt != nil)
+        #expect(receipt?.isSuccessful == true)
+        #expect(receipt?.from.lowercased() == signer.address.value.lowercased())
+        #expect(receipt?.to?.lowercased() == AnvilAccounts.account2.lowercased())
+
+        // Verify balance increased
+        let finalBalance = try await client.getBalance(address: recipientAddress, block: .latest)
+        print("Final recipient balance: \(finalBalance)")
+        #expect(finalBalance == initialBalance + 10000)
+
+        print("signAndSendTransaction test completed successfully")
+    }
+
+    @Test("Sign transaction without sending")
+    func testSignTransaction() async throws {
+        let transport = try HttpTransport(urlString: Self.anvilUrl)
+
+        // Create a PrivateKeySigner with Anvil account 0 private key
+        let privateKey = AnvilAccounts.privateKey0
+        let signer = try PrivateKeySigner(hexPrivateKey: privateKey)
+
+        let client = EvmClient(transport: transport).withSigner(signer: signer)
+
+        // Prepare transaction parameters - use signer's address
+        let txParams = TransactionParams(
+            from: signer.address.value,
+            to: AnvilAccounts.account1,
+            value: TransactionValue(wei: Wei(bigInt: BigInt(5000)))  // 5000 wei
+        )
+
+        // Sign the transaction (don't send it)
+        let signedTx = try await client.signTransaction(params: txParams)
+        print("Signed transaction: \(signedTx)")
+
+        #expect(signedTx.hasPrefix("0x"))
+        // EIP-1559 transactions start with 0x02
+        #expect(signedTx.hasPrefix("0x02"))
+
+        // The signed transaction should be RLP encoded and include signature
+        // It should be longer than just a hash (66 chars)
+        #expect(signedTx.count > 100)
+
+        print("signTransaction test completed successfully")
+    }
+
+    @Test("Verify signed transaction has correct from address")
+    func testSignedTransactionAddressRecovery() async throws {
+        let transport = try HttpTransport(urlString: Self.anvilUrl)
+
+        // Create a PrivateKeySigner with Anvil account 0 private key
+        let privateKey = AnvilAccounts.privateKey0
+        let signer = try PrivateKeySigner(hexPrivateKey: privateKey)
+
+        print("Expected signer address: \(signer.address.value)")
+        #expect(signer.address.value.lowercased() == AnvilAccounts.account0.lowercased())
+
+        let client = EvmClient(transport: transport).withSigner(signer: signer)
+
+        // Get current nonce to ensure we use the right one
+        let nonce = try await client.getTransactionCount(address: signer.address, block: .pending)
+        print("Current nonce: \(nonce)")
+
+        // Prepare a simple transaction with explicit gas parameters
+        let txParams = TransactionParams(
+            from: signer.address.value,
+            to: AnvilAccounts.account1,
+            gas: "0x5208",  // 21000 in hex
+            maxFeePerGas: "0x3B9ACA00",  // 1 gwei
+            maxPriorityFeePerGas: "0x3B9ACA00",  // 1 gwei
+            value: TransactionValue(wei: Wei(bigInt: BigInt(1000))),  // 1000 wei
+            nonce: "0x" + String(nonce, radix: 16)  // Use actual nonce
+        )
+
+        // Sign the transaction (don't send it)
+        let signedTx = try await client.signTransaction(params: txParams)
+        print("Signed transaction: \(signedTx)")
+
+        #expect(signedTx.hasPrefix("0x02"))  // EIP-1559 type 2 transaction
+
+        // Broadcast the transaction and verify the from address
+        let sendRequest = RpcRequest(
+            method: "eth_sendRawTransaction",
+            params: [AnyCodable(signedTx)]
+        )
+        let sendResponse = try await transport.send(request: sendRequest)
+
+        // Get the transaction hash
+        guard let txHash = sendResponse.result.value as? String else {
+            throw TransactionError.invalidResponse("Expected transaction hash string")
+        }
+
+        print("Transaction broadcasted: \(txHash)")
+
+        // Wait for transaction to be mined
+        try await Task.sleep(nanoseconds: 1_000_000_000)  // 1 second
+
+        // Get the transaction details to verify the from address
+        let tx = try await client.getTransactionByHash(txHash)
+        #expect(tx != nil)
+
+        guard let from = tx?.from else {
+            throw TransactionError.invalidResponse("Transaction 'from' field is missing")
+        }
+
+        print("Recovered from address: \(from)")
+        print("Expected from address: \(signer.address.value)")
+
+        // The critical test: the recovered 'from' address must match the signer's address
+        #expect(
+            from.lowercased() == signer.address.value.lowercased(),
+            "Recovered address doesn't match signer address!")
+
+        print("Address recovery test passed - signed transaction has correct from address!")
+    }
+
+    @Test("Sign and send transaction using PrivateKeySigner")
+    func testPrivateKeySignerTransaction() async throws {
+        let transport = try HttpTransport(urlString: Self.anvilUrl)
+
+        let privateKey = AnvilAccounts.privateKey0
+        let testSigner = try PrivateKeySigner(hexPrivateKey: privateKey)
+        print("Using test address: \(testSigner.address.value)")
+
+        let testClient = EvmClient(transport: transport).withSigner(signer: testSigner)
+
+        // Verify the account has funds (Anvil accounts start with 10000 ETH)
+        let balance = try await testClient.getBalance(address: testSigner.address, block: .latest)
+        print("Test account balance: \(balance)")
+        #expect(balance >= 1_000_000_000_000_000_000)
+
+        let txParams = TransactionParams(
+            from: testSigner.address.value,
+            to: AnvilAccounts.account0,
+            value: .wei(.init(hex: "0x2710"))
+        )
+
+        let txHash = try await testClient.signAndSendTransaction(params: txParams)
+        print("Transaction from test account: \(txHash)")
+
+        #expect(txHash.hasPrefix("0x"))
+
+        // Wait and verify
+        try await Task.sleep(nanoseconds: 1_000_000_000)
+        let receipt = try await testClient.getTransactionReceipt(txHash)
+        #expect(receipt != nil)
+        #expect(receipt?.isSuccessful == true)
+
+        print("PrivateKeySigner transaction test completed successfully")
     }
 }
