@@ -10,11 +10,20 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.walletSigner) private var walletSigner
     @State private var selectedCategory: SidebarCategory?
     @State private var selectedEndpoint: Endpoint?
     @State private var selectedAbi: EvmAbi?
     @State private var selectedContract: EVMContract?
     @State private var selectedWallet: EVMWallet?
+    @State private var showingQueuedTransactions = false
+
+    private var pendingTransactionCount: Int {
+        guard let viewModel = walletSigner as? WalletSignerViewModel else {
+            return 0
+        }
+        return viewModel.pendingTransactionCount
+    }
 
     var body: some View {
         NavigationSplitView {
@@ -86,6 +95,28 @@ struct ContentView: View {
                 .padding()
             }
         }
+        .toolbar {
+            ToolbarItem(placement: .automatic) {
+                Button {
+                    showingQueuedTransactions = true
+                } label: {
+                    walletToolbarButton
+                }
+                .help("Pending Transactions")
+            }
+        }
+        #if os(macOS)
+        .popover(isPresented: $showingQueuedTransactions, arrowEdge: .top) {
+            SigningWalletView()
+                .frame(minWidth: 400, minHeight: 700)
+        }
+        #else
+        .sheet(isPresented: $showingQueuedTransactions) {
+            NavigationStack {
+                SigningWalletView()
+            }
+        }
+        #endif
         .onChange(of: selectedCategory) { _, _ in
             // Clear all item selections when category changes
             selectedEndpoint = nil
@@ -123,6 +154,30 @@ struct ContentView: View {
                 selectedEndpoint = nil
                 selectedAbi = nil
                 selectedContract = nil
+            }
+        }
+    }
+
+    // MARK: - Toolbar Button
+
+    @ViewBuilder
+    private var walletToolbarButton: some View {
+        ZStack(alignment: .topTrailing) {
+            Image(systemName: "wallet.pass")
+                .font(.title3)
+                .imageScale(.medium)
+
+            if pendingTransactionCount > 0 {
+                ZStack {
+                    Circle()
+                        .fill(.red)
+                        .frame(width: 18, height: 18)
+
+                    Text("\(min(pendingTransactionCount, 99))")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.white)
+                }
+                .offset(x: 8, y: -8)
             }
         }
     }

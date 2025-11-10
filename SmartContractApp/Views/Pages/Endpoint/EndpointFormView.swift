@@ -35,6 +35,9 @@ struct EndpointFormView: View {
     @State private var isDetectingChainId: Bool = false
     @State private var detectedChainId: String = ""
     @State private var detectionError: String = ""
+    @State private var nativeTokenSymbol: String = "ETH"
+    @State private var nativeTokenName: String = "Ethereum"
+    @State private var nativeTokenDecimals: String = "18"
     
     // Validation states
     @State private var showingValidationAlert = false
@@ -188,7 +191,42 @@ struct EndpointFormView: View {
                     }
                 }
             }
-                
+
+            Section("Native Token Configuration") {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Symbol")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    TextField("ETH, BNB, MATIC, etc.", text: $nativeTokenSymbol)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                    #if os(iOS)
+                        .autocapitalization(.allCharacters)
+                    #endif
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Name")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    TextField("Ethereum, Binance Coin, Polygon, etc.", text: $nativeTokenName)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Decimals")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    TextField("18", text: $nativeTokenDecimals)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                    #if os(iOS)
+                        .keyboardType(.numberPad)
+                    #endif
+                    Text("Most chains use 18 decimals")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+            }
+
             if isEditing {
                 Section(header: Text("Metadata")) {
                     if let endpoint = endpoint {
@@ -266,6 +304,9 @@ struct EndpointFormView: View {
         url = endpoint.url
         chainId = endpoint.chainId
         isAutoDetectingChainId = endpoint.autoDetectChainId
+        nativeTokenSymbol = endpoint.nativeTokenSymbol
+        nativeTokenName = endpoint.nativeTokenName
+        nativeTokenDecimals = String(endpoint.nativeTokenDecimals)
     }
     
     private func saveEndpoint() {
@@ -301,6 +342,9 @@ struct EndpointFormView: View {
                 existingEndpoint.url = url.trimmingCharacters(in: .whitespacesAndNewlines)
                 existingEndpoint.chainId = finalChainId
                 existingEndpoint.autoDetectChainId = isAutoDetectingChainId
+                existingEndpoint.nativeTokenSymbol = nativeTokenSymbol.trimmingCharacters(in: .whitespacesAndNewlines)
+                existingEndpoint.nativeTokenName = nativeTokenName.trimmingCharacters(in: .whitespacesAndNewlines)
+                existingEndpoint.nativeTokenDecimals = Int(nativeTokenDecimals.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 18
                 existingEndpoint.updatedAt = Date()
             } else {
                 // Create new endpoint
@@ -308,7 +352,10 @@ struct EndpointFormView: View {
                     name: name.trimmingCharacters(in: .whitespacesAndNewlines),
                     url: url.trimmingCharacters(in: .whitespacesAndNewlines),
                     chainId: finalChainId,
-                    autoDetectChainId: isAutoDetectingChainId
+                    autoDetectChainId: isAutoDetectingChainId,
+                    nativeTokenSymbol: nativeTokenSymbol.trimmingCharacters(in: .whitespacesAndNewlines),
+                    nativeTokenName: nativeTokenName.trimmingCharacters(in: .whitespacesAndNewlines),
+                    nativeTokenDecimals: Int(nativeTokenDecimals.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 18
                 )
                 modelContext.insert(newEndpoint)
             }

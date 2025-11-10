@@ -27,6 +27,14 @@ final class EVMWallet {
     var createdAt: Date
     var updatedAt: Date
 
+    // MARK: - Relationships
+
+    @Relationship(deleteRule: .cascade, inverse: \Transaction.wallet)
+    var transactions: [Transaction]?
+
+    @Relationship(deleteRule: .cascade, inverse: \QueuedTransaction.wallet)
+    var queuedTransactions: [QueuedTransaction]?
+
     init(id: Int = 0, alias: String, address: String, keychainPath: String,
          isFromMnemonic: Bool = false, createdAt: Date = Date(), updatedAt: Date = Date())
     {
