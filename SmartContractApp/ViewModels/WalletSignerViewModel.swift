@@ -5,11 +5,11 @@
 //  Created by Claude on 11/10/25.
 //
 
+import BigInt
 import EvmCore
 import Foundation
 import Observation
 import SwiftData
-import BigInt
 
 @Observable
 final class WalletSignerViewModel: WalletSigner {
@@ -33,21 +33,19 @@ final class WalletSignerViewModel: WalletSigner {
     // MARK: - WalletSigner Protocol
 
     var walletSigner: Signer {
-        get {
-            guard let wallet = currentWallet else {
-                fatalError("No wallet selected for signing")
-            }
-
-            guard let privateKey = try? wallet.getPrivateKey() else {
-                fatalError("Failed to retrieve private key from keychain")
-            }
-
-            guard let signer = try? PrivateKeySigner(hexPrivateKey: privateKey) else {
-                fatalError("Failed to create signer from private key")
-            }
-
-            return signer
+        guard let wallet = currentWallet else {
+            fatalError("No wallet selected for signing")
         }
+
+        guard let privateKey = try? wallet.getPrivateKey() else {
+            fatalError("Failed to retrieve private key from keychain")
+        }
+
+        guard let signer = try? PrivateKeySigner(hexPrivateKey: privateKey) else {
+            fatalError("Failed to create signer from private key")
+        }
+
+        return signer
     }
 
     var signingRequestStream: AsyncStream<Data> {
@@ -233,7 +231,7 @@ final class WalletSignerViewModel: WalletSigner {
     ///   - gasLimit: Gas limit for the transaction
     ///   - endpoint: RPC endpoint to use for sending
     /// - Returns: Transaction hash
-    func sendTransaction(to: String, value: BigInt, gasLimit: BigInt, endpoint: Endpoint) async throws -> String {
+    func sendTransaction(to: String, value: TransactionValue, gasLimit: BigInt, endpoint: Endpoint) async throws -> String {
         guard let wallet = currentWallet else {
             throw WalletSignerError.noWalletSelected
         }
@@ -256,7 +254,7 @@ final class WalletSignerViewModel: WalletSigner {
             from: wallet.address,
             to: to,
             gas: "0x" + String(gasLimit, radix: 16),
-            value: TransactionValue(wei: Wei(bigInt: value))
+            value: value,
         )
 
         // Send the transaction
@@ -268,7 +266,7 @@ final class WalletSignerViewModel: WalletSigner {
             type: .send,
             from: wallet.address,
             to: to,
-            value: String(value),
+            value: String(value.toWei().value),
             timestamp: Date(),
             status: .pending,
             wallet: wallet
@@ -285,10 +283,10 @@ final class WalletSignerViewModel: WalletSigner {
     ///   - value: Amount to send in wei
     ///   - gasEstimate: Estimated gas limit
     /// - Returns: The queued transaction
-    func queueTransaction(to: String, value: BigInt, gasEstimate: BigInt) throws -> QueuedTransaction {
+    func queueTransaction(to: String, value: TransactionValue, gasEstimate: BigInt) throws -> QueuedTransaction {
         let queuedTx = QueuedTransaction(
             to: to,
-            value: String(value),
+            value: value,
             data: nil,
             gasEstimate: String(gasEstimate)
         )
@@ -305,14 +303,13 @@ final class WalletSignerViewModel: WalletSigner {
     ///   - endpoint: RPC endpoint to use for sending
     /// - Returns: Transaction hash
     func processApprovedTransaction(_ queuedTransaction: QueuedTransaction, endpoint: Endpoint) async throws -> String {
-        guard let value = BigInt(queuedTransaction.value) else {
-            throw WalletSignerError.invalidTransactionData
-        }
+        let value = queuedTransaction.value
 
         // Use gas estimate if available, otherwise use default
         let gasLimit: BigInt
         if let gasEstimateStr = queuedTransaction.gasEstimate,
-           let gasEstimate = BigInt(gasEstimateStr) {
+           let gasEstimate = BigInt(gasEstimateStr)
+        {
             gasLimit = gasEstimate
         } else {
             // Default gas limit for simple ETH transfer

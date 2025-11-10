@@ -111,8 +111,15 @@ extension WalletFormView {
             address = signer.address.value
         }
 
+        // Generate unique ID based on existing wallets
+        let descriptor = FetchDescriptor<EVMWallet>()
+        let existingWallets = (try? modelContext.fetch(descriptor)) ?? []
+        let maxId = existingWallets.map(\.id).max() ?? 0
+        let newId = maxId + 1
+
         // Create wallet model
         let newWallet = EVMWallet(
+            id: newId,
             alias: trimmedAlias,
             address: address,
             keychainPath: keychainPath,

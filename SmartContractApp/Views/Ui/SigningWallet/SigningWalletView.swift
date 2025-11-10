@@ -5,12 +5,11 @@
 //  Created by Claude on 11/10/25.
 //
 
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 /// Main wallet view with address, balance, actions, and tabs
 struct SigningWalletView: View {
-
     // MARK: - Properties
 
     @State private var selectedTab: WalletTab = .pending
@@ -42,11 +41,6 @@ struct SigningWalletView: View {
         selectedWallet?.address ?? "No wallet selected"
     }
 
-    private var balance: String {
-        // TODO: Fetch actual balance from blockchain
-        "0.0 \(nativeTokenSymbol)"
-    }
-
     private var nativeTokenSymbol: String {
         selectedEndpoint?.nativeTokenSymbol ?? "ETH"
     }
@@ -59,47 +53,45 @@ struct SigningWalletView: View {
         selectedEndpoint?.nativeTokenDecimals ?? 18
     }
 
-    private var numericBalance: String {
-        // TODO: Fetch actual balance from blockchain
-        "0.0"
-    }
-
     // MARK: - Body
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Endpoint picker button (top right)
-            HStack {
-                Spacer()
-                endpointPickerButton
+        NavigationStack {
+            VStack(spacing: 0) {
+                // Endpoint picker button (top right)
+                HStack {
+                    Spacer()
+                    endpointPickerButton
+                }
+                .padding(.horizontal)
+                .padding(.top, 8)
+                .padding(.bottom, 4)
+
+                // Wallet header (address + balance) with wallet picker
+                WalletHeaderView(
+                    wallets: wallets,
+                    selectedWalletId: $selectedWalletId,
+                    endpoint: selectedEndpoint,
+                    refreshInterval: 10.0 // Refresh balance every 10 seconds
+                )
+                .padding(.bottom, 20)
+
+                // Action buttons (Send/Receive)
+                WalletActionsView(
+                    showingSendSheet: $showingSendSheet,
+                    showingReceiveSheet: $showingReceiveSheet
+                )
+                .padding(.bottom, 16)
+
+                // Tabs (Assets / Transaction History)
+                tabView
             }
-            .padding(.horizontal)
-            .padding(.top, 8)
-            .padding(.bottom, 4)
-
-            // Wallet header (address + balance) with wallet picker
-            WalletHeaderView(
-                wallets: wallets,
-                selectedWalletId: $selectedWalletId,
-                balance: balance
-            )
-            .padding(.bottom, 20)
-
-            // Action buttons (Send/Receive)
-            WalletActionsView(
-                showingSendSheet: $showingSendSheet,
-                showingReceiveSheet: $showingReceiveSheet
-            )
-            .padding(.bottom, 16)
-
-            // Tabs (Assets / Transaction History)
-            tabView
-        }
-        .sheet(isPresented: $showingSendSheet) {
-            sendSheet
-        }
-        .sheet(isPresented: $showingReceiveSheet) {
-            receiveSheet
+            .sheet(isPresented: $showingSendSheet) {
+                sendSheet
+            }
+            .sheet(isPresented: $showingReceiveSheet) {
+                receiveSheet
+            }
         }
     }
 
@@ -177,10 +169,11 @@ struct SigningWalletView: View {
         }
         .padding()
         .frame(minWidth: 250)
-        .onChange(of: selectedEndpointId) { oldValue, newValue in
+        .onChange(of: selectedEndpointId) { _, newValue in
             // Sync with first available endpoint if selection is invalid
             if endpoints.first(where: { $0.id == newValue }) == nil,
-               let firstEndpoint = endpoints.first {
+               let firstEndpoint = endpoints.first
+            {
                 selectedEndpointId = firstEndpoint.id
             }
         }
@@ -189,9 +182,9 @@ struct SigningWalletView: View {
     private var tabView: some View {
         TabView(selection: $selectedTab) {
             AssetsView(
-                nativeTokenSymbol: nativeTokenSymbol,
-                nativeTokenName: nativeTokenName,
-                balance: numericBalance
+                selectedWallet: selectedWallet,
+                endpoint: selectedEndpoint,
+                refreshInterval: 10.0 // Refresh balance every 10 seconds
             )
             .tabItem {
                 Label("Assets", systemImage: "dollarsign.circle")
@@ -216,11 +209,8 @@ struct SigningWalletView: View {
     private var sendSheet: some View {
         SendView(
             isPresented: $showingSendSheet,
-            walletAddress: walletAddress,
-            nativeTokenSymbol: nativeTokenSymbol,
-            nativeTokenName: nativeTokenName,
-            nativeTokenDecimals: nativeTokenDecimals,
-            balance: numericBalance
+            wallet: selectedWallet,
+            endpoint: selectedEndpoint
         )
     }
 
@@ -258,7 +248,7 @@ enum WalletTab: String, CaseIterable {
         let context = container.mainContext
 
         // Add queued transactions
-        QueuedTransaction.allPending.forEach { tx in
+        for tx in QueuedTransaction.allPending {
             context.insert(tx)
         }
 

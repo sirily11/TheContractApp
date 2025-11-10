@@ -5,8 +5,8 @@
 //  Created by Claude on 11/10/25.
 //
 
-import SwiftUI
 import BigInt
+import SwiftUI
 
 extension SendView {
     // MARK: - Step 1: Select Asset
@@ -39,19 +39,6 @@ extension SendView {
                             color: .blue
                         )
                     }
-
-                    // Placeholder for future ERC20 tokens
-                    VStack(spacing: 8) {
-                        Image(systemName: "plus.circle.dashed")
-                            .font(.system(size: 40))
-                            .foregroundColor(.secondary)
-
-                        Text("ERC20 tokens coming soon")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 32)
                 }
                 .padding(.horizontal)
             }
@@ -75,9 +62,15 @@ extension SendView {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(asset.name)
                                 .font(.headline)
-                            Text("\(asset.balance) \(asset.symbol)")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                            HStack(spacing: 4) {
+                                Text("\(asset.balance) \(asset.symbol)")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                if isLoadingBalance {
+                                    ProgressView()
+                                        .scaleEffect(0.6)
+                                }
+                            }
                         }
 
                         Spacer()
@@ -95,11 +88,11 @@ extension SendView {
 
                     TextField("0x...", text: $recipientAddress)
                         .textFieldStyle(.roundedBorder)
-                        #if os(iOS)
+                    #if os(iOS)
                         .autocapitalization(.none)
                         .disableAutocorrection(true)
                         .keyboardType(.asciiCapable)
-                        #endif
+                    #endif
                         .font(.system(.body, design: .monospaced))
 
                     if !recipientAddress.isEmpty && !isAddressValid {
@@ -132,9 +125,9 @@ extension SendView {
                     HStack {
                         TextField("0.0", text: $amount)
                             .textFieldStyle(.roundedBorder)
-                            #if os(iOS)
+                        #if os(iOS)
                             .keyboardType(.decimalPad)
-                            #endif
+                        #endif
                             .font(.title3)
 
                         if let asset = selectedAsset {
@@ -144,18 +137,21 @@ extension SendView {
                         }
                     }
 
+                    // Show current balance
+                    if let asset = selectedAsset {
+                        Text("Balance: \(balance) \(asset.symbol)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+
                     if !amount.isEmpty {
                         if let amountValue = Double(amount),
-                           let balanceValue = Double(balance) {
+                           let balanceValue = Double(balance)
+                        {
                             if amountValue > balanceValue {
                                 Label("Insufficient balance", systemImage: "exclamationmark.triangle.fill")
                                     .font(.caption)
                                     .foregroundColor(.red)
-                            } else if amountValue > 0 {
-                                // Show USD equivalent placeholder
-                                Text("≈ $0.00 USD")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
                             }
                         }
                     }
@@ -171,86 +167,60 @@ extension SendView {
 
     @ViewBuilder
     var reviewStep: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                Text("Review Transaction")
-                    .font(.headline)
+        Form {
+            Section("Transaction Details") {
+                // From
+                LabeledContent("From") {
+                    Text(formatAddress(walletAddress))
+                        .font(.system(.body, design: .monospaced))
+                        .foregroundColor(.primary)
+                }
 
-                // Transaction summary
-                VStack(spacing: 0) {
-                    // From
-                    ReviewRow(
-                        label: "From",
-                        value: formatAddress(walletAddress),
-                        isMonospaced: true
-                    )
+                // To
+                LabeledContent("To") {
+                    Text(formatAddress(recipientAddress))
+                        .font(.system(.body, design: .monospaced))
+                        .foregroundColor(.primary)
+                }
 
-                    Divider()
-
-                    // To
-                    ReviewRow(
-                        label: "To",
-                        value: formatAddress(recipientAddress),
-                        isMonospaced: true
-                    )
-
-                    Divider()
-
-                    // Amount
-                    if let asset = selectedAsset {
-                        ReviewRow(
-                            label: "Amount",
-                            value: "\(amount) \(asset.symbol)"
-                        )
-                    }
-
-                    Divider()
-
-                    // Gas estimate
-                    if isEstimatingGas {
-                        HStack {
-                            Text("Gas Fee")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-
-                            Spacer()
-
-                            ProgressView()
-                                .scaleEffect(0.8)
-                        }
-                        .padding()
-                    } else if let gas = gasEstimate {
-                        ReviewRow(
-                            label: "Gas Fee",
-                            value: formatGas(gas)
-                        )
-                    } else if let error = estimateError {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Gas Fee")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-
-                            Text(error)
-                                .font(.caption)
-                                .foregroundColor(.orange)
-                        }
-                        .padding()
-                    }
-
-                    Divider()
-
-                    // Total
-                    if let asset = selectedAsset, let gas = gasEstimate {
-                        ReviewRow(
-                            label: "Total",
-                            value: "\(amount) \(asset.symbol) + gas",
-                            isBold: true
-                        )
+                // Amount
+                if let asset = selectedAsset {
+                    LabeledContent("Amount") {
+                        Text("\(amount) \(asset.symbol)")
+                            .foregroundColor(.primary)
                     }
                 }
-                .background(Color.secondary.opacity(0.05))
-                .cornerRadius(12)
 
+                // Gas estimate
+                if isEstimatingGas {
+                    LabeledContent("Gas Fee") {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                    }
+                } else if let gas = gasEstimate {
+                    LabeledContent("Gas Fee") {
+                        Text(formatGas(gas))
+                            .foregroundColor(.primary)
+                    }
+                } else if let error = estimateError {
+                    LabeledContent("Gas Fee") {
+                        Text(error)
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                    }
+                }
+
+                // Total
+                if let asset = selectedAsset, let _ = gasEstimate {
+                    LabeledContent("Total") {
+                        Text("\(amount) \(asset.symbol) + gas")
+                            .fontWeight(.semibold)
+                            .foregroundColor(.primary)
+                    }
+                }
+            }
+
+            Section {
                 // Warning
                 HStack(alignment: .top, spacing: 12) {
                     Image(systemName: "exclamationmark.triangle.fill")
@@ -266,14 +236,9 @@ extension SendView {
                             .foregroundColor(.secondary)
                     }
                 }
-                .padding()
-                .background(Color.orange.opacity(0.1))
-                .cornerRadius(8)
-
-                Spacer(minLength: 20)
             }
-            .padding()
         }
+        .formStyle(.grouped)
     }
 
     // MARK: - Helper Methods
@@ -348,31 +313,5 @@ struct AssetSelectionRow: View {
             )
         }
         .buttonStyle(.plain)
-    }
-}
-
-// MARK: - Review Row
-
-struct ReviewRow: View {
-    let label: String
-    let value: String
-    var isMonospaced: Bool = false
-    var isBold: Bool = false
-
-    var body: some View {
-        HStack(alignment: .top) {
-            Text(label)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-
-            Spacer()
-
-            Text(value)
-                .font(isMonospaced ? .system(.subheadline, design: .monospaced) : .subheadline)
-                .fontWeight(isBold ? .semibold : .regular)
-                .foregroundColor(.primary)
-                .multilineTextAlignment(.trailing)
-        }
-        .padding()
     }
 }

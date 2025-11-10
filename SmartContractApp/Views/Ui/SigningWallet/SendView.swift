@@ -5,23 +5,26 @@
 //  Created by Claude on 11/10/25.
 //
 
-import SwiftUI
-import EvmCore
 import BigInt
+import EvmCore
+import SwiftUI
 
 struct SendView: View {
     @Binding var isPresented: Bool
     @Environment(\.modelContext) private var modelContext
+    @Environment(WalletSignerViewModel.self) private var walletSignerViewModel
 
     // Dependencies
-    let walletAddress: String
-    let nativeTokenSymbol: String
-    let nativeTokenName: String
-    let nativeTokenDecimals: Int
-    let balance: String
+    let wallet: EVMWallet?
+    let endpoint: Endpoint?
 
     // Step management
     @State var currentStep: SendStep = .selectAsset
+
+    // Balance fetching
+    @State var balance: String = "0.0"
+    @State var isLoadingBalance = false
+    @State private var balanceTask: Task<Void, Never>?
 
     // Form data
     @State var selectedAsset: Asset?
@@ -35,106 +38,96 @@ struct SendView: View {
     @State var showingError: Bool = false
     @State var errorMessage: String = ""
 
+    // MARK: - Computed Properties
+
+    var walletAddress: String {
+        wallet?.address ?? "No wallet selected"
+    }
+
+    var nativeTokenSymbol: String {
+        endpoint?.nativeTokenSymbol ?? "ETH"
+    }
+
+    var nativeTokenName: String {
+        endpoint?.nativeTokenName ?? "Ethereum"
+    }
+
+    var nativeTokenDecimals: Int {
+        endpoint?.nativeTokenDecimals ?? 18
+    }
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // Step indicator
-                stepIndicator
-
-                Divider()
-
                 // Step content
                 switch currentStep {
                 case .selectAsset:
                     selectAssetStep
                 case .enterDetails:
                     enterDetailsStep
-                case .review:
-                    reviewStep
                 }
 
                 Spacer()
-
-                // Navigation buttons
-                navigationButtons
             }
             .navigationTitle("Send")
             #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
+                .navigationBarTitleDisplayMode(.inline)
             #endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        isPresented = false
+                .toolbar {
+                    // Cancel button
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") {
+                            isPresented = false
+                        }
+                    }
+
+                    // Back button (leading)
+                    if currentStep != .selectAsset {
+                        ToolbarItem(placement: .navigation) {
+                            Button("Back") {
+                                withAnimation {
+                                    currentStep = currentStep.previous ?? .selectAsset
+                                }
+                            }
+                        }
+                    }
+
+                    // Next/Send button (trailing)
+                    ToolbarItem(placement: .confirmationAction) {
+                        if currentStep == .enterDetails {
+                            Button("Send") {
+                                sendTransaction()
+                            }
+                            .disabled(!isReviewValid)
+                        } else {
+                            Button("Next") {
+                                handleNext()
+                            }
+                            .disabled(!canProceed)
+                        }
                     }
                 }
-            }
-            .alert("Error", isPresented: $showingError) {
-                Button("OK") {}
-            } message: {
-                Text(errorMessage)
-            }
+                .alert("Error", isPresented: $showingError) {
+                    Button("OK") {}
+                } message: {
+                    Text(errorMessage)
+                }
         }
         #if os(iOS)
         .presentationDetents([.large])
         #endif
-    }
+        .task(id: "\(wallet?.id ?? 0)-\(endpoint?.id ?? 0)") {
+            // Cancel previous task when wallet or endpoint changes
+            balanceTask?.cancel()
 
-    // MARK: - Step Indicator
-
-    private var stepIndicator: some View {
-        HStack(spacing: 12) {
-            ForEach(SendStep.allCases, id: \.self) { step in
-                HStack(spacing: 8) {
-                    Circle()
-                        .fill(step <= currentStep ? Color.blue : Color.secondary.opacity(0.3))
-                        .frame(width: 8, height: 8)
-
-                    Text(step.title)
-                        .font(.caption)
-                        .foregroundColor(step <= currentStep ? .primary : .secondary)
-                }
-
-                if step != SendStep.allCases.last {
-                    Rectangle()
-                        .fill(Color.secondary.opacity(0.3))
-                        .frame(height: 1)
-                }
+            // Fetch balance once when view appears
+            balanceTask = Task {
+                await fetchBalance()
             }
         }
-        .padding()
-    }
-
-    // MARK: - Navigation Buttons
-
-    private var navigationButtons: some View {
-        HStack(spacing: 12) {
-            if currentStep != .selectAsset {
-                Button("Back") {
-                    withAnimation {
-                        currentStep = currentStep.previous ?? .selectAsset
-                    }
-                }
-                .buttonStyle(.bordered)
-            }
-
-            Spacer()
-
-            if currentStep == .review {
-                Button("Send") {
-                    sendTransaction()
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(!isReviewValid)
-            } else {
-                Button("Next") {
-                    handleNext()
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(!canProceed)
-            }
+        .onDisappear {
+            balanceTask?.cancel()
         }
-        .padding()
     }
 
     // MARK: - Validation
@@ -145,8 +138,6 @@ struct SendView: View {
             return selectedAsset != nil
         case .enterDetails:
             return isAddressValid && isAmountValid
-        case .review:
-            return true
         }
     }
 
@@ -190,34 +181,85 @@ struct SendView: View {
             }
         case .enterDetails:
             // Estimate gas before proceeding to review
-            estimateGas()
-        case .review:
-            break
+            sendTransaction()
         }
     }
 
-    private func estimateGas() {
-        isEstimatingGas = true
-        estimateError = nil
+    private func sendTransaction() {}
 
-        // TODO: Implement gas estimation using EvmClient
-        // For now, use a placeholder value
-        Task {
-            try? await Task.sleep(for: .milliseconds(500))
+    // MARK: - Balance Fetching
+
+    /// Fetches the balance from the blockchain using the selected endpoint
+    private func fetchBalance() async {
+        // Guard against missing dependencies
+        guard let endpoint = endpoint,
+              let wallet = wallet,
+              let endpointUrl = URL(string: endpoint.url)
+        else {
             await MainActor.run {
-                gasEstimate = BigInt(21000) // Standard ETH transfer gas
-                isEstimatingGas = false
-                withAnimation {
-                    currentStep = .review
-                }
+                balance = "0.0"
+            }
+            return
+        }
+
+        await MainActor.run {
+            isLoadingBalance = true
+        }
+
+        do {
+            let transport = HttpTransport(url: endpointUrl)
+            let client = EvmClient(transport: transport)
+
+            // Convert wallet address string to Address type
+            let address = try Address(fromHexString: wallet.address)
+
+            // Fetch balance in wei
+            let balanceWei = try await client.getBalance(address: address)
+
+            // Convert wei to native token amount (e.g., wei to ETH)
+            let balanceDecimal = formatBalance(wei: balanceWei, decimals: nativeTokenDecimals)
+
+            await MainActor.run {
+                balance = balanceDecimal
+                isLoadingBalance = false
+            }
+        } catch {
+            print("Failed to fetch balance: \(error)")
+            await MainActor.run {
+                balance = "0.0"
+                isLoadingBalance = false
             }
         }
     }
 
-    private func sendTransaction() {
-        // TODO: Implement transaction sending via WalletSignerViewModel
-        // For now, just close the sheet
-        isPresented = false
+    /// Formats wei balance to human-readable format with specified decimals
+    /// - Parameters:
+    ///   - wei: Balance in wei
+    ///   - decimals: Number of decimals for the native token (e.g., 18 for ETH)
+    /// - Returns: Formatted balance string
+    private func formatBalance(wei: BigInt, decimals: Int) -> String {
+        // Convert wei to token amount
+        let divisor = BigInt(10).power(decimals)
+        let integerPart = wei / divisor
+        let remainder = wei % divisor
+
+        // Format with up to 4 decimal places
+        if remainder == 0 {
+            return String(integerPart)
+        } else {
+            // Calculate fractional part
+            let fractionalValue = Double(remainder) / Double(divisor)
+            let totalValue = Double(integerPart) + fractionalValue
+
+            // Format with appropriate decimal places
+            let formatter = NumberFormatter()
+            formatter.numberStyle = .decimal
+            formatter.minimumFractionDigits = 0
+            formatter.maximumFractionDigits = 4
+            formatter.roundingMode = .down
+
+            return formatter.string(from: NSNumber(value: totalValue)) ?? String(integerPart)
+        }
     }
 }
 
@@ -226,7 +268,6 @@ struct SendView: View {
 enum SendStep: Int, CaseIterable, Comparable {
     case selectAsset = 0
     case enterDetails = 1
-    case review = 2
 
     var title: String {
         switch self {
@@ -234,17 +275,15 @@ enum SendStep: Int, CaseIterable, Comparable {
             return "Select"
         case .enterDetails:
             return "Details"
-        case .review:
-            return "Review"
         }
     }
 
     var next: SendStep? {
-        SendStep(rawValue: self.rawValue + 1)
+        SendStep(rawValue: rawValue + 1)
     }
 
     var previous: SendStep? {
-        SendStep(rawValue: self.rawValue - 1)
+        SendStep(rawValue: rawValue - 1)
     }
 
     static func < (lhs: SendStep, rhs: SendStep) -> Bool {
@@ -268,12 +307,24 @@ struct Asset: Identifiable, Equatable {
 #Preview {
     @Previewable @State var isPresented = true
 
+    let wallet = EVMWallet(
+        id: 1,
+        alias: "Main Wallet",
+        address: "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0",
+        keychainPath: "preview1"
+    )
+    let endpoint = Endpoint(
+        id: 1,
+        name: "Mainnet",
+        url: "https://eth.llamarpc.com",
+        chainId: "1",
+        nativeTokenSymbol: "ETH",
+        nativeTokenName: "Ethereum"
+    )
+
     SendView(
         isPresented: $isPresented,
-        walletAddress: "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0",
-        nativeTokenSymbol: "ETH",
-        nativeTokenName: "Ethereum",
-        nativeTokenDecimals: 18,
-        balance: "1.5"
+        wallet: wallet,
+        endpoint: endpoint
     )
 }

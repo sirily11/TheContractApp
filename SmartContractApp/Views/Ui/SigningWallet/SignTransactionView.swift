@@ -5,12 +5,12 @@
 //  Created by Claude on 11/10/25.
 //
 
-import SwiftUI
 import SwiftData
+import SwiftUI
+import EvmCore
 
 /// View for reviewing and signing a queued transaction
 struct SignTransactionView: View {
-
     // MARK: - Properties
 
     @Environment(\.dismiss) private var dismiss
@@ -51,24 +51,24 @@ struct SignTransactionView: View {
         .formStyle(.grouped)
         .navigationTitle("Sign Transaction")
         #if os(iOS)
-        .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.inline)
         #endif
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button("Cancel") {
-                    dismiss()
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
                 }
             }
-        }
-        .alert(alertTitle, isPresented: $showingResultAlert) {
-            Button("OK") {
-                if authenticationResult == true {
-                    dismiss()
+            .alert(alertTitle, isPresented: $showingResultAlert) {
+                Button("OK") {
+                    if authenticationResult == true {
+                        dismiss()
+                    }
                 }
+            } message: {
+                Text(alertMessage)
             }
-        } message: {
-            Text(alertMessage)
-        }
     }
 
     // MARK: - Form Sections
@@ -118,8 +118,8 @@ struct SignTransactionView: View {
                 Label("Value", systemImage: "diamond")
                     .foregroundColor(.secondary)
                 Spacer()
-                Text(TransactionFormatter.formatWeiToETH(transaction.value))
-                    .foregroundColor(transaction.value != "0" ? .blue : .secondary)
+                Text(String(transaction.value.toEthers().value))
+                    .foregroundColor(transaction.value.toHexString() != "0x" ? .blue : .secondary)
             }
         }
     }

@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import EvmCore
 
 /// Row view for displaying a queued transaction awaiting signature
 struct QueuedTransactionRowView: View {
@@ -51,7 +52,7 @@ struct QueuedTransactionRowView: View {
 
             // Value and time
             VStack(alignment: .trailing, spacing: 4) {
-                Text(TransactionFormatter.formatWeiToETH(transaction.value, decimals: 4))
+                Text(String(transaction.value.toEthers().value))
                     .font(.subheadline)
                     .fontWeight(.medium)
                     .foregroundColor(.primary)

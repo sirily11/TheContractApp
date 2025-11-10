@@ -8,6 +8,7 @@
 import Foundation
 import SwiftData
 import SwiftUI
+import EvmCore
 
 /// Utility for generating mock transaction data for previews and testing
 struct TransactionMockDataGenerator {
@@ -120,7 +121,7 @@ struct TransactionMockDataGenerator {
             let transaction = QueuedTransaction(
                 queuedAt: queuedAt,
                 to: randomAddress(),
-                value: weiValue,
+                value: .wei(.init(hex: weiValue)),
                 data: isContractCall ? randomData() : nil,
                 gasEstimate: String(Int.random(in: 21000...200000)),
                 contractFunctionName: isContractCall ? randomFunctionName() : nil,

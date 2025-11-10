@@ -6,39 +6,11 @@
 //
 
 import Foundation
+import BigInt
+import EvmCore
 
 /// Utility class for formatting transaction-related data
 struct TransactionFormatter {
-
-    // MARK: - Wei to ETH Conversion
-
-    /// Converts Wei (as String) to ETH (as Decimal)
-    /// - Parameter wei: Wei amount as string
-    /// - Returns: ETH amount as Decimal, or nil if conversion fails
-    static func weiToETH(_ wei: String) -> Decimal? {
-        guard let weiDecimal = Decimal(string: wei) else { return nil }
-        let divisor = Decimal(string: "1000000000000000000")!  // 10^18
-        return weiDecimal / divisor
-    }
-
-    /// Formats Wei to ETH string with specified decimal places
-    /// - Parameters:
-    ///   - wei: Wei amount as string
-    ///   - decimals: Number of decimal places (default: 4)
-    /// - Returns: Formatted ETH string (e.g., "1.2345 ETH")
-    static func formatWeiToETH(_ wei: String, decimals: Int = 4) -> String {
-        guard let eth = weiToETH(wei) else { return "0 ETH" }
-
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.minimumFractionDigits = 0
-        formatter.maximumFractionDigits = decimals
-        formatter.usesGroupingSeparator = true
-
-        let ethValue = formatter.string(from: eth as NSDecimalNumber) ?? "0"
-        return "\(ethValue) ETH"
-    }
-
     // MARK: - Address Formatting
 
     /// Truncates an Ethereum address for display
@@ -115,7 +87,8 @@ struct TransactionFormatter {
     /// - Returns: Formatted gas cost string
     static func formatGasCost(gasUsed: String, gasPrice: String) -> String {
         guard let used = Decimal(string: gasUsed),
-              let price = Decimal(string: gasPrice) else {
+              let price = Decimal(string: gasPrice)
+        else {
             return "Unknown"
         }
 
@@ -129,7 +102,7 @@ struct TransactionFormatter {
     /// - Returns: Formatted Gwei string (e.g., "30 Gwei")
     static func formatGasPrice(_ weiPrice: String) -> String {
         guard let wei = Decimal(string: weiPrice) else { return "0 Gwei" }
-        let gwei = wei / Decimal(string: "1000000000")!  // 10^9
+        let gwei = wei / Decimal(string: "1000000000")! // 10^9
 
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
@@ -153,5 +126,59 @@ struct TransactionFormatter {
         let start = String(data.prefix(maxLength / 2))
         let end = String(data.suffix(maxLength / 2))
         return "\(start)...\(end)"
+    }
+
+    // MARK: - Wei to ETH Conversion
+
+    /// Converts Wei (as String or hex) to ETH (as Decimal)
+    /// Accepts either a decimal string (e.g. "1000000000000000000") or a hex string (e.g. "0xDE0B6B3A7640000").
+    /// - Parameter wei: Wei amount as string
+    /// - Returns: ETH amount as Decimal, or nil if conversion fails
+    static func weiToETH(_ wei: String) -> Decimal? {
+        // If the value is a hex string (RPC style) convert to decimal string first
+        let decimalString: String
+        if wei.hasPrefix("0x") {
+            let cleanHex = String(wei.dropFirst(2))
+            guard let big = BigInt(cleanHex, radix: 16) else { return nil }
+            decimalString = String(describing: big)
+        } else {
+            decimalString = wei
+        }
+
+        guard let weiDecimal = Decimal(string: decimalString) else { return nil }
+        let divisor = Decimal(string: "1000000000000000000")!  // 10^18
+        return weiDecimal / divisor
+    }
+
+    /// Formats Wei to ETH string with specified decimal places
+    /// - Parameters:
+    ///   - wei: Wei amount as string
+    ///   - decimals: Number of decimal places (default: 4)
+    /// - Returns: Formatted ETH string (e.g., "1.2345 ETH")
+    static func formatWeiToETH(_ wei: String, decimals: Int = 4) -> String {
+        guard let eth = weiToETH(wei) else { return "0 ETH" }
+
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.minimumFractionDigits = 0
+        formatter.maximumFractionDigits = decimals
+        formatter.usesGroupingSeparator = true
+
+        let ethValue = formatter.string(from: eth as NSDecimalNumber) ?? "0"
+        return "\(ethValue) ETH"
+    }
+
+    /// Convenience overload: format from optional hex/decimal string
+    static func formatWeiToETH(_ wei: String?, decimals: Int = 4) -> String {
+        guard let wei = wei else { return "0 ETH" }
+        return formatWeiToETH(wei, decimals: decimals)
+    }
+
+    /// Convenience overload: format from TransactionValue (EvmCore)
+    static func formatWeiToETH(_ value: TransactionValue, decimals: Int = 4) -> String {
+        // Convert TransactionValue to Wei (BigInt) and pass decimal string
+        let weiBig = value.toWei().value
+        let weiDecimalString = String(describing: weiBig)
+        return formatWeiToETH(weiDecimalString, decimals: decimals)
     }
 }
