@@ -11,6 +11,11 @@ import SwiftUI
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(WalletSignerViewModel.self) private var walletSigner
+    @Environment(WindowStateManager.self) private var windowStateManager
+    #if os(macOS)
+    @Environment(\.openWindow) private var openWindow
+    @Environment(\.dismissWindow) private var dismissWindow
+    #endif
     @State private var selectedCategory: SidebarCategory?
     @State private var selectedEndpoint: Endpoint?
     @State private var selectedAbi: EvmAbi?
@@ -91,24 +96,23 @@ struct ContentView: View {
         .toolbar {
             ToolbarItem(placement: .automatic) {
                 Button {
+                    #if os(macOS)
+                    toggleSigningWalletWindow()
+                    #else
                     showingQueuedTransactions = true
+                    #endif
                 } label: {
                     walletToolbarButton
                 }
                 .help("Pending Transactions")
             }
         }
-        #if os(macOS)
-        .popover(isPresented: $showingQueuedTransactions, arrowEdge: .top) {
-            SigningWalletView()
-                .frame(minWidth: 400, minHeight: 700)
-        }
-        #else
+        #if os(iOS)
         .sheet(isPresented: $showingQueuedTransactions) {
-                NavigationStack {
-                    SigningWalletView()
-                }
+            NavigationStack {
+                SigningWalletView()
             }
+        }
         #endif
             .onChange(of: selectedCategory) { _, _ in
                 // Clear all item selections when category changes
@@ -150,6 +154,18 @@ struct ContentView: View {
                 }
             }
     }
+
+    // MARK: - Actions
+
+    #if os(macOS)
+    private func toggleSigningWalletWindow() {
+        if windowStateManager.isSigningWalletWindowOpen {
+            dismissWindow(id: "signing-wallet")
+        } else {
+            openWindow(id: "signing-wallet")
+        }
+    }
+    #endif
 
     // MARK: - Toolbar Button
 

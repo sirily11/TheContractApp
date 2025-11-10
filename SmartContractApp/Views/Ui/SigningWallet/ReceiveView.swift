@@ -13,74 +13,62 @@ import UIKit
 #endif
 
 struct ReceiveView: View {
-    @Binding var isPresented: Bool
+    @Environment(\.dismiss) private var dismiss
     let walletAddress: String
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 20) {
-                Image(systemName: "arrow.down.circle.fill")
-                    .font(.system(size: 60))
-                    .foregroundColor(.green)
+        VStack(spacing: 20) {
+            Image(systemName: "arrow.down.circle.fill")
+                .font(.system(size: 60))
+                .foregroundColor(.green)
 
-                Text("Receive")
-                    .font(.title2)
-                    .fontWeight(.bold)
+            Text("Receive")
+                .font(.title2)
+                .fontWeight(.bold)
 
-                // QR Code
-                if let qrImage = generateQRCode(from: walletAddress) {
-                    Image(qrImage, scale: 1.0, label: Text("QR Code"))
-                        .interpolation(.none)
-                        .resizable()
-                        .frame(width: 200, height: 200)
-                        .background(Color.white)
-                        .cornerRadius(12)
-                } else {
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color.secondary.opacity(0.1))
-                        .frame(width: 200, height: 200)
-                        .overlay {
-                            Image(systemName: "qrcode")
-                                .font(.system(size: 80))
-                                .foregroundColor(.secondary)
-                        }
-                }
-
-                // Address
-                VStack(spacing: 8) {
-                    Text("Your Address")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-
-                    Text(walletAddress)
-                        .font(.system(.footnote, design: .monospaced))
-                        .padding()
-                        .background(Color.secondary.opacity(0.1))
-                        .cornerRadius(8)
-
-                    Button(action: copyAddress) {
-                        Label("Copy Address", systemImage: "doc.on.doc")
+            // QR Code
+            if let qrImage = generateQRCode(from: walletAddress) {
+                Image(qrImage, scale: 1.0, label: Text("QR Code"))
+                    .interpolation(.none)
+                    .resizable()
+                    .frame(width: 200, height: 200)
+                    .background(Color.white)
+                    .cornerRadius(12)
+            } else {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.secondary.opacity(0.1))
+                    .frame(width: 200, height: 200)
+                    .overlay {
+                        Image(systemName: "qrcode")
+                            .font(.system(size: 80))
+                            .foregroundColor(.secondary)
                     }
-                    .buttonStyle(.bordered)
-                }
+            }
 
-                Spacer()
-            }
-            .padding()
-            .navigationTitle("Receive")
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") {
-                        isPresented = false
-                    }
+            // Address
+            VStack(spacing: 8) {
+                Text("Your Address")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+
+                Text(walletAddress)
+                    .font(.system(.footnote, design: .monospaced))
+                    .padding()
+                    .background(Color.secondary.opacity(0.1))
+                    .cornerRadius(8)
+
+                Button(action: copyAddress) {
+                    Label("Copy Address", systemImage: "doc.on.doc")
                 }
+                .buttonStyle(.bordered)
             }
+
+            Spacer()
         }
+        .padding()
+        .navigationTitle("Receive")
         #if os(iOS)
-        .presentationDetents([.medium, .large])
+            .navigationBarTitleDisplayMode(.inline)
         #endif
     }
 
@@ -123,10 +111,9 @@ struct ReceiveView: View {
 // MARK: - Preview
 
 #Preview {
-    @Previewable @State var isPresented = true
-
-    ReceiveView(
-        isPresented: $isPresented,
-        walletAddress: "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0"
-    )
+    NavigationStack {
+        ReceiveView(
+            walletAddress: "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0"
+        )
+    }
 }

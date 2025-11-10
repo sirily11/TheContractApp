@@ -50,117 +50,110 @@ extension SendView {
 
     @ViewBuilder
     var enterDetailsStep: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                // Selected asset display
-                if let asset = selectedAsset {
-                    HStack {
-                        Image(systemName: asset.icon)
-                            .font(.title2)
-                            .foregroundColor(asset.color)
+        Form {
+            // Selected asset display
+            if let asset = selectedAsset {
+                HStack {
+                    Image(systemName: asset.icon)
+                        .font(.title2)
+                        .foregroundColor(asset.color)
 
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(asset.name)
-                                .font(.headline)
-                            HStack(spacing: 4) {
-                                Text("\(asset.balance) \(asset.symbol)")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                if isLoadingBalance {
-                                    ProgressView()
-                                        .scaleEffect(0.6)
-                                }
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(asset.name)
+                            .font(.headline)
+                        HStack(spacing: 4) {
+                            Text("\(asset.balance) \(asset.symbol)")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            if isLoadingBalance {
+                                ProgressView()
+                                    .scaleEffect(0.6)
                             }
                         }
-
-                        Spacer()
                     }
-                    .padding()
-                    .background(Color.secondary.opacity(0.1))
-                    .cornerRadius(12)
-                }
 
-                // Recipient address
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Recipient Address")
+                    Spacer()
+                }
+            }
+
+            // Recipient address
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Recipient Address")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+
+                TextField("0x...", text: $recipientAddress)
+                    .textFieldStyle(.roundedBorder)
+                #if os(iOS)
+                    .autocapitalization(.none)
+                    .disableAutocorrection(true)
+                    .keyboardType(.asciiCapable)
+                #endif
+                    .font(.system(.body, design: .monospaced))
+
+                if !recipientAddress.isEmpty && !isAddressValid {
+                    Label("Invalid Ethereum address", systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                }
+            }
+
+            // Amount
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("Amount")
                         .font(.subheadline)
                         .fontWeight(.semibold)
 
-                    TextField("0x...", text: $recipientAddress)
+                    Spacer()
+
+                    if let asset = selectedAsset {
+                        Button(action: {
+                            amount = asset.balance
+                        }) {
+                            Text("Max")
+                                .font(.caption)
+                                .foregroundColor(.blue)
+                        }
+                    }
+                }
+
+                HStack {
+                    TextField("0.0", text: $amount)
                         .textFieldStyle(.roundedBorder)
                     #if os(iOS)
-                        .autocapitalization(.none)
-                        .disableAutocorrection(true)
-                        .keyboardType(.asciiCapable)
+                        .keyboardType(.decimalPad)
                     #endif
-                        .font(.system(.body, design: .monospaced))
+                        .font(.title3)
 
-                    if !recipientAddress.isEmpty && !isAddressValid {
-                        Label("Invalid Ethereum address", systemImage: "exclamationmark.triangle.fill")
-                            .font(.caption)
-                            .foregroundColor(.orange)
-                    }
-                }
-
-                // Amount
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text("Amount")
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-
-                        Spacer()
-
-                        if let asset = selectedAsset {
-                            Button(action: {
-                                amount = asset.balance
-                            }) {
-                                Text("Max")
-                                    .font(.caption)
-                                    .foregroundColor(.blue)
-                            }
-                        }
-                    }
-
-                    HStack {
-                        TextField("0.0", text: $amount)
-                            .textFieldStyle(.roundedBorder)
-                        #if os(iOS)
-                            .keyboardType(.decimalPad)
-                        #endif
-                            .font(.title3)
-
-                        if let asset = selectedAsset {
-                            Text(asset.symbol)
-                                .font(.title3)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-
-                    // Show current balance
                     if let asset = selectedAsset {
-                        Text("Balance: \(balance) \(asset.symbol)")
-                            .font(.caption)
+                        Text(asset.symbol)
+                            .font(.title3)
                             .foregroundColor(.secondary)
                     }
+                }
 
-                    if !amount.isEmpty {
-                        if let amountValue = Double(amount),
-                           let balanceValue = Double(balance)
-                        {
-                            if amountValue > balanceValue {
-                                Label("Insufficient balance", systemImage: "exclamationmark.triangle.fill")
-                                    .font(.caption)
-                                    .foregroundColor(.red)
-                            }
+                // Show current balance
+                if let asset = selectedAsset {
+                    Text("Balance: \(balance) \(asset.symbol)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                if !amount.isEmpty {
+                    if let amountValue = Double(amount),
+                       let balanceValue = Double(balance)
+                    {
+                        if amountValue > balanceValue {
+                            Label("Insufficient balance", systemImage: "exclamationmark.triangle.fill")
+                                .font(.caption)
+                                .foregroundColor(.red)
                         }
                     }
                 }
-
-                Spacer(minLength: 20)
             }
-            .padding()
         }
+        .formStyle(.grouped)
     }
 
     // MARK: - Helper Methods

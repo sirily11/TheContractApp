@@ -7,13 +7,16 @@
 
 import SwiftUI
 
+// MARK: - Navigation Destinations
+
+struct SendDestination: Hashable {}
+struct ReceiveDestination: Hashable {}
+
 /// Action buttons for wallet operations (Send/Receive)
 struct WalletActionsView: View {
-
     // MARK: - Properties
 
-    @Binding var showingSendSheet: Bool
-    @Binding var showingReceiveSheet: Bool
+    @Binding var navigationPath: NavigationPath
 
     // MARK: - Body
 
@@ -25,7 +28,7 @@ struct WalletActionsView: View {
                 icon: "arrow.up.circle.fill",
                 color: .blue
             ) {
-                showingSendSheet = true
+                navigationPath.append(SendDestination())
             }
 
             // Receive button
@@ -34,7 +37,7 @@ struct WalletActionsView: View {
                 icon: "arrow.down.circle.fill",
                 color: .green
             ) {
-                showingReceiveSheet = true
+                navigationPath.append(ReceiveDestination())
             }
         }
         .padding(.horizontal)
@@ -61,7 +64,7 @@ private struct ActionButton: View {
                     .foregroundColor(.primary)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
+            .padding(.vertical, 4)
             .background(Color.secondary.opacity(0.1))
             .cornerRadius(12)
         }
@@ -72,24 +75,13 @@ private struct ActionButton: View {
 // MARK: - Preview
 
 #Preview {
-    @Previewable @State var showingSend = false
-    @Previewable @State var showingReceive = false
+    @Previewable @State var navigationPath = NavigationPath()
 
     VStack {
-        WalletActionsView(
-            showingSendSheet: $showingSend,
-            showingReceiveSheet: $showingReceive
-        )
+        WalletActionsView(navigationPath: $navigationPath)
 
-        if showingSend {
-            Text("Send Sheet Shown")
-                .foregroundColor(.blue)
-        }
-
-        if showingReceive {
-            Text("Receive Sheet Shown")
-                .foregroundColor(.green)
-        }
+        Text("Navigation path count: \(navigationPath.count)")
+            .foregroundColor(.blue)
     }
     .frame(width: 400)
     .padding()

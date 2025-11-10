@@ -6,6 +6,7 @@
 //
 
 import BigInt
+import Combine
 import EvmCore
 import Foundation
 import Observation
@@ -18,6 +19,19 @@ final class WalletSignerViewModel {
     private let modelContext: ModelContext
     private var continuation: AsyncStream<Data>.Continuation?
     private(set) var currentShowingTransactions: [QueuedTransaction] = []
+
+    // MARK: - Combine Transaction Stream
+
+    /// Subject for transaction events
+    private let transactionEventSubject = PassthroughSubject<TransactionEvent, Never>()
+
+    /// Publisher for transaction events that views can subscribe to
+    var transactionEventPublisher: AnyPublisher<TransactionEvent, Never> {
+        transactionEventSubject.eraseToAnyPublisher()
+    }
+
+    /// Cancellable subscriptions
+    private var cancellables = Set<AnyCancellable>()
 
     /// The currently selected wallet for signing
     var currentWallet: EVMWallet?
@@ -251,6 +265,10 @@ final class WalletSignerViewModel {
             gasEstimate: "0x" + String(gasEstimate, radix: 16)
         )
         currentShowingTransactions.append(queuedTx)
+
+        // Emit queued event
+        transactionEventSubject.send(.queued(queuedTx))
+
         return queuedTx
     }
 
@@ -282,6 +300,18 @@ final class WalletSignerViewModel {
 
         return txHash
     }
+}
+
+// MARK: - Transaction Events
+
+/// Events emitted by the transaction stream
+enum TransactionEvent {
+    case queued(QueuedTransaction)
+    case approved(QueuedTransaction)
+    case rejected(QueuedTransaction)
+    case sent(txHash: String, transaction: QueuedTransaction)
+    case cancelled(QueuedTransaction)
+    case error(Error, transaction: QueuedTransaction?)
 }
 
 // MARK: - Errors

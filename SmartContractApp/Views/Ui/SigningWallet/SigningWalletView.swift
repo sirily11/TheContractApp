@@ -6,6 +6,7 @@
 //
 
 import BigInt
+import Combine
 import EvmCore
 import SwiftData
 import SwiftUI
@@ -15,10 +16,8 @@ struct SigningWalletView: View {
     // MARK: - Properties
 
     @Environment(WalletSignerViewModel.self) private var walletSigner
-    @State private var navigationPath: [QueuedTransaction] = []
+    @State private var navigationPath = NavigationPath()
     @State private var selectedTab: WalletTab = .pending
-    @State private var showingSendSheet = false
-    @State private var showingReceiveSheet = false
     @State private var showingEndpointPopover = false
 
     // MARK: - AppStorage for persistence
@@ -30,10 +29,6 @@ struct SigningWalletView: View {
 
     @Query(sort: \Endpoint.name) private var endpoints: [Endpoint]
     @Query(sort: \EVMWallet.alias) private var wallets: [EVMWallet]
-
-    init(path: [QueuedTransaction] = []) {
-        self._navigationPath = State(initialValue: path)
-    }
 
     // MARK: - Computed Properties
 
@@ -89,23 +84,51 @@ struct SigningWalletView: View {
 
                 // Action buttons (Send/Receive)
                 WalletActionsView(
-                    showingSendSheet: $showingSendSheet,
-                    showingReceiveSheet: $showingReceiveSheet
+                    navigationPath: $navigationPath
                 )
                 .padding(.bottom, 16)
 
                 // Tabs (Assets / Transaction History)
                 tabView
             }
-            .sheet(isPresented: $showingSendSheet) {
-                sendSheet
-            }
-            .sheet(isPresented: $showingReceiveSheet) {
-                receiveSheet
-            }
             .navigationDestination(for: QueuedTransaction.self) { transaction in
                 SignTransactionView(transaction: transaction)
             }
+            .navigationDestination(for: SendDestination.self) { _ in
+                SendView(
+                    wallet: selectedWallet,
+                    endpoint: selectedEndpoint
+                )
+            }
+            .navigationDestination(for: ReceiveDestination.self) { _ in
+                ReceiveView(
+                    walletAddress: walletAddress
+                )
+            }
+            .task {
+                await listenToTransactionEvents()
+            }
+        }
+    }
+
+    // MARK: - Helper Methods
+
+    /// Listen to transaction events from the view model
+    private func listenToTransactionEvents() async {
+        for await event in walletSigner.transactionEventPublisher.values {
+            await handleTransactionEvent(event)
+        }
+    }
+
+    /// Handle transaction events
+    @MainActor
+    private func handleTransactionEvent(_ event: TransactionEvent) async {
+        switch event {
+        case .queued(let transaction):
+            // When a transaction is queued, navigate to the signing view
+            navigationPath.append(transaction)
+        default:
+            break
         }
     }
 
@@ -205,11 +228,15 @@ struct SigningWalletView: View {
             }
             .tag(WalletTab.assets)
 
-            QueuedTransactionsView(navigationPath: $navigationPath)
-                .tabItem {
-                    Label("Pending", systemImage: "clock.fill")
+            QueuedTransactionsView(
+                onSelectTransaction: { transaction in
+                    navigationPath.append(transaction)
                 }
-                .tag(WalletTab.pending)
+            )
+            .tabItem {
+                Label("Pending", systemImage: "clock.fill")
+            }
+            .tag(WalletTab.pending)
 
             TransactionHistoryView()
                 .tabItem {
@@ -218,21 +245,6 @@ struct SigningWalletView: View {
                 .tag(WalletTab.history)
         }
         .frame(minHeight: 250)
-    }
-
-    private var sendSheet: some View {
-        SendView(
-            isPresented: $showingSendSheet,
-            wallet: selectedWallet,
-            endpoint: selectedEndpoint
-        )
-    }
-
-    private var receiveSheet: some View {
-        ReceiveView(
-            isPresented: $showingReceiveSheet,
-            walletAddress: walletAddress
-        )
     }
 }
 
@@ -289,11 +301,6 @@ enum WalletTab: String, CaseIterable {
         to: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
         value: .wei(.init(bigInt: .init(integerLiteral: 1000000)))
     )
-    _ = try? viewModel.queueTransaction(
-        to: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
-        value: .ether(.init(bigInt: .init(integerLiteral: 2)))
-    )
-
     return SigningWalletView()
         .modelContainer(container)
         .environment(viewModel)
@@ -307,15 +314,11 @@ enum WalletTab: String, CaseIterable {
 }
 
 #Preview("Navigation Detail - Sign Transaction") {
-    SigningWalletView(path: [
-        QueuedTransaction(
-            to: "0x1234567890abcdef1234567890abcdef12345678", value: .ether(.init(bigInt: .zero)),
+    SigningWalletView()
+        .modelContainer(TransactionMockDataGenerator.createPreviewContainer())
+        .environment(
+            WalletSignerViewModel(
+                modelContext: TransactionMockDataGenerator.createPreviewContainer().mainContext
+            )
         )
-    ])
-    .modelContainer(TransactionMockDataGenerator.createPreviewContainer())
-    .environment(
-        WalletSignerViewModel(
-            modelContext: TransactionMockDataGenerator.createPreviewContainer().mainContext
-        )
-    )
 }

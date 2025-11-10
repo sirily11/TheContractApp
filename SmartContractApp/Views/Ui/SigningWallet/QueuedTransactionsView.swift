@@ -12,7 +12,7 @@ import SwiftUI
 struct QueuedTransactionsView: View {
     // MARK: - Properties
 
-    @Binding var navigationPath: [QueuedTransaction]
+    let onSelectTransaction: (QueuedTransaction) -> Void
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
@@ -36,23 +36,6 @@ struct QueuedTransactionsView: View {
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button("Close") {
-                    dismiss()
-                }
-            }
-
-            if !walletSigner.currentShowingTransactions.isEmpty {
-                ToolbarItem(placement: .destructiveAction) {
-                    Button(role: .destructive) {
-                        rejectAllTransactions()
-                    } label: {
-                        Label("Reject All", systemImage: "xmark.circle.fill")
-                    }
-                }
-            }
-        }
         .alert("Reject Transaction", isPresented: $showingDeleteAlert) {
             Button("Cancel", role: .cancel) {
                 transactionToDelete = nil
@@ -77,11 +60,11 @@ struct QueuedTransactionsView: View {
     // MARK: - Views
 
     private var transactionList: some View {
-        LazyVStack {
+        List {
             ForEach(walletSigner.currentShowingTransactions) { transaction in
                 QueuedTransactionRowView(transaction: transaction)
-                    .onTapGesture { _ in
-                        navigationPath.append(transaction)
+                    .onTapGesture {
+                        onSelectTransaction(transaction)
                     }
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         Button(role: .destructive) {
@@ -128,25 +111,29 @@ struct QueuedTransactionsView: View {
 // MARK: - Preview
 
 #Preview("With Queued Transactions") {
-    @Previewable @State var navigationPath: [QueuedTransaction] = []
+    @Previewable @State var navigationPath = NavigationPath()
 
     NavigationStack(path: $navigationPath) {
-        QueuedTransactionsView(navigationPath: $navigationPath)
-            .navigationDestination(for: QueuedTransaction.self) { tx in
-                SignTransactionView(transaction: tx)
-            }
+        QueuedTransactionsView { transaction in
+            navigationPath.append(transaction)
+        }
+        .navigationDestination(for: QueuedTransaction.self) { tx in
+            SignTransactionView(transaction: tx)
+        }
     }
     .modelContainer(TransactionMockDataGenerator.createPopulatedPreviewContainer())
 }
 
 #Preview("Empty State") {
-    @Previewable @State var navigationPath: [QueuedTransaction] = []
+    @Previewable @State var navigationPath = NavigationPath()
 
     NavigationStack(path: $navigationPath) {
-        QueuedTransactionsView(navigationPath: $navigationPath)
-            .navigationDestination(for: QueuedTransaction.self) { tx in
-                SignTransactionView(transaction: tx)
-            }
+        QueuedTransactionsView { transaction in
+            navigationPath.append(transaction)
+        }
+        .navigationDestination(for: QueuedTransaction.self) { tx in
+            SignTransactionView(transaction: tx)
+        }
     }
     .modelContainer(TransactionMockDataGenerator.createPreviewContainer())
 }

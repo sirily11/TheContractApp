@@ -10,7 +10,6 @@ import EvmCore
 import SwiftUI
 
 struct SendView: View {
-    @Binding var isPresented: Bool
     @Environment(\.modelContext) private var modelContext
     @Environment(WalletSignerViewModel.self) private var walletSignerViewModel
     @Environment(\.dismiss) private var dismiss
@@ -58,77 +57,63 @@ struct SendView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                // Step content
-                switch currentStep {
-                case .selectAsset:
-                    selectAssetStep
-                case .enterDetails:
-                    enterDetailsStep
+        VStack(spacing: 0) {
+            // Step content
+            switch currentStep {
+            case .selectAsset:
+                selectAssetStep
+            case .enterDetails:
+                enterDetailsStep
+            }
+
+            Spacer()
+
+            // Action buttons at the bottom
+            HStack(spacing: 12) {
+                // Cancel button
+                Button(action: { dismiss() }) {
+                    Text("Cancel")
                 }
 
                 Spacer()
+                // Next/Send button
+                if currentStep == .enterDetails {
+                    Button(action: sendTransaction) {
+                        Text("Send")
+                    }
+                    .disabled(!isReviewValid)
+                } else {
+                    Button(action: handleNext) {
+                        Text("Next")
+                    }
+                    .disabled(!canProceed)
+                }
             }
-            .navigationTitle("Send")
-            #if os(iOS)
-                .navigationBarTitleDisplayMode(.inline)
-            #endif
-                .toolbar {
-                    // Cancel button
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel") {
-                            isPresented = false
-                        }
-                    }
-
-                    // Back button (leading)
-                    if currentStep != .selectAsset {
-                        ToolbarItem(placement: .navigation) {
-                            Button("Back") {
-                                withAnimation {
-                                    currentStep = currentStep.previous ?? .selectAsset
-                                }
-                            }
-                        }
-                    }
-
-                    // Next/Send button (trailing)
-                    ToolbarItem(placement: .confirmationAction) {
-                        if currentStep == .enterDetails {
-                            Button("Send") {
-                                sendTransaction()
-                            }
-                            .disabled(!isReviewValid)
-                        } else {
-                            Button("Next") {
-                                handleNext()
-                            }
-                            .disabled(!canProceed)
-                        }
-                    }
-                }
-                .alert("Error", isPresented: $showingError) {
-                    Button("OK") {}
-                } message: {
-                    Text(errorMessage)
-                }
+            .padding(.horizontal)
+            .padding(.bottom)
         }
+        .padding()
+        .navigationTitle("Send")
         #if os(iOS)
-        .presentationDetents([.large])
+            .navigationBarTitleDisplayMode(.inline)
         #endif
-        .task(id: "\(wallet?.id ?? 0)-\(endpoint?.id ?? 0)") {
-            // Cancel previous task when wallet or endpoint changes
-            balanceTask?.cancel()
-
-            // Fetch balance once when view appears
-            balanceTask = Task {
-                await fetchBalance()
+            .alert("Error", isPresented: $showingError) {
+                Button("OK") {}
+            } message: {
+                Text(errorMessage)
             }
-        }
-        .onDisappear {
-            balanceTask?.cancel()
-        }
+            .task(id: "\(wallet?.id ?? 0)-\(endpoint?.id ?? 0)") {
+                // Cancel previous task when wallet or endpoint changes
+                balanceTask?.cancel()
+
+                // Fetch balance once when view appears
+                balanceTask = Task {
+                    await fetchBalance()
+                }
+            }
+            .onDisappear {
+                balanceTask?.cancel()
+            }
     }
 
     // MARK: - Validation
@@ -309,8 +294,6 @@ struct Asset: Identifiable, Equatable {
 // MARK: - Preview
 
 #Preview {
-    @Previewable @State var isPresented = true
-
     let wallet = EVMWallet(
         id: 1,
         alias: "Main Wallet",
@@ -326,9 +309,10 @@ struct Asset: Identifiable, Equatable {
         nativeTokenName: "Ethereum"
     )
 
-    SendView(
-        isPresented: $isPresented,
-        wallet: wallet,
-        endpoint: endpoint
-    )
+    NavigationStack {
+        SendView(
+            wallet: wallet,
+            endpoint: endpoint
+        )
+    }
 }

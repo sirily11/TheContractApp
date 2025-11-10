@@ -10,6 +10,9 @@ import SwiftUI
 
 @main
 struct SmartContractAppApp: App {
+    @State private var windowStateManager = WindowStateManager()
+    @State private var walletSignerViewModel: WalletSignerViewModel?
+
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Endpoint.self,
@@ -55,27 +58,67 @@ struct SmartContractAppApp: App {
     }()
 
     var body: some Scene {
-        WindowGroup {
-            ContentViewWrapper(modelContext: sharedModelContainer.mainContext)
+        WindowGroup(id: "main") {
+            ContentViewWrapper(
+                modelContext: sharedModelContainer.mainContext,
+                windowStateManager: windowStateManager,
+                walletSignerViewModel: getOrCreateViewModel()
+            )
         }
         .modelContainer(sharedModelContainer)
+
+        #if os(macOS)
+        WindowGroup(id: "signing-wallet") {
+            SigningWalletWindowWrapper(
+                windowStateManager: windowStateManager,
+                walletSignerViewModel: getOrCreateViewModel()
+            )
+            .containerBackground(.thinMaterial, for: .window)
+        }
+        .modelContainer(sharedModelContainer)
+        .windowStyle(.hiddenTitleBar)
+        .windowResizability(.contentSize)
+        .defaultSize(width: 400, height: 700)
+        #endif
+    }
+
+    private func getOrCreateViewModel() -> WalletSignerViewModel {
+        if let viewModel = walletSignerViewModel {
+            return viewModel
+        }
+        let viewModel = WalletSignerViewModel(modelContext: sharedModelContainer.mainContext)
+        walletSignerViewModel = viewModel
+        return viewModel
     }
 }
 
-/// Wrapper to properly initialize the WalletSignerViewModel with modelContext
+/// Wrapper to pass shared dependencies to ContentView
 private struct ContentViewWrapper: View {
     let modelContext: ModelContext
-
-    init(modelContext: ModelContext) {
-        self.modelContext = modelContext
-        let viewModel = WalletSignerViewModel(modelContext: modelContext)
-        _walletSignerViewModel = State(initialValue: viewModel)
-    }
-
-    @State private var walletSignerViewModel: WalletSignerViewModel
+    let windowStateManager: WindowStateManager
+    let walletSignerViewModel: WalletSignerViewModel
 
     var body: some View {
         ContentView()
             .environment(walletSignerViewModel)
+            .environment(windowStateManager)
+    }
+}
+
+/// Wrapper for the signing wallet window
+private struct SigningWalletWindowWrapper: View {
+    let windowStateManager: WindowStateManager
+    let walletSignerViewModel: WalletSignerViewModel
+
+    var body: some View {
+        SigningWalletView()
+            .environment(walletSignerViewModel)
+            .frame(minWidth: 400, minHeight: 700)
+            .onAppear {
+                windowStateManager.isSigningWalletWindowOpen = true
+            }
+            .onDisappear {
+                windowStateManager.isSigningWalletWindowOpen = false
+            }
     }
 }

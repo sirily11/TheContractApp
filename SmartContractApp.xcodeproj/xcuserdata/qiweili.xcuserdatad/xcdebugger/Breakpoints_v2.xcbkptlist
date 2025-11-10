@@ -46,9 +46,9 @@
             filePath = "SmartContractApp/Views/Ui/SigningWallet/SendView.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "190"
-            endingLineNumber = "190"
-            landmarkName = "sendTransaction()"
+            startingLineNumber = "191"
+            endingLineNumber = "191"
+            landmarkName = "fetchBalance()"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
@@ -62,8 +62,8 @@
             filePath = "SmartContractApp/Views/Ui/SigningWallet/SendView.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "168"
-            endingLineNumber = "168"
+            startingLineNumber = "169"
+            endingLineNumber = "169"
             landmarkName = "handleNext()"
             landmarkType = "7">
          </BreakpointContent>
