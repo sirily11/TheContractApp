@@ -60,20 +60,22 @@ struct QueuedTransactionsView: View {
     // MARK: - Views
 
     private var transactionList: some View {
-        List {
-            ForEach(walletSigner.currentShowingTransactions) { transaction in
-                QueuedTransactionRowView(transaction: transaction)
-                    .onTapGesture {
-                        onSelectTransaction(transaction)
-                    }
-                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                        Button(role: .destructive) {
-                            transactionToDelete = transaction
-                            showingDeleteAlert = true
-                        } label: {
-                            Label("Reject", systemImage: "xmark.circle")
+        ScrollView {
+            LazyVStack {
+                ForEach(walletSigner.currentShowingTransactions) { transaction in
+                    QueuedTransactionRowView(transaction: transaction)
+                        .onTapGesture {
+                            onSelectTransaction(transaction)
                         }
-                    }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            Button(role: .destructive) {
+                                transactionToDelete = transaction
+                                showingDeleteAlert = true
+                            } label: {
+                                Label("Reject", systemImage: "xmark.circle")
+                            }
+                        }
+                }
             }
         }
         .padding(.horizontal)

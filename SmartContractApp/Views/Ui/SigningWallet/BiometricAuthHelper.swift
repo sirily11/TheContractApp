@@ -10,7 +10,6 @@ import LocalAuthentication
 
 /// Helper class for biometric authentication (FaceID/TouchID)
 class BiometricAuthHelper {
-
     // MARK: - Properties
 
     private let context = LAContext()
@@ -67,28 +66,34 @@ class BiometricAuthHelper {
         }
     }
 
-    // MARK: - Mock Authentication (for UI development)
-
-    /// Mock authentication for UI testing and development
-    /// - Parameters:
-    ///   - shouldSucceed: Whether the mock authentication should succeed
-    ///   - delay: Delay in seconds before returning result (default: 1.0)
-    ///   - completion: Completion handler with success/failure result
-    func mockAuthenticate(shouldSucceed: Bool = true, delay: TimeInterval = 1.0, completion: @escaping (Bool) -> Void) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-            completion(shouldSucceed)
-        }
-    }
-
-    /// Mock authentication with async/await
-    /// - Parameters:
-    ///   - shouldSucceed: Whether the mock authentication should succeed
-    ///   - delay: Delay in seconds before returning result (default: 1.0)
+    /// Authenticate the user with biometrics (async/await version)
+    /// - Parameter reason: The reason for authentication to show to the user
     /// - Returns: True if authentication succeeded
-    @MainActor
-    func mockAuthenticateAsync(shouldSucceed: Bool = true, delay: TimeInterval = 1.0) async -> Bool {
-        try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
-        return shouldSucceed
+    /// - Throws: LAError if authentication fails or is not available
+    func authenticate(reason: String = "Authenticate to sign transaction") async throws -> Bool {
+        let context = LAContext()
+        var error: NSError?
+
+        // Check if biometric authentication is available
+        guard context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) else {
+            if let error = error {
+                throw error
+            }
+            throw LAError(.biometryNotAvailable)
+        }
+
+        // Perform authentication using withCheckedThrowingContinuation
+        return try await withCheckedThrowingContinuation { continuation in
+            context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: reason) { success, error in
+                DispatchQueue.main.async {
+                    if let error = error {
+                        continuation.resume(throwing: error)
+                    } else {
+                        continuation.resume(returning: success)
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -96,7 +101,7 @@ class BiometricAuthHelper {
 
 extension LAError {
     var friendlyMessage: String {
-        switch self.code {
+        switch code {
         case .authenticationFailed:
             return "Authentication failed. Please try again."
         case .userCancel:
@@ -110,7 +115,7 @@ extension LAError {
         case .biometryLockout:
             return "Biometric authentication is locked. Please try again later or use your passcode."
         default:
-            return "Authentication error: \(self.localizedDescription)"
+            return "Authentication error: \(localizedDescription)"
         }
     }
 }

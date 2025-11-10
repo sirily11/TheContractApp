@@ -6,6 +6,7 @@
 //
 
 import EvmCore
+import LocalAuthentication
 import SwiftData
 import SwiftUI
 
@@ -15,14 +16,34 @@ struct SignTransactionView: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @Environment(WalletSignerViewModel.self) private var walletSigner
 
     let transaction: QueuedTransaction
 
     @State private var isAuthenticating = false
     @State private var authenticationResult: Bool?
     @State private var showingResultAlert = false
+    @State private var errorMessage: String?
+    @State private var showingError = false
+    @State private var transactionHash: String?
+
+    @AppStorage("selectedEndpointId") private var selectedEndpointId: Int = 0
+    @AppStorage("selectedWalletId") private var selectedWalletId: Int = 0
+
+    @Query(sort: \Endpoint.name) private var endpoints: [Endpoint]
+    @Query(sort: \EVMWallet.alias) private var wallets: [EVMWallet]
 
     private let biometricHelper = BiometricAuthHelper()
+
+    // MARK: - Computed Properties
+
+    private var selectedEndpoint: Endpoint? {
+        endpoints.first { $0.id == selectedEndpointId } ?? endpoints.first
+    }
+
+    private var selectedWallet: EVMWallet? {
+        wallets.first { $0.id == selectedWalletId } ?? wallets.first
+    }
 
     // MARK: - Body
 
@@ -52,28 +73,15 @@ struct SignTransactionView: View {
         .scrollContentBackground(.hidden)
         .background(Color.clear)
         .navigationTitle("Sign Transaction")
-        #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(.hidden, for: .navigationBar)
-        #else
-            .toolbarBackground(.hidden, for: .automatic)
-        #endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
+        .alert(alertTitle, isPresented: $showingResultAlert) {
+            Button("OK") {
+                if authenticationResult == true {
+                    dismiss()
                 }
             }
-            .alert(alertTitle, isPresented: $showingResultAlert) {
-                Button("OK") {
-                    if authenticationResult == true {
-                        dismiss()
-                    }
-                }
-            } message: {
-                Text(alertMessage)
-            }
+        } message: {
+            Text(alertMessage)
+        }
     }
 
     // MARK: - Form Sections
@@ -207,7 +215,11 @@ struct SignTransactionView: View {
     private var actionsSection: some View {
         Section {
             // Approve with FaceID
-            Button(action: authenticateAndApprove) {
+            Button(action: {
+                Task {
+                    await authenticateAndApprove()
+                }
+            }) {
                 HStack {
                     if isAuthenticating {
                         ProgressView()
@@ -243,38 +255,90 @@ struct SignTransactionView: View {
 
     private var alertTitle: String {
         if let result = authenticationResult {
-            return result ? "Transaction Approved" : "Authentication Failed"
+            return result ? "Transaction Sent" : "Transaction Failed"
         }
         return "Transaction Rejected"
     }
 
     private var alertMessage: String {
         if let result = authenticationResult {
-            return result
-                ? "The transaction has been approved and will be broadcast to the network."
-                : "Biometric authentication failed. Please try again."
+            if result, let hash = transactionHash {
+                return "Transaction successfully signed and broadcast!\n\nTransaction Hash:\n\(hash)"
+            } else if let error = errorMessage {
+                return error
+            } else {
+                return "An unknown error occurred."
+            }
         }
         return "The transaction has been rejected and will not be broadcast."
     }
 
     // MARK: - Actions
 
-    private func authenticateAndApprove() {
+    private func authenticateAndApprove() async {
         isAuthenticating = true
+        authenticationResult = nil
+        errorMessage = nil
+        transactionHash = nil
 
-        // Use mock authentication for UI demo
-        biometricHelper.mockAuthenticate(shouldSucceed: true, delay: 1.5) { success in
-            isAuthenticating = false
-            authenticationResult = success
+        do {
+            // Authenticate with biometrics
+            let authSuccess = try await biometricHelper.authenticate(reason: "Authenticate to sign transaction")
 
-            if success {}
+            guard authSuccess else {
+                errorMessage = "Authentication failed"
+                authenticationResult = false
+                showingResultAlert = true
+                isAuthenticating = false
+                return
+            }
 
+            // Verify we have an endpoint and wallet
+            guard let endpoint = selectedEndpoint else {
+                errorMessage = "No network endpoint selected. Please select a network."
+                authenticationResult = false
+                showingResultAlert = true
+                isAuthenticating = false
+                return
+            }
+
+            guard let wallet = selectedWallet else {
+                errorMessage = "No wallet selected. Please select a wallet."
+                authenticationResult = false
+                showingResultAlert = true
+                isAuthenticating = false
+                return
+            }
+
+            // Set the current wallet on the view model
+            walletSigner.currentWallet = wallet
+
+            // Sign and send transaction
+            let txHash = try await walletSigner.processApprovedTransaction(transaction, endpoint: endpoint)
+
+            // Success!
+            transactionHash = txHash
+            authenticationResult = true
             showingResultAlert = true
+            isAuthenticating = false
+
+        } catch let error as LAError {
+            // Handle biometric authentication errors
+            errorMessage = error.friendlyMessage
+            authenticationResult = false
+            showingResultAlert = true
+            isAuthenticating = false
+        } catch {
+            // Handle signing/network errors
+            errorMessage = "Transaction failed: \(error.localizedDescription)"
+            authenticationResult = false
+            showingResultAlert = true
+            isAuthenticating = false
         }
     }
 
     private func rejectTransaction() {
-        // Reject transaction (mock implementation)
+        // Reject transaction
         dismiss()
     }
 }
