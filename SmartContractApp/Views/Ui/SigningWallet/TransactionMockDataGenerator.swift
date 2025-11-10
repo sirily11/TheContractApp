@@ -5,14 +5,13 @@
 //  Created by Claude on 11/10/25.
 //
 
+import EvmCore
 import Foundation
 import SwiftData
 import SwiftUI
-import EvmCore
 
 /// Utility for generating mock transaction data for previews and testing
-struct TransactionMockDataGenerator {
-
+enum TransactionMockDataGenerator {
     // MARK: - Preview Container
 
     /// Creates an in-memory model container for SwiftUI previews
@@ -20,8 +19,8 @@ struct TransactionMockDataGenerator {
     static func createPreviewContainer() -> ModelContainer {
         let schema = Schema([
             Transaction.self,
-            QueuedTransaction.self,
-            EVMWallet.self
+            EVMWallet.self,
+            Endpoint.self
         ])
 
         let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
@@ -41,13 +40,8 @@ struct TransactionMockDataGenerator {
         let context = container.mainContext
 
         // Insert sample transactions
-        Transaction.allSamples.forEach { transaction in
+        for transaction in Transaction.allSamples {
             context.insert(transaction)
-        }
-
-        // Insert sample queued transactions
-        QueuedTransaction.allPending.forEach { queuedTx in
-            context.insert(queuedTx)
         }
 
         return container
@@ -90,9 +84,9 @@ struct TransactionMockDataGenerator {
                 value: weiValue,
                 timestamp: timestamp,
                 status: status,
-                blockNumber: status == .success ? Int.random(in: 18_000_000...18_500_000) : nil,
+                blockNumber: status == .success ? Int.random(in: 18000000...18500000) : nil,
                 gasUsed: status != .pending ? String(Int.random(in: 21000...200000)) : nil,
-                gasPrice: String(Int.random(in: 20_000_000_000...50_000_000_000)),
+                gasPrice: String(Int.random(in: 20000000000...50000000000)),
                 contractFunctionName: type == .contractCall ? randomFunctionName() : nil,
                 contractParameters: type == .contractCall ? randomParameters() : nil
             )
@@ -158,7 +152,7 @@ struct TransactionMockDataGenerator {
     private static func randomData() -> String {
         let hex = "0123456789abcdef"
         var data = "0x"
-        let length = Int.random(in: 8...128) * 2  // Even number
+        let length = Int.random(in: 8...128) * 2 // Even number
         for _ in 0..<length {
             data.append(hex.randomElement()!)
         }

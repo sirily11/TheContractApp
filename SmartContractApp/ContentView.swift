@@ -10,20 +10,13 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.walletSigner) private var walletSigner
+    @Environment(WalletSignerViewModel.self) private var walletSigner
     @State private var selectedCategory: SidebarCategory?
     @State private var selectedEndpoint: Endpoint?
     @State private var selectedAbi: EvmAbi?
     @State private var selectedContract: EVMContract?
     @State private var selectedWallet: EVMWallet?
     @State private var showingQueuedTransactions = false
-
-    private var pendingTransactionCount: Int {
-        guard let viewModel = walletSigner as? WalletSignerViewModel else {
-            return 0
-        }
-        return viewModel.pendingTransactionCount
-    }
 
     var body: some View {
         NavigationSplitView {
@@ -112,50 +105,50 @@ struct ContentView: View {
         }
         #else
         .sheet(isPresented: $showingQueuedTransactions) {
-            NavigationStack {
-                SigningWalletView()
+                NavigationStack {
+                    SigningWalletView()
+                }
             }
-        }
         #endif
-        .onChange(of: selectedCategory) { _, _ in
-            // Clear all item selections when category changes
-            selectedEndpoint = nil
-            selectedAbi = nil
-            selectedContract = nil
-            selectedWallet = nil
-        }
-        .onChange(of: selectedEndpoint) { _, newValue in
-            // Clear other selections when endpoint is selected
-            if newValue != nil {
+            .onChange(of: selectedCategory) { _, _ in
+                // Clear all item selections when category changes
+                selectedEndpoint = nil
                 selectedAbi = nil
                 selectedContract = nil
                 selectedWallet = nil
             }
-        }
-        .onChange(of: selectedAbi) { _, newValue in
-            // Clear other selections when ABI is selected
-            if newValue != nil {
-                selectedEndpoint = nil
-                selectedContract = nil
-                selectedWallet = nil
+            .onChange(of: selectedEndpoint) { _, newValue in
+                // Clear other selections when endpoint is selected
+                if newValue != nil {
+                    selectedAbi = nil
+                    selectedContract = nil
+                    selectedWallet = nil
+                }
             }
-        }
-        .onChange(of: selectedContract) { _, newValue in
-            // Clear other selections when contract is selected
-            if newValue != nil {
-                selectedEndpoint = nil
-                selectedAbi = nil
-                selectedWallet = nil
+            .onChange(of: selectedAbi) { _, newValue in
+                // Clear other selections when ABI is selected
+                if newValue != nil {
+                    selectedEndpoint = nil
+                    selectedContract = nil
+                    selectedWallet = nil
+                }
             }
-        }
-        .onChange(of: selectedWallet) { _, newValue in
-            // Clear other selections when wallet is selected
-            if newValue != nil {
-                selectedEndpoint = nil
-                selectedAbi = nil
-                selectedContract = nil
+            .onChange(of: selectedContract) { _, newValue in
+                // Clear other selections when contract is selected
+                if newValue != nil {
+                    selectedEndpoint = nil
+                    selectedAbi = nil
+                    selectedWallet = nil
+                }
             }
-        }
+            .onChange(of: selectedWallet) { _, newValue in
+                // Clear other selections when wallet is selected
+                if newValue != nil {
+                    selectedEndpoint = nil
+                    selectedAbi = nil
+                    selectedContract = nil
+                }
+            }
     }
 
     // MARK: - Toolbar Button
@@ -167,13 +160,13 @@ struct ContentView: View {
                 .font(.title3)
                 .imageScale(.medium)
 
-            if pendingTransactionCount > 0 {
+            if walletSigner.pendingTransactionCount > 0 {
                 ZStack {
                     Circle()
                         .fill(.red)
                         .frame(width: 18, height: 18)
 
-                    Text("\(min(pendingTransactionCount, 99))")
+                    Text("\(min(walletSigner.pendingTransactionCount, 99))")
                         .font(.system(size: 10, weight: .bold))
                         .foregroundColor(.white)
                 }

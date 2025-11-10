@@ -5,27 +5,19 @@
 //  Created by Claude on 11/10/25.
 //
 
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 /// View displaying queued transactions awaiting signature
 struct QueuedTransactionsView: View {
-
     // MARK: - Properties
+
+    @Binding var navigationPath: [QueuedTransaction]
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.walletSigner) private var walletSigner
+    @Environment(WalletSignerViewModel.self) private var walletSigner
 
-    @Query(sort: \QueuedTransaction.queuedAt, order: .reverse)
-    private var allTransactions: [QueuedTransaction]
-
-    private var pendingTransactions: [QueuedTransaction] {
-        allTransactions.filter { $0.status == .pending }
-    }
-
-    @State private var selectedTransaction: QueuedTransaction?
-    @State private var showingSignView = false
     @State private var transactionToDelete: QueuedTransaction?
     @State private var showingDeleteAlert = false
     @State private var errorMessage: String?
@@ -35,13 +27,12 @@ struct QueuedTransactionsView: View {
 
     var body: some View {
         Group {
-            if pendingTransactions.isEmpty {
+            if walletSigner.currentShowingTransactions.isEmpty {
                 emptyStateView
             } else {
                 transactionList
             }
         }
-        .navigationTitle("Queued Transactions")
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
@@ -52,7 +43,7 @@ struct QueuedTransactionsView: View {
                 }
             }
 
-            if !pendingTransactions.isEmpty {
+            if !walletSigner.currentShowingTransactions.isEmpty {
                 ToolbarItem(placement: .destructiveAction) {
                     Button(role: .destructive) {
                         rejectAllTransactions()
@@ -60,11 +51,6 @@ struct QueuedTransactionsView: View {
                         Label("Reject All", systemImage: "xmark.circle.fill")
                     }
                 }
-            }
-        }
-        .sheet(item: $selectedTransaction) { transaction in
-            NavigationStack {
-                SignTransactionView(transaction: transaction)
             }
         }
         .alert("Reject Transaction", isPresented: $showingDeleteAlert) {
@@ -91,15 +77,12 @@ struct QueuedTransactionsView: View {
     // MARK: - Views
 
     private var transactionList: some View {
-        List {
-            Section {
-                ForEach(pendingTransactions) { transaction in
-                    Button(action: {
-                        selectedTransaction = transaction
-                    }) {
-                        QueuedTransactionRowView(transaction: transaction)
+        LazyVStack {
+            ForEach(walletSigner.currentShowingTransactions) { transaction in
+                QueuedTransactionRowView(transaction: transaction)
+                    .onTapGesture { _ in
+                        navigationPath.append(transaction)
                     }
-                    .buttonStyle(.plain)
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         Button(role: .destructive) {
                             transactionToDelete = transaction
@@ -108,23 +91,9 @@ struct QueuedTransactionsView: View {
                             Label("Reject", systemImage: "xmark.circle")
                         }
                     }
-                }
-            } header: {
-                HStack {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundColor(.orange)
-                    Text("Pending Signatures (\(pendingTransactions.count))")
-                }
-            } footer: {
-                Text("Tap to review and sign, or swipe left to reject")
-                    .font(.caption)
             }
         }
-        #if os(iOS)
-        .listStyle(.insetGrouped)
-        #else
-        .listStyle(.inset)
-        #endif
+        .padding(.horizontal)
     }
 
     private var emptyStateView: some View {
@@ -139,15 +108,8 @@ struct QueuedTransactionsView: View {
 
     private func rejectTransaction() {
         guard let transaction = transactionToDelete else { return }
-
         do {
-            if let walletSigner = walletSigner as? WalletSignerViewModel {
-                // Use the view model if available
-                try walletSigner.rejectTransaction(transaction)
-            } else {
-                // Fall back to direct manipulation
-                transaction.reject()
-            }
+            try walletSigner.rejectTransaction(transaction)
         } catch {
             errorMessage = error.localizedDescription
             showingError = true
@@ -158,15 +120,7 @@ struct QueuedTransactionsView: View {
 
     private func rejectAllTransactions() {
         Task {
-            if let walletSigner = walletSigner {
-                // Use the view model's cancelAllSigningRequests
-                await walletSigner.cancelAllSigningRequests()
-            } else {
-                // Fall back to direct manipulation
-                for transaction in pendingTransactions {
-                    transaction.reject()
-                }
-            }
+            await walletSigner.cancelAllSigningRequests()
         }
     }
 }
@@ -174,51 +128,25 @@ struct QueuedTransactionsView: View {
 // MARK: - Preview
 
 #Preview("With Queued Transactions") {
-    NavigationStack {
-        QueuedTransactionsView()
+    @Previewable @State var navigationPath: [QueuedTransaction] = []
+
+    NavigationStack(path: $navigationPath) {
+        QueuedTransactionsView(navigationPath: $navigationPath)
+            .navigationDestination(for: QueuedTransaction.self) { tx in
+                SignTransactionView(transaction: tx)
+            }
     }
     .modelContainer(TransactionMockDataGenerator.createPopulatedPreviewContainer())
 }
 
 #Preview("Empty State") {
-    NavigationStack {
-        QueuedTransactionsView()
+    @Previewable @State var navigationPath: [QueuedTransaction] = []
+
+    NavigationStack(path: $navigationPath) {
+        QueuedTransactionsView(navigationPath: $navigationPath)
+            .navigationDestination(for: QueuedTransaction.self) { tx in
+                SignTransactionView(transaction: tx)
+            }
     }
     .modelContainer(TransactionMockDataGenerator.createPreviewContainer())
-}
-
-#Preview("Many Transactions") {
-    let container = {
-        let container = TransactionMockDataGenerator.createPreviewContainer()
-        let context = container.mainContext
-
-        // Generate many queued transactions
-        let transactions = TransactionMockDataGenerator.generateQueuedTransactions(count: 10)
-        transactions.forEach { tx in
-            context.insert(tx)
-        }
-
-        return container
-    }()
-
-    NavigationStack {
-        QueuedTransactionsView()
-    }
-    .modelContainer(container)
-}
-
-#Preview("Single Transaction") {
-    let container = {
-        let container = TransactionMockDataGenerator.createPreviewContainer()
-        let context = container.mainContext
-
-        context.insert(QueuedTransaction.sampleERC20Transfer)
-
-        return container
-    }()
-
-    NavigationStack {
-        QueuedTransactionsView()
-    }
-    .modelContainer(container)
 }

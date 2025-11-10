@@ -5,9 +5,9 @@
 //  Created by Claude on 11/10/25.
 //
 
+import EvmCore
 import SwiftData
 import SwiftUI
-import EvmCore
 
 /// View for reviewing and signing a queued transaction
 struct SignTransactionView: View {
@@ -49,9 +49,14 @@ struct SignTransactionView: View {
             actionsSection
         }
         .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
+        .background(Color.clear)
         .navigationTitle("Sign Transaction")
         #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.hidden, for: .navigationBar)
+        #else
+            .toolbarBackground(.hidden, for: .automatic)
         #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -262,10 +267,7 @@ struct SignTransactionView: View {
             isAuthenticating = false
             authenticationResult = success
 
-            if success {
-                // Approve transaction (mock implementation)
-                transaction.approve()
-            }
+            if success {}
 
             showingResultAlert = true
         }
@@ -273,7 +275,6 @@ struct SignTransactionView: View {
 
     private func rejectTransaction() {
         // Reject transaction (mock implementation)
-        transaction.reject()
         dismiss()
     }
 }

@@ -8,7 +8,6 @@
 import BigInt
 import EvmCore
 import Foundation
-import SwiftData
 
 enum QueuedTransactionStatus: String, CaseIterable, Codable {
     case pending
@@ -16,23 +15,22 @@ enum QueuedTransactionStatus: String, CaseIterable, Codable {
     case rejected
 }
 
-@Model
-final class QueuedTransaction {
-    var id: UUID
-    var queuedAt: Date
-    var to: String
-    var value: TransactionValue
-    var data: String? // hex string
-    var gasEstimate: String?
+struct QueuedTransaction: Identifiable, Codable, Hashable {
+    let id: UUID
+    let queuedAt: Date
+    let to: String
+    let value: TransactionValue
+    let data: String? // hex string
+    let gasEstimate: String?
 
     // Contract call details (optional)
-    var contractFunctionName: String?
-    var contractParameters: Data? // JSON encoded [TransactionParameter]
+    let contractFunctionName: String?
+    let contractParameters: Data? // JSON encoded [TransactionParameter]
 
     var status: QueuedTransactionStatus
 
-    // Relationships
-    @Relationship var wallet: EVMWallet?
+    // Optional wallet ID reference (instead of SwiftData relationship)
+    let walletId: UUID?
 
     init(
         id: UUID = UUID(),
@@ -44,7 +42,7 @@ final class QueuedTransaction {
         contractFunctionName: String? = nil,
         contractParameters: Data? = nil,
         status: QueuedTransactionStatus = .pending,
-        wallet: EVMWallet? = nil
+        walletId: UUID? = nil
     ) {
         self.id = id
         self.queuedAt = queuedAt
@@ -55,7 +53,35 @@ final class QueuedTransaction {
         self.contractFunctionName = contractFunctionName
         self.contractParameters = contractParameters
         self.status = status
-        self.wallet = wallet
+        self.walletId = walletId
+    }
+    
+    // MARK: - Hashable Implementation
+    
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+        hasher.combine(queuedAt)
+        hasher.combine(to)
+        hasher.combine(value.toWei().value.description) // Convert TransactionValue to String for hashing
+        hasher.combine(data)
+        hasher.combine(gasEstimate)
+        hasher.combine(contractFunctionName)
+        hasher.combine(contractParameters)
+        hasher.combine(status)
+        hasher.combine(walletId)
+    }
+    
+    static func == (lhs: QueuedTransaction, rhs: QueuedTransaction) -> Bool {
+        return lhs.id == rhs.id &&
+               lhs.queuedAt == rhs.queuedAt &&
+               lhs.to == rhs.to &&
+               lhs.value.toWei().value == rhs.value.toWei().value &&
+               lhs.data == rhs.data &&
+               lhs.gasEstimate == rhs.gasEstimate &&
+               lhs.contractFunctionName == rhs.contractFunctionName &&
+               lhs.contractParameters == rhs.contractParameters &&
+               lhs.status == rhs.status &&
+               lhs.walletId == rhs.walletId
     }
 
     // MARK: - Helper Methods
@@ -66,24 +92,40 @@ final class QueuedTransaction {
         return try? JSONDecoder().decode([TransactionParameter].self, from: contractParameters)
     }
 
-    /// Sets contract parameters by encoding them to JSON
-    func setContractParameters(_ parameters: [TransactionParameter]) throws {
-        self.contractParameters = try JSONEncoder().encode(parameters)
+    /// Returns a new instance with contract parameters encoded
+    func withContractParameters(_ parameters: [TransactionParameter]) throws -> QueuedTransaction {
+        let encoded = try JSONEncoder().encode(parameters)
+        return QueuedTransaction(
+            id: id,
+            queuedAt: queuedAt,
+            to: to,
+            value: value,
+            data: data,
+            gasEstimate: gasEstimate,
+            contractFunctionName: contractFunctionName,
+            contractParameters: encoded,
+            status: status,
+            walletId: walletId
+        )
     }
 
     /// Returns true if this is a contract interaction
     var isContractCall: Bool {
-        return self.contractFunctionName != nil
+        return contractFunctionName != nil
     }
 
-    /// Approve this transaction (mock implementation)
-    func approve() {
-        self.status = .approved
+    /// Returns a new transaction with approved status
+    func approved() -> QueuedTransaction {
+        var copy = self
+        copy.status = .approved
+        return copy
     }
 
-    /// Reject this transaction (mock implementation)
-    func reject() {
-        self.status = .rejected
+    /// Returns a new transaction with rejected status
+    func rejected() -> QueuedTransaction {
+        var copy = self
+        copy.status = .rejected
+        return copy
     }
 }
 

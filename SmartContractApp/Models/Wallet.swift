@@ -32,9 +32,6 @@ final class EVMWallet {
     @Relationship(deleteRule: .cascade, inverse: \Transaction.wallet)
     var transactions: [Transaction]?
 
-    @Relationship(deleteRule: .cascade, inverse: \QueuedTransaction.wallet)
-    var queuedTransactions: [QueuedTransaction]?
-
     init(id: Int = 0, alias: String, address: String, keychainPath: String,
          isFromMnemonic: Bool = false, createdAt: Date = Date(), updatedAt: Date = Date())
     {
@@ -48,6 +45,7 @@ final class EVMWallet {
     }
 
     // MARK: - Keychain Keys
+
     private var privateKeyKeychainKey: String {
         "\(keychainPath)/private_key"
     }
@@ -61,7 +59,7 @@ final class EVMWallet {
     /// Retrieves the private key from the keychain
     /// - Throws: `WalletError.privateKeyNotFound` if the private key is not in the keychain
     /// - Returns: The private key as a hex string
-    func getPrivateKey() throws (WalletError) -> String {
+    func getPrivateKey() throws(WalletError) -> String {
         let keychain = KeychainSwift()
         guard let privateKey = keychain.get(privateKeyKeychainKey) else {
             throw WalletError.privateKeyNotFound
@@ -72,7 +70,7 @@ final class EVMWallet {
     /// Retrieves the mnemonic from the keychain
     /// - Throws: `WalletError.mnemonicNotFound` if the wallet is from a mnemonic but the mnemonic is not in the keychain
     /// - Returns: The mnemonic phrase, or nil if the wallet is not from a mnemonic
-    func getMnemonic() throws (WalletError) -> String? {
+    func getMnemonic() throws(WalletError) -> String? {
         guard isFromMnemonic else {
             return nil
         }
@@ -87,7 +85,7 @@ final class EVMWallet {
     /// Stores the private key in the keychain
     /// - Parameter privateKey: The private key to store (as a hex string)
     /// - Throws: `WalletError.keychainStorageFailed` if the operation fails
-    func setPrivateKey(_ privateKey: String) throws (WalletError) {
+    func setPrivateKey(_ privateKey: String) throws(WalletError) {
         let keychain = KeychainSwift()
         guard keychain.set(privateKey, forKey: privateKeyKeychainKey) else {
             throw WalletError.keychainStorageFailed
@@ -98,7 +96,7 @@ final class EVMWallet {
     /// Stores the mnemonic in the keychain
     /// - Parameter mnemonic: The mnemonic phrase to store
     /// - Throws: `WalletError.keychainStorageFailed` if the operation fails
-    func setMnemonic(_ mnemonic: String) throws (WalletError) {
+    func setMnemonic(_ mnemonic: String) throws(WalletError) {
         let keychain = KeychainSwift()
         guard keychain.set(mnemonic, forKey: mnemonicKeychainKey) else {
             throw WalletError.keychainStorageFailed
@@ -109,7 +107,7 @@ final class EVMWallet {
 
     /// Deletes all wallet data from the keychain
     /// - Throws: `WalletError.keychainDeletionFailed` if the operation fails
-    func deleteFromKeychain() throws (WalletError) {
+    func deleteFromKeychain() throws(WalletError) {
         let keychain = KeychainSwift()
 
         let privateKeyDeleted = keychain.delete(privateKeyKeychainKey)

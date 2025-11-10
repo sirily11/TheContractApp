@@ -1,7 +1,7 @@
 import BigInt
 import Foundation
 
-public struct Ethers: Equatable {
+public struct Ethers: Equatable, Hashable {
     public let value: BigInt
 
     private static let weiPerEther = BigInt(10).power(18)
@@ -18,6 +18,10 @@ public struct Ethers: Equatable {
     public init(bigInt value: BigInt) {
         self.value = value
     }
+    
+    public init(float value: Double) {
+        self.value = BigInt(value)
+    }
 
     public func toWei() -> Wei {
         return Wei(bigInt: value * Ethers.weiPerEther)
@@ -28,7 +32,7 @@ public struct Ethers: Equatable {
     }
 }
 
-public struct Wei: Equatable {
+public struct Wei: Equatable, Hashable {
     public let value: BigInt
 
     private static let weiPerEther = BigInt(10).power(18)

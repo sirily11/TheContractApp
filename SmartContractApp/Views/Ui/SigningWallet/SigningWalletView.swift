@@ -5,6 +5,8 @@
 //  Created by Claude on 11/10/25.
 //
 
+import BigInt
+import EvmCore
 import SwiftData
 import SwiftUI
 
@@ -12,6 +14,8 @@ import SwiftUI
 struct SigningWalletView: View {
     // MARK: - Properties
 
+    @Environment(WalletSignerViewModel.self) private var walletSigner
+    @State private var navigationPath: [QueuedTransaction] = []
     @State private var selectedTab: WalletTab = .pending
     @State private var showingSendSheet = false
     @State private var showingReceiveSheet = false
@@ -26,6 +30,10 @@ struct SigningWalletView: View {
 
     @Query(sort: \Endpoint.name) private var endpoints: [Endpoint]
     @Query(sort: \EVMWallet.alias) private var wallets: [EVMWallet]
+
+    init(path: [QueuedTransaction] = []) {
+        self._navigationPath = State(initialValue: path)
+    }
 
     // MARK: - Computed Properties
 
@@ -56,8 +64,11 @@ struct SigningWalletView: View {
     // MARK: - Body
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navigationPath) {
             VStack(spacing: 0) {
+                NavigationLink(value: QueuedTransaction.allSamples.first!) {
+                    Text("Navigate")
+                }
                 // Endpoint picker button (top right)
                 HStack {
                     Spacer()
@@ -91,6 +102,9 @@ struct SigningWalletView: View {
             }
             .sheet(isPresented: $showingReceiveSheet) {
                 receiveSheet
+            }
+            .navigationDestination(for: QueuedTransaction.self) { transaction in
+                SignTransactionView(transaction: transaction)
             }
         }
     }
@@ -191,7 +205,7 @@ struct SigningWalletView: View {
             }
             .tag(WalletTab.assets)
 
-            QueuedTransactionsView()
+            QueuedTransactionsView(navigationPath: $navigationPath)
                 .tabItem {
                     Label("Pending", systemImage: "clock.fill")
                 }
@@ -243,20 +257,46 @@ enum WalletTab: String, CaseIterable {
 }
 
 #Preview("With Queued Transactions") {
-    let container = {
-        let container = TransactionMockDataGenerator.createPopulatedPreviewContainer()
-        let context = container.mainContext
+    let container = TransactionMockDataGenerator.createPreviewContainer()
+    let context = container.mainContext
 
-        // Add queued transactions
-        for tx in QueuedTransaction.allPending {
-            context.insert(tx)
-        }
+    // Create a sample wallet
+    let wallet = EVMWallet(
+        id: 1,
+        alias: "Test Wallet",
+        address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        keychainPath: "preview/test_wallet"
+    )
+    context.insert(wallet)
 
-        return container
-    }()
+    // Create endpoint
+    let endpoint = Endpoint(
+        id: 1,
+        name: "Localhost",
+        url: "http://127.0.0.1:8545",
+        chainId: "31337"
+    )
+    context.insert(endpoint)
 
-    SigningWalletView()
+    let viewModel = WalletSignerViewModel(modelContext: context, currentWallet: wallet)
+
+    // Queue sample transactions using the public API
+    _ = try? viewModel.queueTransaction(
+        to: "0x1234567890abcdef1234567890abcdef12345678",
+        value: .ether(.init(bigInt: .init(integerLiteral: 1)))
+    )
+    _ = try? viewModel.queueTransaction(
+        to: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+        value: .wei(.init(bigInt: .init(integerLiteral: 1000000)))
+    )
+    _ = try? viewModel.queueTransaction(
+        to: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+        value: .ether(.init(bigInt: .init(integerLiteral: 2)))
+    )
+
+    return SigningWalletView()
         .modelContainer(container)
+        .environment(viewModel)
 }
 
 #Preview("Assets Tab") {
@@ -264,4 +304,18 @@ enum WalletTab: String, CaseIterable {
 
     SigningWalletView()
         .modelContainer(TransactionMockDataGenerator.createPreviewContainer())
+}
+
+#Preview("Navigation Detail - Sign Transaction") {
+    SigningWalletView(path: [
+        QueuedTransaction(
+            to: "0x1234567890abcdef1234567890abcdef12345678", value: .ether(.init(bigInt: .zero)),
+        )
+    ])
+    .modelContainer(TransactionMockDataGenerator.createPreviewContainer())
+    .environment(
+        WalletSignerViewModel(
+            modelContext: TransactionMockDataGenerator.createPreviewContainer().mainContext
+        )
+    )
 }

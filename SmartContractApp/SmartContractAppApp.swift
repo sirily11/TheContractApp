@@ -17,7 +17,6 @@ struct SmartContractAppApp: App {
             EvmAbi.self,
             EVMWallet.self,
             Transaction.self,
-            QueuedTransaction.self,
         ])
 
         let modelConfiguration = ModelConfiguration(
@@ -55,20 +54,28 @@ struct SmartContractAppApp: App {
         }
     }()
 
-    @State private var walletSignerViewModel: WalletSignerViewModel?
-
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .environment(\.walletSigner, walletSignerViewModel)
-                .onAppear {
-                    if walletSignerViewModel == nil {
-                        walletSignerViewModel = WalletSignerViewModel(
-                            modelContext: sharedModelContainer.mainContext
-                        )
-                    }
-                }
+            ContentViewWrapper(modelContext: sharedModelContainer.mainContext)
         }
         .modelContainer(sharedModelContainer)
+    }
+}
+
+/// Wrapper to properly initialize the WalletSignerViewModel with modelContext
+private struct ContentViewWrapper: View {
+    let modelContext: ModelContext
+
+    init(modelContext: ModelContext) {
+        self.modelContext = modelContext
+        let viewModel = WalletSignerViewModel(modelContext: modelContext)
+        _walletSignerViewModel = State(initialValue: viewModel)
+    }
+
+    @State private var walletSignerViewModel: WalletSignerViewModel
+
+    var body: some View {
+        ContentView()
+            .environment(walletSignerViewModel)
     }
 }

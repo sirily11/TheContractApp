@@ -13,6 +13,7 @@ struct SendView: View {
     @Binding var isPresented: Bool
     @Environment(\.modelContext) private var modelContext
     @Environment(WalletSignerViewModel.self) private var walletSignerViewModel
+    @Environment(\.dismiss) private var dismiss
 
     // Dependencies
     let wallet: EVMWallet?
@@ -158,7 +159,7 @@ struct SendView: View {
     }
 
     var isReviewValid: Bool {
-        return isAddressValid && isAmountValid && gasEstimate != nil
+        return isAddressValid && isAmountValid
     }
 
     // MARK: - Actions
@@ -185,7 +186,10 @@ struct SendView: View {
         }
     }
 
-    private func sendTransaction() {}
+    private func sendTransaction() {
+        _ = try? walletSignerViewModel.queueTransaction(to: recipientAddress, value: .ether(.init(float: Double(amount) ?? 0)))
+        dismiss()
+    }
 
     // MARK: - Balance Fetching
 

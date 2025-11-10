@@ -12,22 +12,19 @@ import Observation
 import SwiftData
 
 @Observable
-final class WalletSignerViewModel: WalletSigner {
+final class WalletSignerViewModel {
     // MARK: - Properties
 
     private let modelContext: ModelContext
     private var continuation: AsyncStream<Data>.Continuation?
+    private(set) var currentShowingTransactions: [QueuedTransaction] = []
 
     /// The currently selected wallet for signing
     var currentWallet: EVMWallet?
 
     /// Number of pending transactions waiting for signature
     var pendingTransactionCount: Int {
-        let descriptor = FetchDescriptor<QueuedTransaction>()
-        guard let allTransactions = try? modelContext.fetch(descriptor) else {
-            return 0
-        }
-        return allTransactions.filter { $0.status == .pending }.count
+        return currentShowingTransactions.count
     }
 
     // MARK: - WalletSigner Protocol
@@ -115,55 +112,19 @@ final class WalletSignerViewModel: WalletSigner {
 
     /// Cancel all pending signing requests
     func cancelAllSigningRequests() async {
-        let descriptor = FetchDescriptor<QueuedTransaction>()
-
-        do {
-            let allTransactions = try modelContext.fetch(descriptor)
-            let pendingTransactions = allTransactions.filter { $0.status == .pending }
-
-            for transaction in pendingTransactions {
-                transaction.reject()
-            }
-            try modelContext.save()
-        } catch {
-            print("Error canceling all signing requests: \(error)")
-        }
+        currentShowingTransactions = []
     }
 
     /// Cancel a specific signing request by index
     /// - Parameter index: The index of the transaction to cancel
     func cancelSigningRequest(at index: Int) async {
-        let descriptor = FetchDescriptor<QueuedTransaction>(
-            sortBy: [SortDescriptor(\.queuedAt, order: .forward)]
-        )
-
-        do {
-            let allTransactions = try modelContext.fetch(descriptor)
-            let pendingTransactions = allTransactions.filter { $0.status == .pending }
-
-            guard index >= 0 && index < pendingTransactions.count else {
-                print("Invalid index: \(index)")
-                return
-            }
-
-            pendingTransactions[index].reject()
-            try modelContext.save()
-        } catch {
-            print("Error canceling signing request at index \(index): \(error)")
+        guard index >= 0, index < currentShowingTransactions.count else {
+            return
         }
+        currentShowingTransactions.remove(at: index)
     }
 
     // MARK: - Helper Methods
-
-    /// Get all pending transactions
-    func getPendingTransactions() throws -> [QueuedTransaction] {
-        let descriptor = FetchDescriptor<QueuedTransaction>(
-            sortBy: [SortDescriptor(\.queuedAt, order: .forward)]
-        )
-
-        let allTransactions = try modelContext.fetch(descriptor)
-        return allTransactions.filter { $0.status == .pending }
-    }
 
     /// Approve a transaction and sign it
     /// - Parameter transaction: The transaction to approve
@@ -172,7 +133,6 @@ final class WalletSignerViewModel: WalletSigner {
             throw WalletSignerError.noWalletSelected
         }
 
-        transaction.approve()
         try modelContext.save()
 
         // In a real implementation, this would:
@@ -186,7 +146,6 @@ final class WalletSignerViewModel: WalletSigner {
     /// Reject a transaction
     /// - Parameter transaction: The transaction to reject
     func rejectTransaction(_ transaction: QueuedTransaction) throws {
-        transaction.reject()
         try modelContext.save()
     }
 
@@ -258,7 +217,7 @@ final class WalletSignerViewModel: WalletSigner {
         )
 
         // Send the transaction
-        let txHash = try await signerClient.sendTransaction(params: params)
+        let txHash = try await client.sendTransaction(params: params)
 
         // Create a Transaction record
         let transaction = Transaction(
@@ -283,17 +242,15 @@ final class WalletSignerViewModel: WalletSigner {
     ///   - value: Amount to send in wei
     ///   - gasEstimate: Estimated gas limit
     /// - Returns: The queued transaction
-    func queueTransaction(to: String, value: TransactionValue, gasEstimate: BigInt) throws -> QueuedTransaction {
+    func queueTransaction(to: String, value: TransactionValue) throws -> QueuedTransaction {
+        let gasEstimate = 21000 // Default for simple ETH transfer
         let queuedTx = QueuedTransaction(
             to: to,
             value: value,
             data: nil,
-            gasEstimate: String(gasEstimate)
+            gasEstimate: "0x" + String(gasEstimate, radix: 16)
         )
-
-        modelContext.insert(queuedTx)
-        try modelContext.save()
-
+        currentShowingTransactions.append(queuedTx)
         return queuedTx
     }
 
@@ -322,10 +279,6 @@ final class WalletSignerViewModel: WalletSigner {
             gasLimit: gasLimit,
             endpoint: endpoint
         )
-
-        // Remove the queued transaction
-        modelContext.delete(queuedTransaction)
-        try modelContext.save()
 
         return txHash
     }

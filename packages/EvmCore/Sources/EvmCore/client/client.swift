@@ -4,7 +4,7 @@ import Foundation
 // MARK: - Response Types
 
 /// Represents a transaction value that can be specified in either Ether or Wei
-public enum TransactionValue: Codable, Equatable {
+public enum TransactionValue: Codable, Equatable, Hashable {
     case ether(Ethers)
     case wei(Wei)
 
