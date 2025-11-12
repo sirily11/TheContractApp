@@ -9,7 +9,8 @@ public struct Address {
 
         // Ethereum addresses should be 42 characters (0x + 40 hex chars)
         guard cleanValue.count == 42 else {
-            throw AddressError.invalidLength("Address must be 40 hex characters (got \(cleanValue.count - 2))")
+            throw AddressError.invalidLength(
+                "Address must be 40 hex characters (got \(cleanValue.count - 2))")
         }
 
         // Validate hex characters
@@ -48,15 +49,15 @@ public protocol Signer {
     /// The address associated with this signer
     var address: Address { get }
 
-    // Signs a message using the signer
-    // - Parameter message: The message to sign
-    // - Returns: The signed message
+    /// Signs a message using the signer
+    /// - Parameter message: The message to sign (will be hashed with keccak256)
+    /// - Returns: The signature (65 bytes: r + s + v)
     func sign(message: Data) async throws -> Data
 
-    // Verifies a signature using the signer
-    // - Parameter address: The address to verify
-    // - Parameter message: The message to verify
-    // - Parameter signature: The signature to verify
-    // - Returns: True if the signature is valid, false otherwise
+    /// Verifies a signature using the signer
+    /// - Parameter address: The address to verify
+    /// - Parameter message: The message to verify
+    /// - Parameter signature: The signature to verify
+    /// - Returns: True if the signature is valid, false otherwise
     func verify(address: Address, message: Data, signature: Data) async throws -> Bool
 }

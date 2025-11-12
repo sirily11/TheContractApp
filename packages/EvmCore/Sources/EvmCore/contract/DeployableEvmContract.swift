@@ -88,6 +88,11 @@ public struct DeployableEvmContract: DeployableContract {
             )
         }
 
+        // Validate bytecode is not empty
+        guard !deployBytecode.isEmpty && deployBytecode.stripHexPrefix().count > 0 else {
+            throw DeploymentError.missingBytecode("Bytecode cannot be empty")
+        }
+
         // Encode constructor arguments if any
         var deployData = deployBytecode.ensureHexPrefix()
 
@@ -241,20 +246,59 @@ public struct DeployableEvmContract: DeployableContract {
 ///   - args: The argument values to encode
 /// - Returns: Hex-encoded constructor arguments
 private func encodeConstructorArguments(inputs: [AbiParameter], args: [Any]) throws -> String {
-    var encoded = Data()
+    // Separate static and dynamic parameters
+    var staticParts: [Data] = []
+    var dynamicParts: [Data] = []
+    var dynamicOffsets: [Int] = []
 
-    // Encode each parameter
+    // First pass: identify static vs dynamic and calculate offsets
+    var currentOffset = inputs.count * 32 // Initial offset after all static parts
+
     for (param, arg) in zip(inputs, args) {
-        let encodedParam = try encodeParameter(type: param.type, value: arg)
-        encoded.append(encodedParam)
+        if isDynamicType(param.type) {
+            // For dynamic types, static part is the offset
+            dynamicOffsets.append(currentOffset)
+            let dynamicData = try encodeDynamicParameter(type: param.type, value: arg)
+            dynamicParts.append(dynamicData)
+            currentOffset += dynamicData.count
+            staticParts.append(Data()) // Placeholder, will be replaced with offset
+        } else {
+            // For static types, encode directly
+            let staticData = try encodeStaticParameter(type: param.type, value: arg)
+            staticParts.append(staticData)
+            dynamicOffsets.append(-1) // Not a dynamic type
+        }
+    }
+
+    // Second pass: replace dynamic placeholders with actual offsets
+    var dynamicIndex = 0
+    for i in 0..<staticParts.count {
+        if dynamicOffsets[i] >= 0 {
+            staticParts[i] = encodeUInt(BigInt(dynamicOffsets[i]))
+            dynamicIndex += 1
+        }
+    }
+
+    // Combine static and dynamic parts
+    var encoded = Data()
+    for part in staticParts {
+        encoded.append(part)
+    }
+    for part in dynamicParts {
+        encoded.append(part)
     }
 
     return "0x" + encoded.map { String(format: "%02x", $0) }.joined()
 }
 
-/// Encode a single parameter value
-private func encodeParameter(type: String, value: Any) throws -> Data {
-    // Handle uint types
+/// Check if a type is dynamic (requires offset encoding)
+private func isDynamicType(_ type: String) -> Bool {
+    // Dynamic types: string, bytes, arrays
+    return type == "string" || type == "bytes" || type.hasSuffix("[]")
+}
+
+/// Encode a static parameter (fixed size)
+private func encodeStaticParameter(type: String, value: Any) throws -> Data {
     if type.starts(with: "uint") {
         if let bigInt = value as? BigInt {
             return encodeUInt(bigInt)
@@ -266,7 +310,15 @@ private func encodeParameter(type: String, value: Any) throws -> Data {
         throw DeploymentError.encodingFailed("Invalid uint value")
     }
 
-    // Handle address
+    if type.starts(with: "int") {
+        if let bigInt = value as? BigInt {
+            return encodeInt(bigInt)
+        } else if let int = value as? Int {
+            return encodeInt(BigInt(int))
+        }
+        throw DeploymentError.encodingFailed("Invalid int value")
+    }
+
     if type == "address" {
         if let addressStr = value as? String {
             let addr = try Address(fromHexString: addressStr)
@@ -277,9 +329,39 @@ private func encodeParameter(type: String, value: Any) throws -> Data {
         throw DeploymentError.encodingFailed("Invalid address value")
     }
 
-    // Add more types as needed
-    throw DeploymentError.encodingFailed("Unsupported parameter type: \(type)")
+    if type == "bool" {
+        if let bool = value as? Bool {
+            return encodeBool(bool)
+        }
+        throw DeploymentError.encodingFailed("Invalid bool value")
+    }
+
+    throw DeploymentError.encodingFailed("Unsupported static parameter type: \(type)")
 }
+
+/// Encode a dynamic parameter (variable size)
+private func encodeDynamicParameter(type: String, value: Any) throws -> Data {
+    if type == "string" {
+        if let str = value as? String {
+            return encodeStringData(str)
+        }
+        throw DeploymentError.encodingFailed("Invalid string value")
+    }
+
+    if type == "bytes" {
+        if let data = value as? Data {
+            return encodeBytesData(data)
+        } else if let hex = value as? String {
+            let data = Data(hex: hex.stripHexPrefix())
+            return encodeBytesData(data)
+        }
+        throw DeploymentError.encodingFailed("Invalid bytes value")
+    }
+
+    throw DeploymentError.encodingFailed("Unsupported dynamic parameter type: \(type)")
+}
+
+// MARK: - Encoding Helper Functions
 
 private func encodeUInt(_ value: BigInt) -> Data {
     let hex = String(value, radix: 16)
@@ -287,11 +369,39 @@ private func encodeUInt(_ value: BigInt) -> Data {
     return Data(hex: paddedHex)
 }
 
+private func encodeInt(_ value: BigInt) -> Data {
+    // For simplicity, handle positive ints same as uint
+    // Full implementation would handle two's complement for negative
+    return encodeUInt(value)
+}
+
 private func encodeAddress(_ address: Address) -> Data {
     let hex = address.value.stripHexPrefix()
     let data = Data(hex: hex)
     // Pad to 32 bytes
     return Data(repeating: 0, count: 32 - data.count) + data
+}
+
+private func encodeBool(_ value: Bool) -> Data {
+    return encodeUInt(value ? 1 : 0)
+}
+
+private func encodeStringData(_ value: String) -> Data {
+    let data = value.data(using: .utf8)!
+    return encodeBytesData(data)
+}
+
+private func encodeBytesData(_ data: Data) -> Data {
+    var result = Data()
+    // Encode length
+    result.append(encodeUInt(BigInt(data.count)))
+    // Encode data with padding
+    result.append(data)
+    let remainder = data.count % 32
+    if remainder != 0 {
+        result.append(Data(repeating: 0, count: 32 - remainder))
+    }
+    return result
 }
 
 /// Errors that can occur during contract deployment

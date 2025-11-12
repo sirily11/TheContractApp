@@ -3,6 +3,66 @@ import Foundation
 
 // MARK: - Response Types
 
+/// Represents a transaction value that can be specified in either Ether or Wei
+public enum TransactionValue: Codable, Equatable, Hashable {
+    case ether(Ethers)
+    case wei(Wei)
+
+    /// Create a TransactionValue from Ethers
+    public init(ethers: Ethers) {
+        self = .ether(ethers)
+    }
+
+    /// Create a TransactionValue from Wei
+    public init(wei: Wei) {
+        self = .wei(wei)
+    }
+
+    /// Convert the value to Wei
+    public func toWei() -> Wei {
+        switch self {
+        case .ether(let ethers):
+            return ethers.toWei()
+        case .wei(let wei):
+            return wei
+        }
+    }
+
+    /// Convert the value to Ethers
+    public func toEthers() -> Ethers {
+        switch self {
+        case .ether(let ethers):
+            return ethers
+        case .wei(let wei):
+            return wei.toEthers()
+        }
+    }
+
+    /// Convert to hex string for RPC calls (always in Wei)
+    public func toHexString() -> String {
+        let wei = toWei()
+        return "0x" + String(wei.value, radix: 16)
+    }
+
+    /// Custom equality - compares actual Wei values
+    public static func == (lhs: TransactionValue, rhs: TransactionValue) -> Bool {
+        return lhs.toWei().value == rhs.toWei().value
+    }
+
+    /// Decode from a hex string (Wei)
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let hexString = try container.decode(String.self)
+        self = .wei(Wei(hex: hexString))
+    }
+
+    /// Encode to hex string (Wei)
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(toHexString())
+    }
+}
+
 /// Block parameter type for RPC calls
 public enum BlockParameter: Codable, ExpressibleByStringLiteral {
     case latest
@@ -105,6 +165,7 @@ public struct Block: Codable {
     public let timestamp: String
     public let transactions: [AnyCodable]  // Can be transaction hashes or Transaction objects
     public let uncles: [String]
+    public let baseFeePerGas: String?  // EIP-1559 base fee per gas (optional, only in EIP-1559 blocks)
 }
 
 /// Call parameters for eth_call
@@ -113,12 +174,12 @@ public struct CallParams: Codable {
     public let to: String
     public let gas: String?
     public let gasPrice: String?
-    public let value: String?
+    public let value: TransactionValue?
     public let data: String?
 
     public init(
         from: String? = nil, to: String, gas: String? = nil, gasPrice: String? = nil,
-        value: String? = nil, data: String? = nil
+        value: TransactionValue? = nil, data: String? = nil
     ) {
         self.from = from
         self.to = to
@@ -127,6 +188,20 @@ public struct CallParams: Codable {
         self.value = value
         self.data = data
     }
+
+    private enum CodingKeys: String, CodingKey {
+        case from, to, gas, gasPrice, value, data
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encodeIfPresent(from, forKey: .from)
+        try container.encode(to, forKey: .to)
+        try container.encodeIfPresent(gas, forKey: .gas)
+        try container.encodeIfPresent(gasPrice, forKey: .gasPrice)
+        try container.encodeIfPresent(value?.toHexString(), forKey: .value)
+        try container.encodeIfPresent(data, forKey: .data)
+    }
 }
 
 /// Transaction parameters for eth_sendTransaction
@@ -134,22 +209,44 @@ public struct TransactionParams: Codable {
     public let from: String
     public let to: String?
     public let gas: String?
-    public let gasPrice: String?
-    public let value: String?
+    public let gasPrice: String?  // Legacy - ignored for EIP-1559 transactions
+    public let maxFeePerGas: String?  // EIP-1559
+    public let maxPriorityFeePerGas: String?  // EIP-1559
+    public let value: TransactionValue?
     public let data: String?
     public let nonce: String?
 
     public init(
         from: String, to: String? = nil, gas: String? = nil, gasPrice: String? = nil,
-        value: String? = nil, data: String? = nil, nonce: String? = nil
+        maxFeePerGas: String? = nil, maxPriorityFeePerGas: String? = nil,
+        value: TransactionValue? = nil, data: String? = nil, nonce: String? = nil
     ) {
         self.from = from
         self.to = to
         self.gas = gas
         self.gasPrice = gasPrice
+        self.maxFeePerGas = maxFeePerGas
+        self.maxPriorityFeePerGas = maxPriorityFeePerGas
         self.value = value
         self.data = data
         self.nonce = nonce
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case from, to, gas, gasPrice, maxFeePerGas, maxPriorityFeePerGas, value, data, nonce
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(from, forKey: .from)
+        try container.encodeIfPresent(to, forKey: .to)
+        try container.encodeIfPresent(gas, forKey: .gas)
+        try container.encodeIfPresent(gasPrice, forKey: .gasPrice)
+        try container.encodeIfPresent(maxFeePerGas, forKey: .maxFeePerGas)
+        try container.encodeIfPresent(maxPriorityFeePerGas, forKey: .maxPriorityFeePerGas)
+        try container.encodeIfPresent(value?.toHexString(), forKey: .value)
+        try container.encodeIfPresent(data, forKey: .data)
+        try container.encodeIfPresent(nonce, forKey: .nonce)
     }
 }
 
@@ -168,6 +265,30 @@ public struct FilterParams: Codable {
         self.toBlock = toBlock
         self.address = address
         self.topics = topics
+    }
+}
+
+/// Fee data returned from getFeeData()
+public struct FeeData {
+    /// The base fee per gas from the latest block (EIP-1559 only)
+    public let lastBaseFeePerGas: BigInt?
+    /// The maximum fee per gas to pay (EIP-1559)
+    public let maxFeePerGas: BigInt?
+    /// The maximum priority fee per gas (tip) to pay (EIP-1559)
+    public let maxPriorityFeePerGas: BigInt?
+    /// The legacy gas price
+    public let gasPrice: BigInt?
+
+    public init(
+        lastBaseFeePerGas: BigInt? = nil,
+        maxFeePerGas: BigInt? = nil,
+        maxPriorityFeePerGas: BigInt? = nil,
+        gasPrice: BigInt? = nil
+    ) {
+        self.lastBaseFeePerGas = lastBaseFeePerGas
+        self.maxFeePerGas = maxFeePerGas
+        self.maxPriorityFeePerGas = maxPriorityFeePerGas
+        self.gasPrice = gasPrice
     }
 }
 
@@ -190,6 +311,10 @@ public protocol EvmRpcClientProtocol {
     /// Returns the current max priority fee per gas
     /// - Returns: The max priority fee per gas
     func maxPriorityFeePerGas() async throws -> BigInt
+
+    /// Returns fee data for EIP-1559 and legacy transactions
+    /// - Returns: FeeData containing recommended fee values
+    func getFeeData() async throws -> FeeData
 
     // MARK: - Account Methods
 
@@ -352,4 +477,18 @@ public protocol EvmRpcClientProtocol {
 }
 
 /// A signer that can be used to sign transactions and messages
-public protocol EvmSignerProtocol: Signer, Contract {}
+public protocol EvmSignerProtocol: Signer, Contract {
+    /**
+    Signs a transaction and sends it to the network
+    - Parameter params: The transaction parameters
+    - Returns: The transaction hash
+    */
+    func signAndSendTransaction(params: TransactionParams) async throws -> String
+
+    /**
+    Signs a raw transaction and returns the signed transaction
+    - Parameter params: The transaction parameters
+    - Returns: The signed transaction
+    */
+    func signTransaction(params: TransactionParams) async throws -> String
+}

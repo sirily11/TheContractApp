@@ -10,11 +10,18 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(WalletSignerViewModel.self) private var walletSigner
+    @Environment(WindowStateManager.self) private var windowStateManager
+    #if os(macOS)
+    @Environment(\.openWindow) private var openWindow
+    @Environment(\.dismissWindow) private var dismissWindow
+    #endif
     @State private var selectedCategory: SidebarCategory?
     @State private var selectedEndpoint: Endpoint?
     @State private var selectedAbi: EvmAbi?
     @State private var selectedContract: EVMContract?
     @State private var selectedWallet: EVMWallet?
+    @State private var showingQueuedTransactions = false
 
     var body: some View {
         NavigationSplitView {
@@ -86,6 +93,27 @@ struct ContentView: View {
                 .padding()
             }
         }
+        .toolbar {
+            ToolbarItem(placement: .automatic) {
+                Button {
+                    #if os(macOS)
+                    toggleSigningWalletWindow()
+                    #else
+                    showingQueuedTransactions = true
+                    #endif
+                } label: {
+                    walletToolbarButton
+                }
+                .help("Pending Transactions")
+            }
+        }
+        #if os(iOS)
+        .sheet(isPresented: $showingQueuedTransactions) {
+            NavigationStack {
+                SigningWalletView()
+            }
+        }
+        #endif
         .onChange(of: selectedCategory) { _, _ in
             // Clear all item selections when category changes
             selectedEndpoint = nil
@@ -123,6 +151,42 @@ struct ContentView: View {
                 selectedEndpoint = nil
                 selectedAbi = nil
                 selectedContract = nil
+            }
+        }
+    }
+
+    // MARK: - Actions
+
+    #if os(macOS)
+    private func toggleSigningWalletWindow() {
+        if windowStateManager.isSigningWalletWindowOpen {
+            dismissWindow(id: "signing-wallet")
+        } else {
+            openWindow(id: "signing-wallet")
+        }
+    }
+    #endif
+
+    // MARK: - Toolbar Button
+
+    @ViewBuilder
+    private var walletToolbarButton: some View {
+        ZStack(alignment: .topTrailing) {
+            Image(systemName: "wallet.pass")
+                .font(.title3)
+                .imageScale(.medium)
+
+            if walletSigner.pendingTransactionCount > 0 {
+                ZStack {
+                    Circle()
+                        .fill(.red)
+                        .frame(width: 18, height: 18)
+
+                    Text("\(min(walletSigner.pendingTransactionCount, 99))")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.white)
+                }
+                .offset(x: 8, y: -8)
             }
         }
     }

@@ -33,17 +33,26 @@ final class Endpoint {
     var url: String
     var chainId: String
     var autoDetectChainId: Bool
+    var nativeTokenSymbol: String
+    var nativeTokenName: String
+    var nativeTokenDecimals: Int
     var createdAt: Date
     var updatedAt: Date
 
     init(id: Int = 0, name: String, url: String, chainId: String,
          autoDetectChainId: Bool = false,
+         nativeTokenSymbol: String = "ETH",
+         nativeTokenName: String = "Ethereum",
+         nativeTokenDecimals: Int = 18,
          createdAt: Date = Date(), updatedAt: Date = Date()) {
         self.id = id
         self.name = name
         self.url = url
         self.chainId = chainId
         self.autoDetectChainId = autoDetectChainId
+        self.nativeTokenSymbol = nativeTokenSymbol
+        self.nativeTokenName = nativeTokenName
+        self.nativeTokenDecimals = nativeTokenDecimals
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }

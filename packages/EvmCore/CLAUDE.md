@@ -22,10 +22,54 @@ swift test           # Run tests directly without network setup
 
 **Important**: Tests depend on Anvil (Ethereum local test node). The `make test` command handles starting/stopping Anvil automatically. If you run `swift test` directly, ensure Anvil is running separately with `make e2e-network`.
 
+### Code Coverage
+```bash
+make coverage        # Run tests with coverage and display summary report
+make coverage-report # Generate coverage report from existing test data
+make coverage-html   # Generate interactive HTML coverage report (opens in browser)
+make coverage-clean  # Clean all coverage data and reports
+```
+
+**Coverage Workflow**:
+1. Run `make coverage` to execute tests with coverage enabled
+2. View text summary in terminal (shows only package sources, not dependencies)
+3. Run `make coverage-html` for detailed line-by-line coverage visualization
+4. Run `make coverage-clean` to remove coverage artifacts
+
+**Coverage Report Features**:
+- Filters out third-party dependencies (only shows EvmCore, BIP39, Solidity)
+- Displays coverage percentages for each source file
+- HTML report shows line-by-line coverage with color coding
+- Automatically starts/stops Anvil network for E2E tests
+
+**Current Coverage Status** (as of last update):
+- Overall package coverage: ~47% line coverage
+- High coverage modules: BIP39 (93%), Signers (97%), ABI Parser (92%), Transaction (96%)
+- Improvement areas: EvmClient (62%), Contracts (58%)
+
 ### Formatting and Linting
 ```bash
 make fmt             # Format code using swift format
 make lint            # Lint code using swiftformat
+```
+
+### Command Execution Guidelines
+
+**IMPORTANT**: When executing bash commands, **DO NOT use the `cd` command**. Shell configuration issues can cause `cd` to fail. Instead:
+
+✅ **Good - Use absolute paths or command options:**
+```bash
+# Run commands with absolute paths
+swift test --package-path /Users/qiweili/Desktop/rxlab/SmartContractApp/packages/EvmCore
+
+# Run scripts with absolute paths
+bun /Users/qiweili/Desktop/rxlab/SmartContractApp/packages/EvmCore/scripts/generate-test-vectors.ts
+```
+
+❌ **Bad - Avoid cd:**
+```bash
+# Don't do this
+cd /path/to/directory && swift test
 ```
 
 ## Architecture
