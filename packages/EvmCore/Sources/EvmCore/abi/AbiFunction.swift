@@ -404,13 +404,99 @@ extension AbiFunction {
     }
 
     private func decodeString(_ data: String, offset: Int) throws -> String {
-        // Dynamic type decoding is complex - simplified implementation
-        throw AbiEncodingError.unsupportedType("dynamic string decoding")
+        // For a single return value that's a string, the data structure is:
+        // 0-31: offset to string data (usually 0x20 = 32)
+        // 32-63: length of string in bytes
+        // 64+: actual string data (UTF-8 encoded, padded to 32-byte boundary)
+
+        let cleanData = data.stripHexPrefix()
+
+        // Read the offset (first 32 bytes)
+        guard cleanData.count >= 64 else {
+            throw AbiEncodingError.insufficientData
+        }
+
+        let offsetHex = String(cleanData.prefix(64))
+        guard let dataOffset = UInt64(offsetHex, radix: 16) else {
+            throw AbiEncodingError.invalidHexString
+        }
+
+        // Read the length at the offset position
+        let lengthStart = Int(dataOffset) * 2 // Convert bytes to hex chars
+        guard cleanData.count >= lengthStart + 64 else {
+            throw AbiEncodingError.insufficientData
+        }
+
+        let lengthStartIndex = cleanData.index(cleanData.startIndex, offsetBy: lengthStart)
+        let lengthEndIndex = cleanData.index(lengthStartIndex, offsetBy: 64)
+        let lengthHex = String(cleanData[lengthStartIndex..<lengthEndIndex])
+
+        guard let length = UInt64(lengthHex, radix: 16) else {
+            throw AbiEncodingError.invalidHexString
+        }
+
+        // Read the actual string data
+        let dataStart = lengthStart + 64
+        let dataLength = Int(length) * 2 // Convert bytes to hex chars
+
+        guard cleanData.count >= dataStart + dataLength else {
+            throw AbiEncodingError.insufficientData
+        }
+
+        let dataStartIndex = cleanData.index(cleanData.startIndex, offsetBy: dataStart)
+        let dataEndIndex = cleanData.index(dataStartIndex, offsetBy: dataLength)
+        let stringHex = String(cleanData[dataStartIndex..<dataEndIndex])
+
+        // Convert hex to bytes and then to string
+        let stringData = Data(hex: stringHex)
+        guard let result = String(data: stringData, encoding: .utf8) else {
+            throw AbiEncodingError.decodingFailed("Failed to decode string from UTF-8")
+        }
+
+        return result
     }
 
     private func decodeDynamicBytes(_ data: String, offset: Int) throws -> Data {
-        // Dynamic type decoding is complex - simplified implementation
-        throw AbiEncodingError.unsupportedType("dynamic bytes decoding")
+        // Similar to string decoding but without UTF-8 conversion
+        let cleanData = data.stripHexPrefix()
+
+        // Read the offset (first 32 bytes)
+        guard cleanData.count >= 64 else {
+            throw AbiEncodingError.insufficientData
+        }
+
+        let offsetHex = String(cleanData.prefix(64))
+        guard let dataOffset = UInt64(offsetHex, radix: 16) else {
+            throw AbiEncodingError.invalidHexString
+        }
+
+        // Read the length at the offset position
+        let lengthStart = Int(dataOffset) * 2
+        guard cleanData.count >= lengthStart + 64 else {
+            throw AbiEncodingError.insufficientData
+        }
+
+        let lengthStartIndex = cleanData.index(cleanData.startIndex, offsetBy: lengthStart)
+        let lengthEndIndex = cleanData.index(lengthStartIndex, offsetBy: 64)
+        let lengthHex = String(cleanData[lengthStartIndex..<lengthEndIndex])
+
+        guard let length = UInt64(lengthHex, radix: 16) else {
+            throw AbiEncodingError.invalidHexString
+        }
+
+        // Read the actual bytes data
+        let dataStart = lengthStart + 64
+        let dataLength = Int(length) * 2
+
+        guard cleanData.count >= dataStart + dataLength else {
+            throw AbiEncodingError.insufficientData
+        }
+
+        let dataStartIndex = cleanData.index(cleanData.startIndex, offsetBy: dataStart)
+        let dataEndIndex = cleanData.index(dataStartIndex, offsetBy: dataLength)
+        let bytesHex = String(cleanData[dataStartIndex..<dataEndIndex])
+
+        return Data(hex: bytesHex)
     }
 
     // MARK: - Utility Functions

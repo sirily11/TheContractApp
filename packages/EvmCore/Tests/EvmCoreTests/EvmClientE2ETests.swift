@@ -760,10 +760,8 @@ struct EvmClientE2ETests {
         #expect(pendingTx.txHash.hasPrefix("0x"))
 
         // Wait and verify
-        try await Task.sleep(nanoseconds: 1_000_000_000)
-        let receipt = try await testClient.getTransactionReceipt(pendingTx.txHash)
-        #expect(receipt != nil)
-        #expect(receipt?.isSuccessful == true)
+        let receipt = try await pendingTx.wait()
+        #expect(receipt.isSuccessful == true)
 
         print("PrivateKeySigner transaction test completed successfully")
     }

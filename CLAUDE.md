@@ -37,6 +37,10 @@ swift test --package-path packages/EvmCore --filter EvmClientE2ETests
 
 # Run specific test method
 swift test --package-path packages/EvmCore --filter EvmClientE2ETests.testBlockNumber
+
+# EvmCore package test coverage
+cd packages/EvmCore && make coverage          # Run tests with coverage and show summary
+cd packages/EvmCore && make coverage-html     # Generate interactive HTML coverage report
 ```
 
 ### Running the App
