@@ -327,6 +327,11 @@ final class WalletSignerViewModel {
         return queuedTx
     }
 
+    func queueTransaction(tx: QueuedTransaction) {
+        currentShowingTransactions.append(tx)
+        transactionEventSubject.send(.queued(tx))
+    }
+
     /// Process an approved transaction (called after user approves via UI)
     /// - Parameters:
     ///   - queuedTransaction: The queued transaction to process
@@ -394,7 +399,7 @@ final class WalletSignerViewModel {
         let remaining = minimumProcessingDuration - elapsed
 
         if remaining > 0 {
-            try? await Task.sleep(nanoseconds: UInt64(remaining * 1_000_000_000))
+            try? await Task.sleep(nanoseconds: UInt64(remaining * 1000000000))
         }
     }
 }

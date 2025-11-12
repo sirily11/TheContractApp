@@ -80,7 +80,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "237"
             endingLineNumber = "237"
-            landmarkName = "sendTransaction(to:value:gasLimit:endpoint:)"
+            landmarkName = "estimateGasForTransaction(_:endpoint:)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>

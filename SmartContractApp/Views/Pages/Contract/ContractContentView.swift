@@ -18,6 +18,14 @@ struct ContractContentView: View {
     @State private var showingDeleteAlert = false
     @State private var contractToDelete: EVMContract?
 
+    // Deployment sheets
+    @State private var showingSolidityDeploymentSheet = false
+    @State private var showingBytecodeDeploymentSheet = false
+    @State private var soliditySourceCode = ""
+    @State private var solidityContractName = ""
+    @State private var bytecodeData = ""
+    @State private var bytecodeContractName = ""
+
     var body: some View {
         List(contracts, selection: $selectedContract) { contract in
             NavigationLink(value: contract) {
@@ -51,15 +59,11 @@ struct ContractContentView: View {
             #endif
         }
         .sheet(isPresented: $showingCreateSheet) {
-            NavigationStack {
-                ContractFormView()
-            }
+            ContractFormView()
         }
         .sheet(isPresented: $showingEditSheet) {
             if let contract = selectedContract {
-                NavigationStack {
-                    ContractFormView(contract: contract)
-                }
+                ContractFormView(contract: contract)
             } else {
                 Text("No contract selected")
             }
@@ -80,18 +84,77 @@ struct ContractContentView: View {
                 )
             }
         }
+        .sheet(isPresented: $showingSolidityDeploymentSheet) {
+            SolidityDeploymentSheet(
+                sourceCode: $soliditySourceCode,
+                contractName: $solidityContractName,
+                viewModel: createDeploymentViewModel(),
+                onDeploy: { contract in
+                    selectedContract = contract
+                }
+            )
+        }
+        .sheet(isPresented: $showingBytecodeDeploymentSheet) {
+            BytecodeDeploymentSheet(
+                bytecode: $bytecodeData,
+                contractName: $bytecodeContractName,
+                viewModel: createDeploymentViewModel(),
+                onDeploy: { contract in
+                    selectedContract = contract
+                }
+            )
+        }
     }
 
     private var contractCreationMenu: some View {
         Menu {
+            Menu("Deploy") {
+                Button {
+                    // Reset state and show Solidity deployment sheet
+                    soliditySourceCode = ""
+                    solidityContractName = ""
+                    showingSolidityDeploymentSheet = true
+                } label: {
+                    Label("Solidity", systemImage: "document")
+                }
+
+                Button {
+                    // Reset state and show Bytecode deployment sheet
+                    bytecodeData = ""
+                    bytecodeContractName = ""
+                    showingBytecodeDeploymentSheet = true
+                } label: {
+                    Label("Bytecode", systemImage: "doc.text")
+                }
+            }
+
             Button(action: {
                 showingCreateSheet = true
             }) {
-                Label("Create New Contract", systemImage: "plus.square")
+                Label("Import Existing Contract", systemImage: "plus.square")
             }
+
         } label: {
             Image(systemName: "plus")
         }
+    }
+
+    private func createDeploymentViewModel() -> ContractDeploymentViewModel {
+        // Fetch the first available wallet from the model context
+        // In a real app, this would use the currently selected wallet
+        let fetchDescriptor = FetchDescriptor<EVMWallet>()
+        let wallets = (try? modelContext.fetch(fetchDescriptor)) ?? []
+        let currentWallet = wallets.first
+
+        let walletSigner = WalletSignerViewModel(
+            modelContext: modelContext,
+            currentWallet: currentWallet
+        )
+
+        return ContractDeploymentViewModel(
+            modelContext: modelContext,
+            walletSigner: walletSigner
+        )
     }
 
     private func deleteContract(_ contract: EVMContract) {
