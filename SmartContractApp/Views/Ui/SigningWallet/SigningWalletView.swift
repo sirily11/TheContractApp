@@ -61,9 +61,6 @@ struct SigningWalletView: View {
     var body: some View {
         NavigationStack(path: $navigationPath) {
             VStack(spacing: 0) {
-                NavigationLink(value: QueuedTransaction(to: "0x39fe33845f6d73aa725659ed622d15e842356efd", value: .ether(.init(float: 1)))) {
-                    Text("Navigate")
-                }
                 // Endpoint picker button (top right)
                 HStack {
                     Spacer()
@@ -104,6 +101,9 @@ struct SigningWalletView: View {
                 ReceiveView(
                     walletAddress: walletAddress
                 )
+            }
+            .navigationDestination(for: Transaction.self) { transaction in
+                TransactionDetailView(transaction: transaction)
             }
             .task {
                 await listenToTransactionEvents()

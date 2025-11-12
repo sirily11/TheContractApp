@@ -93,9 +93,6 @@ struct ContentView: View {
                 .padding()
             }
         }
-        .task {
-            await save()
-        }
         .toolbar {
             ToolbarItem(placement: .automatic) {
                 Button {
@@ -192,12 +189,6 @@ struct ContentView: View {
                 .offset(x: 8, y: -8)
             }
         }
-    }
-
-    func save() async {
-        let transaction = Transaction(blockHash: "1", type: .receive, from: "", to: "", value: "")
-        modelContext.insert(transaction)
-        try? modelContext.save()
     }
 }
 

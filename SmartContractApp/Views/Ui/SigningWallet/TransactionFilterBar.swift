@@ -51,6 +51,7 @@ struct TransactionFilterBar: View {
                 }
             }
             .padding(.horizontal)
+            .padding(.bottom, 10)
         }
     }
 }

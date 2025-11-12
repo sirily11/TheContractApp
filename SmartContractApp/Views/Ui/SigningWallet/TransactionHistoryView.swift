@@ -2,15 +2,14 @@
 //  TransactionHistoryView.swift
 //  SmartContractApp
 //
-//  Created by Claude on 11/10/25.
+//  Created by bard on 11/10/25.
 //
 
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 /// View displaying transaction history with filtering and pagination
 struct TransactionHistoryView: View {
-
     // MARK: - Properties
 
     @Query(sort: \Transaction.timestamp, order: .reverse)
@@ -30,6 +29,7 @@ struct TransactionHistoryView: View {
             // Transaction list
             if filteredTransactions.isEmpty {
                 emptyStateView
+                Spacer()
             } else {
                 transactionList
             }
@@ -54,11 +54,8 @@ struct TransactionHistoryView: View {
         #if os(iOS)
         .listStyle(.plain)
         #else
-        .listStyle(.inset)
+        .listStyle(.sidebar)
         #endif
-        .navigationDestination(for: Transaction.self) { transaction in
-            TransactionDetailView(transaction: transaction)
-        }
     }
 
     private var emptyStateView: some View {
@@ -155,7 +152,7 @@ struct TransactionHistoryView: View {
             walletAddress: "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb"
         )
 
-        transactions.forEach { transaction in
+        for transaction in transactions {
             context.insert(transaction)
         }
 

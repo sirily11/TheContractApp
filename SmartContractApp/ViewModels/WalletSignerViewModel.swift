@@ -41,6 +41,23 @@ final class WalletSignerViewModel {
         return currentShowingTransactions.count
     }
 
+    // MARK: - Transaction Processing State
+
+    /// Whether a transaction is currently being processed on-chain
+    var isProcessingTransaction = false
+
+    /// Error message from the last transaction attempt
+    var transactionError: String?
+
+    /// Result hash from the last successful transaction
+    var lastTransactionHash: String?
+
+    /// Timestamp when processing started (for minimum display duration)
+    private var processingStartTime: Date?
+
+    /// Minimum duration to show processing screen (in seconds)
+    private let minimumProcessingDuration: TimeInterval = 2.0
+
     // MARK: - WalletSigner Protocol
 
     var walletSigner: Signer {
@@ -183,6 +200,48 @@ final class WalletSignerViewModel {
         return gasEstimate
     }
 
+    /// Estimate gas for a queued transaction
+    /// - Parameters:
+    ///   - transaction: The queued transaction to estimate gas for
+    ///   - endpoint: RPC endpoint to use for estimation
+    /// - Returns: Estimated gas limit as a hex string
+    func estimateGasForTransaction(_ transaction: QueuedTransaction, endpoint: Endpoint) async throws -> String {
+        guard let endpointUrl = URL(string: endpoint.url) else {
+            throw WalletSignerError.invalidEndpoint
+        }
+
+        let transport = HttpTransport(url: endpointUrl)
+        let client = EvmClient(transport: transport)
+
+        // Get sender address from current wallet
+        guard let wallet = currentWallet else {
+            throw WalletSignerError.noWalletSelected
+        }
+
+        // Create transaction params for gas estimation
+        var params = TransactionParams(
+            from: wallet.address,
+            to: transaction.to,
+            value: transaction.value
+        )
+
+        // Include data if present (for contract calls)
+        if let data = transaction.data, !data.isEmpty {
+            params = TransactionParams(
+                from: wallet.address,
+                to: transaction.to,
+                value: transaction.value,
+                data: data
+            )
+        }
+
+        // Estimate gas for the transaction
+        let gasEstimate = try await client.estimateGas(params: params)
+
+        // Return as hex string
+        return "0x" + String(gasEstimate, radix: 16)
+    }
+
     /// Create and send a transaction
     /// - Parameters:
     ///   - to: Recipient address
@@ -217,11 +276,11 @@ final class WalletSignerViewModel {
         )
 
         // Send the transaction
-        let txHash = try await signerClient.sendTransaction(params: params)
+        let pendingTransaction = try await signerClient.signAndSendTransaction(params: params)
 
         // Create a Transaction record
         let transaction = Transaction(
-            blockHash: txHash,
+            blockHash: pendingTransaction.txHash,
             type: .send,
             from: wallet.address,
             to: to,
@@ -232,12 +291,18 @@ final class WalletSignerViewModel {
         )
         modelContext.insert(transaction)
         try modelContext.save()
-        
-        
-        // wait
-        
 
-        return txHash
+        // wait
+        let result = try await pendingTransaction.wait()
+
+        if result.isSuccessful {
+            transaction.status = .success
+        } else {
+            transaction.status = .failed
+        }
+
+        try modelContext.save()
+        return pendingTransaction.txHash
     }
 
     /// Queue a transaction for approval before sending
@@ -268,27 +333,69 @@ final class WalletSignerViewModel {
     ///   - endpoint: RPC endpoint to use for sending
     /// - Returns: Transaction hash
     func processApprovedTransaction(_ queuedTransaction: QueuedTransaction, endpoint: Endpoint) async throws -> String {
-        let value = queuedTransaction.value
+        // Reset state and track start time
+        isProcessingTransaction = true
+        processingStartTime = Date()
+        transactionError = nil
+        lastTransactionHash = nil
 
-        // Use gas estimate if available, otherwise use default
-        let gasLimit: BigInt
-        if let gasEstimateStr = queuedTransaction.gasEstimate,
-           let gasEstimate = BigInt(gasEstimateStr)
-        {
-            gasLimit = gasEstimate
-        } else {
-            // Default gas limit for simple ETH transfer
-            gasLimit = BigInt(21000)
+        do {
+            let value = queuedTransaction.value
+
+            // Use gas estimate if available, otherwise use default
+            let gasLimit: BigInt
+            if let gasEstimateStr = queuedTransaction.gasEstimate,
+               let gasEstimate = BigInt(gasEstimateStr)
+            {
+                gasLimit = gasEstimate
+            } else {
+                // Default gas limit for simple ETH transfer
+                gasLimit = BigInt(21000)
+            }
+
+            let txHash = try await sendTransaction(
+                to: queuedTransaction.to,
+                value: value,
+                gasLimit: gasLimit,
+                endpoint: endpoint
+            )
+
+            // Ensure minimum display duration
+            await ensureMinimumProcessingDuration()
+
+            // Update state on success
+            lastTransactionHash = txHash
+            isProcessingTransaction = false
+
+            // Emit sent event
+            transactionEventSubject.send(.sent(txHash: txHash, transaction: queuedTransaction))
+
+            return txHash
+        } catch {
+            // Ensure minimum display duration even on error
+            await ensureMinimumProcessingDuration()
+
+            // Update state on failure
+            transactionError = error.localizedDescription
+            isProcessingTransaction = false
+
+            // Emit error event
+            transactionEventSubject.send(.error(error, transaction: queuedTransaction))
+
+            throw error
         }
+    }
 
-        let txHash = try await sendTransaction(
-            to: queuedTransaction.to,
-            value: value,
-            gasLimit: gasLimit,
-            endpoint: endpoint
-        )
+    /// Ensures the processing screen is shown for at least the minimum duration
+    private func ensureMinimumProcessingDuration() async {
+        guard let startTime = processingStartTime else { return }
 
-        return txHash
+        let elapsed = Date().timeIntervalSince(startTime)
+        let remaining = minimumProcessingDuration - elapsed
+
+        if remaining > 0 {
+            try? await Task.sleep(nanoseconds: UInt64(remaining * 1_000_000_000))
+        }
     }
 }
 

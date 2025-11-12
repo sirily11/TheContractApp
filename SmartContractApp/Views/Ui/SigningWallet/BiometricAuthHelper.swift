@@ -42,6 +42,25 @@ class BiometricAuthHelper {
         }
     }
 
+    /// Get the SF Symbol icon name for the available biometric type
+    /// - Returns: SF Symbol name for the biometric type
+    func biometricIconName() -> String {
+        guard isBiometricAvailable() else { return "lock.fill" }
+
+        switch context.biometryType {
+        case .faceID:
+            return "faceid"
+        case .touchID:
+            return "touchid"
+        case .opticID:
+            return "opticid"
+        case .none:
+            return "lock.fill"
+        @unknown default:
+            return "lock.fill"
+        }
+    }
+
     // MARK: - Authentication
 
     /// Authenticate the user with biometrics
