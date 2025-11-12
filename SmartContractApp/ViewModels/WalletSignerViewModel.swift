@@ -140,27 +140,13 @@ final class WalletSignerViewModel {
 
     // MARK: - Helper Methods
 
-    /// Approve a transaction and sign it
-    /// - Parameter transaction: The transaction to approve
-    func approveTransaction(_ transaction: QueuedTransaction) async throws {
-        guard currentWallet != nil else {
-            throw WalletSignerError.noWalletSelected
-        }
-
-        try modelContext.save()
-
-        // In a real implementation, this would:
-        // 1. Create the transaction object from QueuedTransaction data
-        // 2. Sign it using the wallet signer
-        // 3. Send it to the network
-        // 4. Create a Transaction record with the hash
-        // 5. Delete or mark the QueuedTransaction as processed
-    }
-
     /// Reject a transaction
     /// - Parameter transaction: The transaction to reject
     func rejectTransaction(_ transaction: QueuedTransaction) throws {
-        try modelContext.save()
+        // remove transaction from queue
+        if let index = currentShowingTransactions.firstIndex(where: { $0.id == transaction.id }) {
+            currentShowingTransactions.remove(at: index)
+        }
     }
 
     // MARK: - Transaction Sending
@@ -231,11 +217,11 @@ final class WalletSignerViewModel {
         )
 
         // Send the transaction
-        let txHash = try await client.sendTransaction(params: params)
+        let txHash = try await signerClient.sendTransaction(params: params)
 
         // Create a Transaction record
         let transaction = Transaction(
-            hash: txHash,
+            blockHash: txHash,
             type: .send,
             from: wallet.address,
             to: to,
@@ -246,6 +232,10 @@ final class WalletSignerViewModel {
         )
         modelContext.insert(transaction)
         try modelContext.save()
+        
+        
+        // wait
+        
 
         return txHash
     }

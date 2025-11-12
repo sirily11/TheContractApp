@@ -9,25 +9,25 @@ import Foundation
 import SwiftData
 
 enum TransactionType: String, CaseIterable, Codable {
-    case send = "send"
-    case receive = "receive"
-    case contractCall = "contractCall"
+    case send
+    case receive
+    case contractCall
 }
 
 enum TransactionStatus: String, CaseIterable, Codable {
-    case success = "success"
-    case pending = "pending"
-    case failed = "failed"
+    case success
+    case pending
+    case failed
 }
 
 @Model
 final class Transaction {
     var id: UUID
-    var hash: String
+    var blockHash: String
     var type: TransactionType
     var from: String
     var to: String
-    var value: String  // in Wei as String to handle large numbers
+    var value: String // in Wei as String to handle large numbers
     var timestamp: Date
     var status: TransactionStatus
     var blockNumber: Int?
@@ -36,7 +36,7 @@ final class Transaction {
 
     // Contract call details (optional)
     var contractFunctionName: String?
-    var contractParameters: Data?  // JSON encoded [TransactionParameter]
+    var contractParameters: Data? // JSON encoded [TransactionParameter]
     var contractAbiData: String?
 
     // Relationships
@@ -44,7 +44,7 @@ final class Transaction {
 
     init(
         id: UUID = UUID(),
-        hash: String,
+        blockHash: String,
         type: TransactionType,
         from: String,
         to: String,
@@ -60,7 +60,7 @@ final class Transaction {
         wallet: EVMWallet? = nil
     ) {
         self.id = id
-        self.hash = hash
+        self.blockHash = blockHash
         self.type = type
         self.from = from
         self.to = to
@@ -86,7 +86,7 @@ final class Transaction {
 
     /// Sets contract parameters by encoding them to JSON
     func setContractParameters(_ parameters: [TransactionParameter]) throws {
-        self.contractParameters = try JSONEncoder().encode(parameters)
+        contractParameters = try JSONEncoder().encode(parameters)
     }
 
     /// Returns true if this is a contract interaction
@@ -101,12 +101,12 @@ extension Transaction {
     /// Sample ETH transfer (sent)
     static var sampleSent: Transaction {
         Transaction(
-            hash: "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+            blockHash: "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
             type: .send,
             from: "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb",
             to: "0x1234567890abcdef1234567890abcdef12345678",
-            value: "1000000000000000000",  // 1 ETH
-            timestamp: Date().addingTimeInterval(-3600),  // 1 hour ago
+            value: "1000000000000000000", // 1 ETH
+            timestamp: Date().addingTimeInterval(-3600), // 1 hour ago
             status: .success,
             blockNumber: 18500000,
             gasUsed: "21000",
@@ -117,12 +117,12 @@ extension Transaction {
     /// Sample ETH transfer (received)
     static var sampleReceived: Transaction {
         Transaction(
-            hash: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+            blockHash: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
             type: .receive,
             from: "0x9876543210fedcba9876543210fedcba98765432",
             to: "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb",
-            value: "2500000000000000000",  // 2.5 ETH
-            timestamp: Date().addingTimeInterval(-7200),  // 2 hours ago
+            value: "2500000000000000000", // 2.5 ETH
+            timestamp: Date().addingTimeInterval(-7200), // 2 hours ago
             status: .success,
             blockNumber: 18499500,
             gasUsed: "21000",
@@ -136,12 +136,12 @@ extension Transaction {
         let paramsData = try? JSONEncoder().encode(params)
 
         return Transaction(
-            hash: "0xfedcba0987654321fedcba0987654321fedcba0987654321fedcba0987654321",
+            blockHash: "0xfedcba0987654321fedcba0987654321fedcba0987654321fedcba0987654321",
             type: .contractCall,
             from: "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb",
-            to: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",  // USDC contract
+            to: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", // USDC contract
             value: "0",
-            timestamp: Date().addingTimeInterval(-300),  // 5 minutes ago
+            timestamp: Date().addingTimeInterval(-300), // 5 minutes ago
             status: .success,
             blockNumber: 18501000,
             gasUsed: "65000",
@@ -155,12 +155,12 @@ extension Transaction {
     /// Sample pending transaction
     static var samplePending: Transaction {
         Transaction(
-            hash: "0x9999999999999999999999999999999999999999999999999999999999999999",
+            blockHash: "0x9999999999999999999999999999999999999999999999999999999999999999",
             type: .send,
             from: "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb",
             to: "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd",
-            value: "500000000000000000",  // 0.5 ETH
-            timestamp: Date().addingTimeInterval(-60),  // 1 minute ago
+            value: "500000000000000000", // 0.5 ETH
+            timestamp: Date().addingTimeInterval(-60), // 1 minute ago
             status: .pending,
             gasPrice: "40000000000"
         )
@@ -169,12 +169,12 @@ extension Transaction {
     /// Sample failed transaction
     static var sampleFailed: Transaction {
         Transaction(
-            hash: "0x0000000000000000000000000000000000000000000000000000000000000000",
+            blockHash: "0x0000000000000000000000000000000000000000000000000000000000000000",
             type: .send,
             from: "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb",
             to: "0x1111111111111111111111111111111111111111",
-            value: "100000000000000000",  // 0.1 ETH
-            timestamp: Date().addingTimeInterval(-86400),  // 1 day ago
+            value: "100000000000000000", // 0.1 ETH
+            timestamp: Date().addingTimeInterval(-86400), // 1 day ago
             status: .failed,
             blockNumber: 18495000,
             gasUsed: "21000",
@@ -188,12 +188,12 @@ extension Transaction {
         let paramsData = try? JSONEncoder().encode(params)
 
         return Transaction(
-            hash: "0xaabbccddaabbccddaabbccddaabbccddaabbccddaabbccddaabbccddaabbccdd",
+            blockHash: "0xaabbccddaabbccddaabbccddaabbccddaabbccddaabbccddaabbccddaabbccdd",
             type: .contractCall,
             from: "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb",
-            to: "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",  // Uniswap V2 Router
-            value: "2000000000000000000",  // 2 ETH
-            timestamp: Date().addingTimeInterval(-1800),  // 30 minutes ago
+            to: "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D", // Uniswap V2 Router
+            value: "2000000000000000000", // 2 ETH
+            timestamp: Date().addingTimeInterval(-1800), // 30 minutes ago
             status: .success,
             blockNumber: 18500500,
             gasUsed: "150000",

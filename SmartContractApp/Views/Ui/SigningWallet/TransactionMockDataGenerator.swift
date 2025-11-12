@@ -77,7 +77,7 @@ enum TransactionMockDataGenerator {
             let weiValue = String(format: "%.0f", ethValue * 1e18)
 
             let transaction = Transaction(
-                hash: randomHash(),
+                blockHash: randomHash(),
                 type: type,
                 from: from,
                 to: to,

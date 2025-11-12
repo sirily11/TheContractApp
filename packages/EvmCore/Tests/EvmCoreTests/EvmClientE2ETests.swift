@@ -607,17 +607,17 @@ struct EvmClientE2ETests {
 
         print("About to call signAndSendTransaction...")
         // Sign and send the transaction
-        let txHash = try await client.signAndSendTransaction(params: txParams)
-        print("Transaction hash: \(txHash)")
+        let pendingTx = try await client.signAndSendTransaction(params: txParams)
+        print("Transaction hash: \(pendingTx.txHash)")
 
-        #expect(txHash.hasPrefix("0x"))
-        #expect(txHash.count == 66)  // 0x + 64 hex chars
+        #expect(pendingTx.txHash.hasPrefix("0x"))
+        #expect(pendingTx.txHash.count == 66)  // 0x + 64 hex chars
 
         // Wait for transaction to be mined
         try await Task.sleep(nanoseconds: 1_000_000_000)  // 1 second
 
         // Verify the transaction was successful
-        let receipt = try await client.getTransactionReceipt(txHash)
+        let receipt = try await client.getTransactionReceipt(pendingTx.txHash)
         #expect(receipt != nil)
         #expect(receipt?.isSuccessful == true)
         #expect(receipt?.from.lowercased() == signer.address.value.lowercased())
@@ -649,7 +649,7 @@ struct EvmClientE2ETests {
         )
 
         // Sign the transaction (don't send it)
-        let signedTx = try await client.signTransaction(params: txParams)
+        let (signedTx, _) = try await client.signTransaction(params: txParams)
         print("Signed transaction: \(signedTx)")
 
         #expect(signedTx.hasPrefix("0x"))
@@ -692,7 +692,7 @@ struct EvmClientE2ETests {
         )
 
         // Sign the transaction (don't send it)
-        let signedTx = try await client.signTransaction(params: txParams)
+        let (signedTx, _) = try await client.signTransaction(params: txParams)
         print("Signed transaction: \(signedTx)")
 
         #expect(signedTx.hasPrefix("0x02"))  // EIP-1559 type 2 transaction
@@ -754,14 +754,14 @@ struct EvmClientE2ETests {
             value: .wei(.init(hex: "0x2710"))
         )
 
-        let txHash = try await testClient.signAndSendTransaction(params: txParams)
-        print("Transaction from test account: \(txHash)")
+        let pendingTx = try await testClient.signAndSendTransaction(params: txParams)
+        print("Transaction from test account: \(pendingTx.txHash)")
 
-        #expect(txHash.hasPrefix("0x"))
+        #expect(pendingTx.txHash.hasPrefix("0x"))
 
         // Wait and verify
         try await Task.sleep(nanoseconds: 1_000_000_000)
-        let receipt = try await testClient.getTransactionReceipt(txHash)
+        let receipt = try await testClient.getTransactionReceipt(pendingTx.txHash)
         #expect(receipt != nil)
         #expect(receipt?.isSuccessful == true)
 

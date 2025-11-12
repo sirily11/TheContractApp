@@ -93,6 +93,9 @@ struct ContentView: View {
                 .padding()
             }
         }
+        .task {
+            await save()
+        }
         .toolbar {
             ToolbarItem(placement: .automatic) {
                 Button {
@@ -114,45 +117,45 @@ struct ContentView: View {
             }
         }
         #endif
-            .onChange(of: selectedCategory) { _, _ in
-                // Clear all item selections when category changes
-                selectedEndpoint = nil
+        .onChange(of: selectedCategory) { _, _ in
+            // Clear all item selections when category changes
+            selectedEndpoint = nil
+            selectedAbi = nil
+            selectedContract = nil
+            selectedWallet = nil
+        }
+        .onChange(of: selectedEndpoint) { _, newValue in
+            // Clear other selections when endpoint is selected
+            if newValue != nil {
                 selectedAbi = nil
                 selectedContract = nil
                 selectedWallet = nil
             }
-            .onChange(of: selectedEndpoint) { _, newValue in
-                // Clear other selections when endpoint is selected
-                if newValue != nil {
-                    selectedAbi = nil
-                    selectedContract = nil
-                    selectedWallet = nil
-                }
+        }
+        .onChange(of: selectedAbi) { _, newValue in
+            // Clear other selections when ABI is selected
+            if newValue != nil {
+                selectedEndpoint = nil
+                selectedContract = nil
+                selectedWallet = nil
             }
-            .onChange(of: selectedAbi) { _, newValue in
-                // Clear other selections when ABI is selected
-                if newValue != nil {
-                    selectedEndpoint = nil
-                    selectedContract = nil
-                    selectedWallet = nil
-                }
+        }
+        .onChange(of: selectedContract) { _, newValue in
+            // Clear other selections when contract is selected
+            if newValue != nil {
+                selectedEndpoint = nil
+                selectedAbi = nil
+                selectedWallet = nil
             }
-            .onChange(of: selectedContract) { _, newValue in
-                // Clear other selections when contract is selected
-                if newValue != nil {
-                    selectedEndpoint = nil
-                    selectedAbi = nil
-                    selectedWallet = nil
-                }
+        }
+        .onChange(of: selectedWallet) { _, newValue in
+            // Clear other selections when wallet is selected
+            if newValue != nil {
+                selectedEndpoint = nil
+                selectedAbi = nil
+                selectedContract = nil
             }
-            .onChange(of: selectedWallet) { _, newValue in
-                // Clear other selections when wallet is selected
-                if newValue != nil {
-                    selectedEndpoint = nil
-                    selectedAbi = nil
-                    selectedContract = nil
-                }
-            }
+        }
     }
 
     // MARK: - Actions
@@ -189,6 +192,12 @@ struct ContentView: View {
                 .offset(x: 8, y: -8)
             }
         }
+    }
+
+    func save() async {
+        let transaction = Transaction(blockHash: "1", type: .receive, from: "", to: "", value: "")
+        modelContext.insert(transaction)
+        try? modelContext.save()
     }
 }
 

@@ -91,7 +91,7 @@ struct TransactionDetailView: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
 
-                Text(transaction.hash)
+                Text(transaction.blockHash)
                     .font(.system(.caption, design: .monospaced))
                     .textSelection(.enabled)
             }
@@ -294,7 +294,7 @@ struct TransactionDetailView: View {
     private func copyTransactionHash() {
         #if os(macOS)
         NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(transaction.hash, forType: .string)
+        NSPasteboard.general.setString(transaction.blockHash, forType: .string)
         #else
         UIPasteboard.general.string = transaction.hash
         #endif

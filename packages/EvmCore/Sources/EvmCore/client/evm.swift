@@ -1109,7 +1109,9 @@ public struct EvmClientWithSigner: EvmRpcClientProtocol {
     /// Signs a raw transaction and returns the signed transaction
     /// - Parameter params: The transaction parameters
     /// - Returns: The signed transaction as a hex string
-    public func signTransaction(params: TransactionParams) async throws -> String {
+    public func signTransaction(params: TransactionParams) async throws -> (
+        String, PendingTransaction
+    ) {
         // Get chain ID
         let chainId = try await self.chainId()
 
@@ -1307,16 +1309,32 @@ public struct EvmClientWithSigner: EvmRpcClientProtocol {
         var finalTx = Data([0x02])
         finalTx.append(encodedSignedTx)
 
+        // Calculate transaction hash (keccak256 of the signed transaction)
+        let txHash = "0x" + finalTx.sha3(.keccak256).map { String(format: "%02x", $0) }.joined()
+
         // Return as hex string
-        return "0x" + finalTx.map { String(format: "%02x", $0) }.joined()
+        return (
+            "0x" + finalTx.map { String(format: "%02x", $0) }.joined(),
+            PendingTransaction(
+                txHash: txHash,
+                from: signer.address.value,
+                to: params.to ?? "0x",
+                value: "0x" + String(value, radix: 16),
+                gas: "0x" + String(gasLimit, radix: 16),
+                gasPrice: "0x" + String(maxFeePerGas, radix: 16),
+                nonce: "0x" + String(nonce, radix: 16),
+                data: data,
+                client: self)
+        )
     }
 
     /// Signs a transaction and sends it to the network
     /// - Parameter params: The transaction parameters
     /// - Returns: The transaction hash
-    public func signAndSendTransaction(params: TransactionParams) async throws -> String {
+    public func signAndSendTransaction(params: TransactionParams) async throws -> PendingTransaction
+    {
         // Sign the transaction
-        let signedTx = try await signTransaction(params: params)
+        var (signedTx, pendingTx) = try await signTransaction(params: params)
 
         // Send the raw transaction
         let request = RpcRequest(
@@ -1329,6 +1347,7 @@ public struct EvmClientWithSigner: EvmRpcClientProtocol {
             throw TransactionError.invalidResponse("Expected transaction hash string")
         }
 
-        return txHash
+        pendingTx.txHash = txHash
+        return pendingTx
     }
 }
