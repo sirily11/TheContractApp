@@ -30,8 +30,8 @@ struct SignTransactionView: View {
     @State var estimatedGas: String?
     @State var gasEstimationError: String?
 
-    @AppStorage("selectedEndpointId") private var selectedEndpointId: Int = 0
-    @AppStorage("selectedWalletId") private var selectedWalletId: Int = 0
+    @AppStorage("selectedEndpointId") private var selectedEndpointIdString: String = ""
+    @AppStorage("selectedWalletId") private var selectedWalletIdString: String = ""
 
     @Query(sort: \Endpoint.name) private var endpoints: [Endpoint]
     @Query(sort: \EVMWallet.alias) private var wallets: [EVMWallet]
@@ -40,12 +40,26 @@ struct SignTransactionView: View {
 
     // MARK: - Computed Properties
 
+    private var selectedEndpointId: UUID? {
+        UUID(uuidString: selectedEndpointIdString)
+    }
+
+    private var selectedWalletId: UUID? {
+        UUID(uuidString: selectedWalletIdString)
+    }
+
     var selectedEndpoint: Endpoint? {
-        endpoints.first { $0.id == selectedEndpointId } ?? endpoints.first
+        if let id = selectedEndpointId {
+            return endpoints.first { $0.id == id }
+        }
+        return endpoints.first
     }
 
     var selectedWallet: EVMWallet? {
-        wallets.first { $0.id == selectedWalletId } ?? wallets.first
+        if let id = selectedWalletId {
+            return wallets.first { $0.id == id }
+        }
+        return wallets.first
     }
 
     // MARK: - Body

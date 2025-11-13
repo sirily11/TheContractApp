@@ -183,16 +183,16 @@ struct ContractContentView: View {
     let contract1 = EVMContract(
         name: "USDC",
         address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-        abiId: 1,
+        abiId: abi.id,
         status: .deployed,
-        endpointId: 1
+        endpointId: endpoint.id
     )
     let contract2 = EVMContract(
         name: "DAI",
         address: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
-        abiId: 1,
+        abiId: abi.id,
         status: .pending,
-        endpointId: 1
+        endpointId: endpoint.id
     )
 
     contract1.abi = abi

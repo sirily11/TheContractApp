@@ -73,7 +73,7 @@ struct TransactionFormatter {
     /// - Returns: Array of formatted parameter strings
     static func formatParameters(_ parameters: [TransactionParameter]) -> [String] {
         return parameters.map { param in
-            let value = param.type.lowercased().contains("address") ? truncateAddress(param.value) : param.value
+            let value = param.type.lowercased().contains("address") ? truncateAddress(param.value.toString()) : param.value.toString()
             return "\(param.name): \(param.type) = \(value)"
         }
     }

@@ -138,7 +138,6 @@ struct DeployableEvmContractTests {
             sourceCode: Self.simpleStorageSource,
             contractName: "SimpleStorage",
             abi: abiParser.items,
-            signer: signer,
             evmSigner: evmSigner,
             compiler: compiler
         )
@@ -147,21 +146,22 @@ struct DeployableEvmContractTests {
         let contract = try await deployableContract.deploy(
             constructorArgs: [],
             importCallback: nil,
-            value: Wei(bigInt: BigInt(0)),
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
             gasLimit: GasLimit(bigInt: BigInt(1_000_000)),
-            gasPrice: nil
+            gasPrice: nil as Gwei?
         )
 
         print("Contract deployed at: \(contract.address.value)")
 
         // Test the deployed contract
-        let value: BigInt = try await contract.callFunction(
+        let valueResult = try await contract.callFunction(
             name: "getValue",
             args: [],
-            value: Wei(bigInt: BigInt(0)),
-            gasLimit: nil,
-            gasPrice: nil
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
+            gasLimit: nil as GasLimit?,
+            gasPrice: nil as Gwei?
         )
+        let value = valueResult.result.value as! BigInt
 
         print("Initial value: \(value)")
         #expect(value == 0, "Initial value should be 0")
@@ -210,7 +210,6 @@ struct DeployableEvmContractTests {
         let deployableContract = DeployableEvmContract(
             bytecode: bytecodeHex,
             abi: abiParser.items,
-            signer: signer,
             evmSigner: evmSigner
         )
 
@@ -222,51 +221,55 @@ struct DeployableEvmContractTests {
                 AnyCodable(isActive)
             ],
             importCallback: nil,
-            value: Wei(bigInt: BigInt(0)),
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
             gasLimit: GasLimit(bigInt: BigInt(2_000_000)),
-            gasPrice: nil
+            gasPrice: nil as Gwei?
         )
 
         print("Contract deployed at: \(contract.address.value)")
 
         // Verify constructor parameters were set correctly
-        let storedOwner: String = try await contract.callFunction(
+        let storedOwnerResult = try await contract.callFunction(
             name: "getOwner",
             args: [],
-            value: Wei(bigInt: BigInt(0)),
-            gasLimit: nil,
-            gasPrice: nil
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
+            gasLimit: nil as GasLimit?,
+            gasPrice: nil as Gwei?
         )
+        let storedOwner = storedOwnerResult.result.value as! String
         print("Stored owner: \(storedOwner)")
         #expect(storedOwner.lowercased() == ownerAddress.lowercased(), "Owner should match")
 
-        let storedValue: BigInt = try await contract.callFunction(
+        let storedValueResult = try await contract.callFunction(
             name: "getInitialValue",
             args: [],
-            value: Wei(bigInt: BigInt(0)),
-            gasLimit: nil,
-            gasPrice: nil
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
+            gasLimit: nil as GasLimit?,
+            gasPrice: nil as Gwei?
         )
+        let storedValue = storedValueResult.result.value as! BigInt
         print("Stored value: \(storedValue)")
         #expect(storedValue == initialValue, "Initial value should match")
 
-        let storedName: String = try await contract.callFunction(
+        let storedNameResult = try await contract.callFunction(
             name: "getName",
             args: [],
-            value: Wei(bigInt: BigInt(0)),
-            gasLimit: nil,
-            gasPrice: nil
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
+            gasLimit: nil as GasLimit?,
+            gasPrice: nil as Gwei?
         )
+        let storedName = storedNameResult.result.value as! String
         print("Stored name: \(storedName)")
         #expect(storedName == name, "Name should match")
 
-        let storedIsActive: Bool = try await contract.callFunction(
+        let storedIsActiveResult = try await contract.callFunction(
             name: "getIsActive",
             args: [],
-            value: Wei(bigInt: BigInt(0)),
-            gasLimit: nil,
-            gasPrice: nil
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
+            gasLimit: nil as GasLimit?,
+            gasPrice: nil as Gwei?
         )
+        let storedIsActive = storedIsActiveResult.result.value as! Bool
         print("Stored isActive: \(storedIsActive)")
         #expect(storedIsActive == isActive, "IsActive should match")
 
@@ -317,7 +320,6 @@ struct DeployableEvmContractTests {
             sourceCode: Self.contractWithImport,
             contractName: "Counter",
             abi: abiParser.items,
-            signer: signer,
             evmSigner: evmSigner,
             compiler: compiler
         )
@@ -326,21 +328,22 @@ struct DeployableEvmContractTests {
         let contract = try await deployableContract.deploy(
             constructorArgs: [],
             importCallback: importCallback,
-            value: Wei(bigInt: BigInt(0)),
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
             gasLimit: GasLimit(bigInt: BigInt(1_500_000)),
-            gasPrice: nil
+            gasPrice: nil as Gwei?
         )
 
         print("Contract deployed at: \(contract.address.value)")
 
         // Test the deployed contract
-        let initialCount: BigInt = try await contract.callFunction(
+        let initialCountResult = try await contract.callFunction(
             name: "getCount",
             args: [],
-            value: Wei(bigInt: BigInt(0)),
-            gasLimit: nil,
-            gasPrice: nil
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
+            gasLimit: nil as GasLimit?,
+            gasPrice: nil as Gwei?
         )
+        let initialCount = initialCountResult.result.value as! BigInt
 
         print("Initial count: \(initialCount)")
         #expect(initialCount == 0, "Initial count should be 0")
@@ -404,28 +407,28 @@ struct DeployableEvmContractTests {
         let deployableContract = DeployableEvmContract(
             bytecode: bytecodeHex,
             abi: abiParser.items,
-            signer: signer,
             evmSigner: evmSigner
         )
 
         let contract = try await deployableContract.deploy(
             constructorArgs: [],
             importCallback: nil,
-            value: Wei(bigInt: deployValue),
+            value: TransactionValue(wei: Wei(bigInt: deployValue)),
             gasLimit: GasLimit(bigInt: BigInt(1_000_000)),
-            gasPrice: nil
+            gasPrice: nil as Gwei?
         )
 
         print("Contract deployed at: \(contract.address.value)")
 
         // Verify contract received the value
-        let contractBalance: BigInt = try await contract.callFunction(
+        let contractBalanceResult = try await contract.callFunction(
             name: "getBalance",
             args: [],
-            value: Wei(bigInt: BigInt(0)),
-            gasLimit: nil,
-            gasPrice: nil
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
+            gasLimit: nil as GasLimit?,
+            gasPrice: nil as Gwei?
         )
+        let contractBalance = contractBalanceResult.result.value as! BigInt
 
         print("Contract balance: \(contractBalance)")
         #expect(contractBalance == deployValue, "Contract should have received the deployment value")
@@ -449,7 +452,6 @@ struct DeployableEvmContractTests {
         let deployableContract = DeployableEvmContract(
             bytecode: "",
             abi: [],
-            signer: signer,
             evmSigner: evmSigner
         )
 
@@ -459,7 +461,7 @@ struct DeployableEvmContractTests {
             _ = try await deployableContract.deploy(
                 constructorArgs: [],
                 importCallback: nil,
-                value: Wei(bigInt: BigInt(0)),
+                value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
                 gasLimit: GasLimit(bigInt: BigInt(1_000_000)),
                 gasPrice: nil
             )
@@ -493,7 +495,6 @@ struct DeployableEvmContractTests {
         let deployableContract = DeployableEvmContract(
             bytecode: "0x6080604052",
             abi: abiParser.items,
-            signer: signer,
             evmSigner: evmSigner
         )
 
@@ -502,7 +503,7 @@ struct DeployableEvmContractTests {
             _ = try await deployableContract.deploy(
                 constructorArgs: [AnyCodable(BigInt(42))],
                 importCallback: nil,
-                value: Wei(bigInt: BigInt(0)),
+                value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
                 gasLimit: GasLimit(bigInt: BigInt(1_000_000)),
                 gasPrice: nil
             )
@@ -536,7 +537,6 @@ struct DeployableEvmContractTests {
         let deployableContract = DeployableEvmContract(
             bytecode: "0x6080604052",
             abi: abiParser.items,
-            signer: signer,
             evmSigner: evmSigner
         )
 
@@ -545,7 +545,7 @@ struct DeployableEvmContractTests {
             _ = try await deployableContract.deploy(
                 constructorArgs: [AnyCodable(BigInt(42))], // Only 1 arg, expects 2
                 importCallback: nil,
-                value: Wei(bigInt: BigInt(0)),
+                value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
                 gasLimit: GasLimit(bigInt: BigInt(1_000_000)),
                 gasPrice: nil
             )
@@ -576,7 +576,6 @@ struct DeployableEvmContractTests {
             sourceCode: invalidSource,
             contractName: "Invalid",
             abi: [],
-            signer: signer,
             evmSigner: evmSigner,
             compiler: compiler
         )
@@ -585,7 +584,7 @@ struct DeployableEvmContractTests {
             _ = try await deployableContract.deploy(
                 constructorArgs: [],
                 importCallback: nil,
-                value: Wei(bigInt: BigInt(0)),
+                value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
                 gasLimit: GasLimit(bigInt: BigInt(1_000_000)),
                 gasPrice: nil
             )
@@ -606,7 +605,6 @@ struct DeployableEvmContractTests {
             sourceCode: Self.simpleStorageSource,
             contractName: "NonExistentContract", // Wrong name
             abi: [],
-            signer: signer,
             evmSigner: evmSigner,
             compiler: compiler
         )
@@ -615,7 +613,7 @@ struct DeployableEvmContractTests {
             _ = try await deployableContract.deploy(
                 constructorArgs: [],
                 importCallback: nil,
-                value: Wei(bigInt: BigInt(0)),
+                value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
                 gasLimit: GasLimit(bigInt: BigInt(1_000_000)),
                 gasPrice: nil
             )

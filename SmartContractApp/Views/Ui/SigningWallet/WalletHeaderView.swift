@@ -14,7 +14,7 @@ struct WalletHeaderView: View {
     // MARK: - Properties
 
     let wallets: [EVMWallet]
-    @Binding var selectedWalletId: Int
+    @Binding var selectedWalletId: UUID
     let endpoint: Endpoint? // RPC endpoint for balance fetching
     let refreshInterval: TimeInterval // Balance refresh interval in seconds
 
@@ -131,7 +131,7 @@ struct WalletHeaderView: View {
             }
         }
         .padding()
-        .task(id: "\(selectedWalletId)-\(endpoint?.id ?? 0)") {
+        .task(id: "\(selectedWalletId.uuidString)-\(endpoint?.id.uuidString ?? "")") {
             // Cancel previous task when wallet or endpoint changes
             balanceTask?.cancel()
 
@@ -252,13 +252,11 @@ struct WalletHeaderView: View {
 // MARK: - Preview
 
 #Preview("With Balance") {
-    @Previewable @State var selectedId = 1
-    let wallets = [
-        EVMWallet(id: 1, alias: "Main Wallet", address: "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb", keychainPath: "preview1"),
-        EVMWallet(id: 2, alias: "Secondary", address: "0x1234567890abcdef1234567890abcdef12345678", keychainPath: "preview2")
-    ]
+    @Previewable @State var selectedId = UUID()
+    let wallet1 = EVMWallet(alias: "Main Wallet", address: "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb", keychainPath: "preview1")
+    let wallet2 = EVMWallet(alias: "Secondary", address: "0x1234567890abcdef1234567890abcdef12345678", keychainPath: "preview2")
+    let wallets = [wallet1, wallet2]
     let endpoint = Endpoint(
-        id: 1,
         name: "Mainnet",
         url: "https://eth.llamarpc.com",
         chainId: "1",
@@ -276,12 +274,10 @@ struct WalletHeaderView: View {
 }
 
 #Preview("Zero Balance") {
-    @Previewable @State var selectedId = 1
-    let wallets = [
-        EVMWallet(id: 1, alias: "Empty Wallet", address: "0x1234567890abcdef1234567890abcdef12345678", keychainPath: "preview1")
-    ]
+    @Previewable @State var selectedId = UUID()
+    let wallet = EVMWallet(alias: "Empty Wallet", address: "0x1234567890abcdef1234567890abcdef12345678", keychainPath: "preview1")
+    let wallets = [wallet]
     let endpoint = Endpoint(
-        id: 1,
         name: "Sepolia",
         url: "https://sepolia.gateway.tenderly.co",
         chainId: "11155111",
@@ -299,14 +295,12 @@ struct WalletHeaderView: View {
 }
 
 #Preview("Large Balance") {
-    @Previewable @State var selectedId = 1
-    let wallets = [
-        EVMWallet(id: 1, alias: "Whale Wallet", address: "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd", keychainPath: "preview1"),
-        EVMWallet(id: 2, alias: "Trading Wallet", address: "0x9876543210fedcba9876543210fedcba98765432", keychainPath: "preview2"),
-        EVMWallet(id: 3, alias: "Savings", address: "0x1111111111111111111111111111111111111111", keychainPath: "preview3")
-    ]
+    @Previewable @State var selectedId = UUID()
+    let wallet1 = EVMWallet(alias: "Whale Wallet", address: "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd", keychainPath: "preview1")
+    let wallet2 = EVMWallet(alias: "Trading Wallet", address: "0x9876543210fedcba9876543210fedcba98765432", keychainPath: "preview2")
+    let wallet3 = EVMWallet(alias: "Savings", address: "0x1111111111111111111111111111111111111111", keychainPath: "preview3")
+    let wallets = [wallet1, wallet2, wallet3]
     let endpoint = Endpoint(
-        id: 1,
         name: "Mainnet",
         url: "https://eth.llamarpc.com",
         chainId: "1",

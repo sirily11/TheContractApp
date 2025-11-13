@@ -8,23 +8,25 @@ public struct DeployableEvmContract: DeployableContract {
     public let contractName: String?
     public let bytecode: String?
     public let abi: [AbiItem]
-    public let signer: Signer
     public let evmSigner: EvmClientWithSigner
     public let compiler: SolidityCompiler?
+
+    /// Computed property that returns the signer from evmSigner
+    public var signer: Signer {
+        return evmSigner.signer
+    }
 
     /// Initialize with source code (will be compiled during deployment)
     /// - Parameters:
     ///   - sourceCode: Solidity source code
     ///   - contractName: Name of the contract to deploy (required for source compilation)
     ///   - abi: Contract ABI
-    ///   - signer: Signer for the deployment transaction
-    ///   - transport: Transport for RPC communication
+    ///   - evmSigner: EVM client with signer for the deployment transaction
     ///   - compiler: Solidity compiler instance for compiling source code
     public init(
         sourceCode: String,
         contractName: String,
         abi: [AbiItem],
-        signer: Signer,
         evmSigner: EvmClientWithSigner,
         compiler: SolidityCompiler
     ) {
@@ -32,7 +34,6 @@ public struct DeployableEvmContract: DeployableContract {
         self.contractName = contractName
         self.bytecode = nil
         self.abi = abi
-        self.signer = signer
         self.evmSigner = evmSigner
         self.compiler = compiler
     }
@@ -41,14 +42,12 @@ public struct DeployableEvmContract: DeployableContract {
     /// - Parameters:
     ///   - bytecode: Compiled contract bytecode (hex string)
     ///   - abi: Contract ABI
-    ///   - signer: Signer for the deployment transaction
-    ///   - transport: Transport for RPC communication
-    public init(bytecode: String, abi: [AbiItem], signer: Signer, evmSigner: EvmClientWithSigner) {
+    ///   - evmSigner: EVM client with signer for the deployment transaction
+    public init(bytecode: String, abi: [AbiItem], evmSigner: EvmClientWithSigner) {
         self.sourceCode = nil
         self.contractName = nil
         self.bytecode = bytecode
         self.abi = abi
-        self.signer = signer
         self.evmSigner = evmSigner
         self.compiler = nil
     }
@@ -64,10 +63,10 @@ public struct DeployableEvmContract: DeployableContract {
     public func deploy(
         constructorArgs: [AnyCodable],
         importCallback: ImportCallback?,
-        value: Wei,
+        value: TransactionValue,
         gasLimit: GasLimit?,
         gasPrice: Gwei?
-    ) async throws -> Contract {
+    ) async throws -> (Contract, String) {
         // Get the bytecode (either provided or compile from source)
         let deployBytecode: String
         if let bytecode = self.bytecode {
@@ -138,7 +137,7 @@ public struct DeployableEvmContract: DeployableContract {
                 gasPrice: gasPrice,
                 maxFeePerGas: nil,
                 maxPriorityFeePerGas: nil,
-                value: TransactionValue(wei: value),
+                value: value,
                 data: deployData,
                 nonce: nil
             )
@@ -153,12 +152,11 @@ public struct DeployableEvmContract: DeployableContract {
         let contractAddress = try Address(fromHexString: contractAddressHex)
 
         // Create and return deployed contract instance
-        return EvmContract(
+        return (EvmContract(
             address: contractAddress,
             abi: abi,
-            signer: signer,
             evmSigner: evmSigner
-        )
+        ), receipt.transactionHash)
     }
 
     /// Compile Solidity source code and extract the bytecode

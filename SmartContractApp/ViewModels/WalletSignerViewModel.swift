@@ -251,6 +251,47 @@ final class WalletSignerViewModel {
         return "0x" + String(gasEstimate, radix: 16)
     }
 
+    func removeTransactionFromQueue(tx: QueuedTransaction) {
+        currentShowingTransactions.removeAll { $0.id == tx.id }
+    }
+
+    func makeFunctionCall(tx: QueuedTransaction, endpoint: Endpoint) async throws -> (String, String?) {
+        guard let bytecode = tx.bytecode else {
+            throw WalletSignerError.missingBytecode
+        }
+
+        guard let abi = tx.abi else {
+            throw WalletSignerError.missingAbi
+        }
+
+        guard let endpointUrl = URL(string: endpoint.url) else {
+            throw WalletSignerError.invalidEndpoint
+        }
+
+        let transport = HttpTransport(url: endpointUrl)
+        let client = EvmClient(transport: transport)
+
+        // Get the signer
+        let signer = walletSigner
+
+        // Create client with signer
+        let signerClient = client.withSigner(signer: signer)
+
+        switch tx.contractFunctionName {
+        case .function(let name):
+
+            let contract = try EvmContract(address: .init(fromHexString: tx.to), abi: abi, evmSigner: signerClient)
+            let result = try await contract.callFunction(name: name, args: tx.contractParameters.map { $0.value }, value: tx.value)
+            return (result.transactionHash ?? "", nil)
+        case .constructor:
+            let contract = DeployableEvmContract(bytecode: bytecode, abi: abi, evmSigner: signerClient)
+            let (result, addr) = try await contract.deploy(constructorArgs: tx.contractParameters.map { $0.value }, importCallback: nil, value: tx.value, gasLimit: nil, gasPrice: nil)
+            return (addr, result.address.value)
+        case .none:
+            throw WalletSignerError.invalidTransactionData
+        }
+    }
+
     /// Create and send a transaction
     /// - Parameters:
     ///   - to: Recipient address
@@ -280,7 +321,7 @@ final class WalletSignerViewModel {
         let params = TransactionParams(
             from: wallet.address,
             to: to,
-            gas: "0x" + String(gasLimit, radix: 16),
+            gas: .init(hex: "0x" + String(gasLimit, radix: 16)),
             value: value,
         )
 
@@ -367,12 +408,20 @@ final class WalletSignerViewModel {
                 gasLimit = BigInt(21000)
             }
 
-            let txHash = try await sendTransaction(
-                to: queuedTransaction.to,
-                value: value,
-                gasLimit: gasLimit,
-                endpoint: endpoint
-            )
+            var txHash: String!
+            var contractAddr: String?
+            if queuedTransaction.isContractCall {
+                let (transactionHash, contractAddress) = try await makeFunctionCall(tx: queuedTransaction, endpoint: endpoint)
+                txHash = transactionHash
+                contractAddr = contractAddress
+            } else {
+                txHash = try await sendTransaction(
+                    to: queuedTransaction.to,
+                    value: value,
+                    gasLimit: gasLimit,
+                    endpoint: endpoint
+                )
+            }
 
             // Ensure minimum display duration
             await ensureMinimumProcessingDuration()
@@ -382,8 +431,14 @@ final class WalletSignerViewModel {
             isProcessingTransaction = false
 
             // Emit sent event
-            transactionEventSubject.send(.sent(txHash: txHash, transaction: queuedTransaction))
+            if let contractAddr {
+                transactionEventSubject.send(.contractCreated(txHash: txHash, contractAddress: contractAddr, transaction: queuedTransaction))
+            } else {
+                transactionEventSubject.send(.sent(txHash: txHash, transaction: queuedTransaction))
+            }
 
+            // remove queued transaction
+            removeTransactionFromQueue(tx: queuedTransaction)
             return txHash
         } catch {
             // Ensure minimum display duration even on error
@@ -421,6 +476,7 @@ enum TransactionEvent {
     case approved(QueuedTransaction)
     case rejected(QueuedTransaction)
     case sent(txHash: String, transaction: QueuedTransaction)
+    case contractCreated(txHash: String, contractAddress: String, transaction: QueuedTransaction)
     case cancelled(QueuedTransaction)
     case error(Error, transaction: QueuedTransaction?)
 }
@@ -433,6 +489,9 @@ enum WalletSignerError: LocalizedError {
     case signingFailed(Error)
     case invalidEndpoint
     case invalidTransactionData
+    case missingBytecode
+    case missingAbi
+    case invalidReceiverAddress
 
     var errorDescription: String? {
         switch self {
@@ -446,6 +505,12 @@ enum WalletSignerError: LocalizedError {
             return "Invalid RPC endpoint URL"
         case .invalidTransactionData:
             return "Invalid transaction data"
+        case .missingBytecode:
+            return "Transaction data does not contain a bytecode"
+        case .missingAbi:
+            return "Transaction data does not contain an ABI"
+        case .invalidReceiverAddress:
+            return "Transaction data does not contain a valid receiver address"
         }
     }
 }

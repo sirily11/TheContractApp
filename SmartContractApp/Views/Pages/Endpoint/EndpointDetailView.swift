@@ -269,7 +269,6 @@ struct EndpointDetailView: View {
     NavigationStack {
         EndpointDetailView(
             endpoint: Endpoint(
-                id: 1,
                 name: "Sample Endpoint",
                 url: "https://eth-mainnet.example.com",
                 chainId: "1"

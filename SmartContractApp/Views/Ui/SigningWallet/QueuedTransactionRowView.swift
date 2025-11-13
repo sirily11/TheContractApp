@@ -5,12 +5,11 @@
 //  Created by Claude on 11/10/25.
 //
 
-import SwiftUI
 import EvmCore
+import SwiftUI
 
 /// Row view for displaying a queued transaction awaiting signature
 struct QueuedTransactionRowView: View {
-
     // MARK: - Properties
 
     let transaction: QueuedTransaction
@@ -69,7 +68,7 @@ struct QueuedTransactionRowView: View {
 
     private var transactionTitle: String {
         if let functionName = transaction.contractFunctionName {
-            return functionName.capitalized
+            return functionName.toString().capitalized
         }
         return "Send ETH"
     }

@@ -5,12 +5,12 @@
 //  Created by Claude on 11/10/25.
 //
 
+import EvmCore
 import SwiftUI
 
 // MARK: - Contract Section Extension
 
 extension TransactionDetailView {
-
     /// Contract call details section
     @ViewBuilder
     var contractSection: some View {
@@ -108,45 +108,13 @@ extension TransactionDetailView {
             }
 
             // Parameter value
-            if parameter.type.lowercased().contains("address") {
-                // Address value (monospaced, selectable)
-                Text(parameter.value)
-                    .font(.system(.caption, design: .monospaced))
-                    .textSelection(.enabled)
-                    .padding(8)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.secondary.opacity(0.1))
-                    .cornerRadius(6)
-            } else if parameter.type.lowercased().contains("uint") ||
-                      parameter.type.lowercased().contains("int") {
-                // Numeric value
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(parameter.value)
-                        .font(.system(.body, design: .monospaced))
-                        .textSelection(.enabled)
-
-                    // If it looks like Wei, show ETH conversion
-                    if let decimal = Decimal(string: parameter.value),
-                       decimal > 1_000_000_000_000_000 {  // > 0.001 ETH
-                        Text("≈ \(TransactionFormatter.formatWeiToETH(parameter.value))")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
+            Text(parameter.value.toString())
+                .font(.system(.caption, design: .monospaced))
+                .textSelection(.enabled)
                 .padding(8)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Color.secondary.opacity(0.1))
                 .cornerRadius(6)
-            } else {
-                // Other types
-                Text(parameter.value)
-                    .font(.system(.caption, design: .monospaced))
-                    .textSelection(.enabled)
-                    .padding(8)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.secondary.opacity(0.1))
-                    .cornerRadius(6)
-            }
         }
     }
 

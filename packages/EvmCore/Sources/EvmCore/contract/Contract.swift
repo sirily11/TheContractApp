@@ -1,6 +1,19 @@
 import BigInt
 import Solidity
 
+/// Result of a contract function call
+public struct ContractCallResult: Codable {
+    /// The decoded result value from the function
+    public let result: AnyCodable
+    /// The transaction hash if a transaction was sent (nil for read-only calls)
+    public let transactionHash: String?
+
+    public init(result: AnyCodable, transactionHash: String? = nil) {
+        self.result = result
+        self.transactionHash = transactionHash
+    }
+}
+
 public protocol Contract {
     /**
     The address of the contract
@@ -39,12 +52,11 @@ public protocol Contract {
     - Parameter value: The value to send with the function
     - Parameter gasLimit: The gas limit to use for the function call
     - Parameter gasPrice: The gas price to use for the function call (in gwei)
-    - Returns: The result of the function call
+    - Returns: The result of the function call with optional transaction hash
     */
-    func callFunction<T>(
-        name: String, args: [AnyCodable], value: Wei, gasLimit: GasLimit?, gasPrice: Gwei?
-    ) async throws -> T
-    where T: Codable
+    func callFunction(
+        name: String, args: [AnyCodable], value: TransactionValue, gasLimit: GasLimit?, gasPrice: Gwei?
+    ) async throws -> ContractCallResult
 }
 
 /// Re-export Solidity module's import types for convenience
@@ -69,8 +81,7 @@ public protocol DeployableContract {
     The ABI of the contract
     */
     var abi: [AbiItem] { get }
-
-    var signer: Signer { get }
+    
     var evmSigner: EvmClientWithSigner { get }
 
     /**
@@ -80,11 +91,11 @@ public protocol DeployableContract {
     - Parameter value: The value to send with the deployment
     - Parameter gasLimit: The gas limit to use for the deployment
     - Parameter gasPrice: The gas price to use for the deployment (in gwei)
-    - Returns: The deployed contract
+    - Returns: The deployed contract and transaction hash
     */
     func deploy(
-        constructorArgs: [AnyCodable], importCallback: ImportCallback?, value: Wei,
+        constructorArgs: [AnyCodable], importCallback: ImportCallback?, value: TransactionValue,
         gasLimit: GasLimit?, gasPrice: Gwei?
     )
-        async throws -> Contract
+        async throws -> (Contract, String)
 }

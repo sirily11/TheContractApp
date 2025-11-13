@@ -11,7 +11,7 @@ import SwiftData
 
 @Model
 final class EVMWallet {
-    var id: Int
+    var id: UUID
     var alias: String
     var address: String
     /**
@@ -32,7 +32,7 @@ final class EVMWallet {
     @Relationship(deleteRule: .cascade, inverse: \Transaction.wallet)
     var transactions: [Transaction]?
 
-    init(id: Int = 0, alias: String, address: String, keychainPath: String,
+    init(id: UUID = UUID(), alias: String, address: String, keychainPath: String,
          isFromMnemonic: Bool = false, createdAt: Date = Date(), updatedAt: Date = Date())
     {
         self.id = id

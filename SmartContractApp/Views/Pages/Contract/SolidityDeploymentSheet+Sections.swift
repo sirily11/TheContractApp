@@ -10,7 +10,6 @@ import SwiftUI
 // MARK: - View Sections
 
 extension SolidityDeploymentSheet {
-
     // MARK: - Page 1: Form Review
 
     var formReviewPage: some View {
@@ -301,23 +300,6 @@ extension SolidityDeploymentSheet {
             .navigationBarTitleDisplayMode(.inline)
         #endif
             .navigationBarBackButtonHidden(true)
-            .toolbar {
-                #if os(iOS)
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Button("OK") {
-                            dismiss()
-                        }
-                        .buttonStyle(.borderedProminent)
-                    }
-                #else
-                    ToolbarItem(placement: .primaryAction) {
-                        Button("OK") {
-                            dismiss()
-                        }
-                        .buttonStyle(.borderedProminent)
-                    }
-                #endif
-            }
     }
 
     // MARK: - Form Field Views

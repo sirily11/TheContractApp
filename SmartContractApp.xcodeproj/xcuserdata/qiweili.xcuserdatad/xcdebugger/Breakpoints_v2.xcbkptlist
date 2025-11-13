@@ -71,31 +71,15 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
-            uuid = "35E0AA1C-0203-4970-94F4-62F062E0C502"
-            shouldBeEnabled = "No"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            filePath = "SmartContractApp/ViewModels/WalletSignerViewModel.swift"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "237"
-            endingLineNumber = "237"
-            landmarkName = "estimateGasForTransaction(_:endpoint:)"
-            landmarkType = "7">
-         </BreakpointContent>
-      </BreakpointProxy>
-      <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
-         <BreakpointContent
             uuid = "955AEAFE-08B1-4241-9574-7F27843B5553"
-            shouldBeEnabled = "Yes"
+            shouldBeEnabled = "No"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "SmartContractApp/Views/Pages/Contract/SolidityDeploymentSheet+Actions.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "91"
-            endingLineNumber = "91"
+            startingLineNumber = "92"
+            endingLineNumber = "92"
             landmarkName = "deployToNetwork()"
             landmarkType = "7">
          </BreakpointContent>
@@ -119,16 +103,16 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
-            uuid = "0C90C6A3-4C62-4238-BB94-E1482C9607CC"
-            shouldBeEnabled = "Yes"
+            uuid = "5481B6AB-596C-4342-8B20-B33A5A4DC9B0"
+            shouldBeEnabled = "No"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
-            filePath = "SmartContractApp/ViewModels/ContractDeploymentViewModel.swift"
+            filePath = "SmartContractApp/ViewModels/WalletSignerViewModel.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "420"
-            endingLineNumber = "420"
-            landmarkName = "deployBytecodeToNetwork(_:endpoint:)"
+            startingLineNumber = "413"
+            endingLineNumber = "413"
+            landmarkName = "processApprovedTransaction(_:endpoint:)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>

@@ -6,6 +6,7 @@
 //
 
 import Combine
+import EvmCore
 import SwiftData
 import SwiftUI
 
@@ -86,10 +87,16 @@ extension SolidityDeploymentSheet {
 
         Task {
             do {
+                // Parse the ABI for constructor parameters
+                let parser = try AbiParser(fromJsonString: results.abi)
+                let abiItems = parser.items
+
                 // Queue transaction for deployment (don't save to DB yet)
                 let queuedTx = try await viewModel.deployBytecodeToNetwork(
                     results.bytecode,
-                    endpoint: endpoint
+                    abi: abiItems,
+                    endpoint: endpoint,
+                    value: .ether(.init(bigInt: .zero))
                 )
 
                 // Store the transaction ID to track it
@@ -127,17 +134,13 @@ extension SolidityDeploymentSheet {
         guard let txId = queuedTransactionId else { return }
 
         switch event {
-        case .sent(let txHash, let transaction):
+        case .contractCreated(let txHash, let contractAddress, let transaction):
             // Check if this is our transaction
             guard transaction.id == txId else { return }
 
             // Transaction was successfully sent
             // Note: In a real implementation, we would wait for the transaction receipt
             // to get the contract address. For now, we'll use a placeholder approach.
-
-            // Extract contract address from transaction hash (simplified)
-            // In production, you should fetch the transaction receipt to get the actual contract address
-            let contractAddress = txHash // Placeholder - should be extracted from receipt
 
             // Now save to database with finalized state
             if let results = compilationResults,

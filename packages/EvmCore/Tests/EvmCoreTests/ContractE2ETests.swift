@@ -140,16 +140,15 @@ struct ContractE2ETests {
         let deployableContract = DeployableEvmContract(
             bytecode: bytecodeHex,
             abi: abiParser.items,
-            signer: signer,
             evmSigner: evmSigner
         )
 
         let contract = try await deployableContract.deploy(
             constructorArgs: [AnyCodable(initialValue)],
             importCallback: nil,
-            value: Wei(bigInt: BigInt(0)),
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
             gasLimit: GasLimit(bigInt: BigInt(3_000_000)),
-            gasPrice: nil
+            gasPrice: nil as Gwei?
         )
 
         print("Contract deployed at: \(contract.address.value)")
@@ -157,16 +156,18 @@ struct ContractE2ETests {
         // MARK: - Test Read-Only Function (getValue)
         print("\nTesting read-only function: getValue()")
 
-        let currentValue: BigInt = try await contract.callFunction(
+        let currentValueResult = try await contract.callFunction(
             name: "getValue",
             args: [],
-            value: Wei(bigInt: BigInt(0)),
-            gasLimit: nil,
-            gasPrice: nil
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
+            gasLimit: nil as GasLimit?,
+            gasPrice: nil as Gwei?
         )
+        let currentValue = currentValueResult.result.value as! BigInt
 
         print("Current value: \(currentValue)")
         #expect(currentValue == initialValue, "Initial value should be \(initialValue)")
+        #expect(currentValueResult.transactionHash == nil, "Read-only call should not have transaction hash")
 
         // MARK: - Test State-Changing Function (setValue)
         print("\nTesting state-changing function: setValue()")
@@ -174,24 +175,27 @@ struct ContractE2ETests {
         let newValue = BigInt(100)
 
         // Call writable function using callFunction
-        let setValueTxHash: String = try await contract.callFunction(
+        let setValueResult = try await contract.callFunction(
             name: "setValue",
             args: [AnyCodable(newValue)],
-            value: Wei(bigInt: BigInt(0)),
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
             gasLimit: GasLimit(bigInt: BigInt(100_000)),
-            gasPrice: nil
+            gasPrice: nil as Gwei?
         )
+        let setValueTxHash = setValueResult.result.value as! String
 
         print("Transaction sent and mined: \(setValueTxHash)")
+        #expect(setValueResult.transactionHash == setValueTxHash, "Transaction hash should match")
 
         // Verify value changed
-        let updatedValue: BigInt = try await contract.callFunction(
+        let updatedValueResult = try await contract.callFunction(
             name: "getValue",
             args: [],
-            value: Wei(bigInt: BigInt(0)),
-            gasLimit: nil,
-            gasPrice: nil
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
+            gasLimit: nil as GasLimit?,
+            gasPrice: nil as Gwei?
         )
+        let updatedValue = updatedValueResult.result.value as! BigInt
 
         print("Updated value: \(updatedValue)")
         #expect(updatedValue == newValue, "Value should be updated to \(newValue)")
@@ -200,24 +204,27 @@ struct ContractE2ETests {
         print("\nTesting state-changing function: increment()")
 
         // Call writable function using callFunction
-        let incrementTxHash: String = try await contract.callFunction(
+        let incrementResult = try await contract.callFunction(
             name: "increment",
             args: [],
-            value: Wei(bigInt: BigInt(0)),
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
             gasLimit: GasLimit(bigInt: BigInt(100_000)),
-            gasPrice: nil
+            gasPrice: nil as Gwei?
         )
+        let incrementTxHash = incrementResult.result.value as! String
 
         print("Transaction sent and mined: \(incrementTxHash)")
+        #expect(incrementResult.transactionHash != nil, "Write operation should have transaction hash")
 
         // Verify value incremented
-        let incrementedValue: BigInt = try await contract.callFunction(
+        let incrementedValueResult = try await contract.callFunction(
             name: "getValue",
             args: [],
-            value: Wei(bigInt: BigInt(0)),
-            gasLimit: nil,
-            gasPrice: nil
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
+            gasLimit: nil as GasLimit?,
+            gasPrice: nil as Gwei?
         )
+        let incrementedValue = incrementedValueResult.result.value as! BigInt
 
         print("Incremented value: \(incrementedValue)")
         #expect(incrementedValue == newValue + 1, "Value should be incremented to \(newValue + 1)")
@@ -228,36 +235,40 @@ struct ContractE2ETests {
         let depositAmount = Wei(bigInt: BigInt(1_000_000_000_000_000_000))  // 1 ETH in wei
 
         // Call payable writable function using callFunction
-        let depositTxHash: String = try await contract.callFunction(
+        let depositResult = try await contract.callFunction(
             name: "deposit",
             args: [],
-            value: depositAmount,
+            value: TransactionValue(wei: depositAmount),
             gasLimit: GasLimit(bigInt: BigInt(100_000)),
-            gasPrice: nil
+            gasPrice: nil as Gwei?
         )
+        let depositTxHash = depositResult.result.value as! String
 
         print("Deposit transaction sent and mined: \(depositTxHash)")
+        #expect(depositResult.transactionHash != nil, "Payable write should have transaction hash")
 
         // Verify balance updated
-        let balance: BigInt = try await contract.callFunction(
+        let balanceResult = try await contract.callFunction(
             name: "getBalance",
             args: [AnyCodable(signer.address.value)],
-            value: Wei(bigInt: BigInt(0)),
-            gasLimit: nil,
-            gasPrice: nil
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
+            gasLimit: nil as GasLimit?,
+            gasPrice: nil as Gwei?
         )
+        let balance = balanceResult.result.value as! BigInt
 
         print("Balance for \(signer.address.value): \(balance)")
         #expect(balance == depositAmount.value, "Balance should be \(depositAmount.value)")
 
         // Verify contract balance
-        let contractBalance: BigInt = try await contract.callFunction(
+        let contractBalanceResult = try await contract.callFunction(
             name: "getContractBalance",
             args: [],
-            value: Wei(bigInt: BigInt(0)),
-            gasLimit: nil,
-            gasPrice: nil
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
+            gasLimit: nil as GasLimit?,
+            gasPrice: nil as Gwei?
         )
+        let contractBalance = contractBalanceResult.result.value as! BigInt
 
         print("Contract balance: \(contractBalance)")
         #expect(contractBalance == depositAmount.value, "Contract balance should be \(depositAmount.value)")
@@ -269,50 +280,55 @@ struct ContractE2ETests {
         let depositForAmount = Wei(bigInt: BigInt(500_000_000_000_000_000))  // 0.5 ETH in wei
 
         // Call payable writable function with parameters using callFunction
-        let depositForTxHash: String = try await contract.callFunction(
+        let depositForResult = try await contract.callFunction(
             name: "depositFor",
             args: [AnyCodable(recipient)],
-            value: depositForAmount,
+            value: TransactionValue(wei: depositForAmount),
             gasLimit: GasLimit(bigInt: BigInt(100_000)),
-            gasPrice: nil
+            gasPrice: nil as Gwei?
         )
+        let depositForTxHash = depositForResult.result.value as! String
 
         print("DepositFor transaction sent and mined: \(depositForTxHash)")
+        #expect(depositForResult.transactionHash != nil, "Payable write with params should have transaction hash")
 
         // Verify recipient balance
-        let recipientBalance: BigInt = try await contract.callFunction(
+        let recipientBalanceResult = try await contract.callFunction(
             name: "getBalance",
             args: [AnyCodable(recipient)],
-            value: Wei(bigInt: BigInt(0)),
-            gasLimit: nil,
-            gasPrice: nil
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
+            gasLimit: nil as GasLimit?,
+            gasPrice: nil as Gwei?
         )
+        let recipientBalance = recipientBalanceResult.result.value as! BigInt
 
         print("Balance for recipient \(recipient): \(recipientBalance)")
         #expect(
             recipientBalance == depositForAmount.value, "Recipient balance should be \(depositForAmount.value)")
 
         // Verify total deposited
-        let totalDeposited: BigInt = try await contract.callFunction(
+        let totalDepositedResult = try await contract.callFunction(
             name: "getTotalDeposited",
             args: [],
-            value: Wei(bigInt: BigInt(0)),
-            gasLimit: nil,
-            gasPrice: nil
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
+            gasLimit: nil as GasLimit?,
+            gasPrice: nil as Gwei?
         )
+        let totalDeposited = totalDepositedResult.result.value as! BigInt
 
         let expectedTotal = depositAmount.value + depositForAmount.value
         print("Total deposited: \(totalDeposited)")
         #expect(totalDeposited == expectedTotal, "Total deposited should be \(expectedTotal)")
 
         // Verify final contract balance
-        let finalContractBalance: BigInt = try await contract.callFunction(
+        let finalContractBalanceResult = try await contract.callFunction(
             name: "getContractBalance",
             args: [],
-            value: Wei(bigInt: BigInt(0)),
-            gasLimit: nil,
-            gasPrice: nil
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
+            gasLimit: nil as GasLimit?,
+            gasPrice: nil as Gwei?
         )
+        let finalContractBalance = finalContractBalanceResult.result.value as! BigInt
 
         print("Final contract balance: \(finalContractBalance)")
         #expect(
@@ -375,28 +391,28 @@ struct ContractE2ETests {
         let deployableContract = DeployableEvmContract(
             bytecode: bytecodeHex,
             abi: abiParser.items,
-            signer: signer,
             evmSigner: evmSigner
         )
 
         let contract = try await deployableContract.deploy(
             constructorArgs: [],  // No constructor arguments
             importCallback: nil,
-            value: Wei(bigInt: BigInt(0)),
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
             gasLimit: GasLimit(bigInt: BigInt(1_000_000)),
-            gasPrice: nil
+            gasPrice: nil as Gwei?
         )
 
         print("Contract deployed at: \(contract.address.value)")
 
         // Test initial value
-        let initialValue: BigInt = try await contract.callFunction(
+        let initialValueResult = try await contract.callFunction(
             name: "getValue",
             args: [],
-            value: Wei(bigInt: BigInt(0)),
-            gasLimit: nil,
-            gasPrice: nil
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
+            gasLimit: nil as GasLimit?,
+            gasPrice: nil as Gwei?
         )
+        let initialValue = initialValueResult.result.value as! BigInt
 
         print("Initial value: \(initialValue)")
         #expect(initialValue == 0, "Initial value should be 0")

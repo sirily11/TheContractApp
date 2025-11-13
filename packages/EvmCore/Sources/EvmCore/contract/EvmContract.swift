@@ -5,8 +5,12 @@ import Foundation
 public struct EvmContract: Contract {
     public let address: Address
     public let abi: [AbiItem]
-    public let signer: Signer
     public let evmSigner: EvmClientWithSigner
+
+    /// Computed property that returns the signer from evmSigner
+    public var signer: Signer {
+        return evmSigner.signer
+    }
 
     /// Derived functions from the ABI
     public var functions: [AbiFunction] {
@@ -28,12 +32,10 @@ public struct EvmContract: Contract {
     /// - Parameters:
     ///   - address: The contract address
     ///   - abi: The contract ABI as an array of AbiItem
-    ///   - signer: The signer to use for signing transactions
-    ///   - transport: The transport to use for RPC communication
-    public init(address: Address, abi: [AbiItem], signer: Signer, evmSigner: EvmClientWithSigner) {
+    ///   - evmSigner: The EVM client with signer for signing transactions
+    public init(address: Address, abi: [AbiItem], evmSigner: EvmClientWithSigner) {
         self.address = address
         self.abi = abi
-        self.signer = signer
         self.evmSigner = evmSigner
     }
 
@@ -41,12 +43,11 @@ public struct EvmContract: Contract {
     /// - Parameters:
     ///   - address: The contract address
     ///   - abiParser: The ABI parser containing the contract ABI
-    ///   - signer: The signer to use for signing transactions
-    ///   - transport: The transport to use for RPC communication
+    ///   - evmSigner: The EVM client with signer for signing transactions
     public init(
-        address: Address, abiParser: AbiParser, signer: Signer, evmSigner: EvmClientWithSigner
+        address: Address, abiParser: AbiParser, evmSigner: EvmClientWithSigner
     ) {
-        self.init(address: address, abi: abiParser.items, signer: signer, evmSigner: evmSigner)
+        self.init(address: address, abi: abiParser.items, evmSigner: evmSigner)
     }
 
     /// Call a function on the contract
@@ -57,15 +58,15 @@ public struct EvmContract: Contract {
     ///   - value: The value to send with the call/transaction
     ///   - gasLimit: Optional gas limit for the call/transaction
     ///   - gasPrice: Optional gas price for the call/transaction (in gwei)
-    /// - Returns: The decoded result of the function call
+    /// - Returns: The decoded result with optional transaction hash
     /// - Throws: ContractError if the function is not found or the call fails
-    public func callFunction<T>(
+    public func callFunction(
         name: String,
         args: [AnyCodable],
-        value: Wei,
+        value: TransactionValue,
         gasLimit: GasLimit? = nil,
         gasPrice: Gwei? = nil
-    ) async throws -> T where T: Codable {
+    ) async throws -> ContractCallResult {
         // Find the function in the ABI
         let matchingFunctions = functions.filter { $0.name == name }
 
@@ -109,13 +110,13 @@ public struct EvmContract: Contract {
     }
 
     /// Private helper: Read data from a view/pure function using eth_call
-    private func read<T>(
+    private func read(
         function: AbiFunction,
         args: [AnyCodable],
-        value: Wei,
+        value: TransactionValue,
         gasLimit: GasLimit?,
         gasPrice: Gwei?
-    ) async throws -> T where T: Codable {
+    ) async throws -> ContractCallResult {
         // Encode the function call
         let callData: String
         do {
@@ -132,8 +133,8 @@ public struct EvmContract: Contract {
         ]
 
         // Add optional parameters
-        if value.value > 0 {
-            callParams["value"] = "0x" + String(value.value, radix: 16)
+        if value.toWei().value > 0 {
+            callParams["value"] = value.toHexString()
         }
         if let gasLimit = gasLimit {
             callParams["gasLimit"] = gasLimit.toHex()
@@ -164,22 +165,57 @@ public struct EvmContract: Contract {
             throw ContractError.invalidResponse("Expected string result")
         }
 
-        // Decode the result
+        // Decode the result based on ABI output types
         do {
-            return try function.decodeResult(data: resultData)
+            let decoded = try decodeAbiResult(function: function, data: resultData)
+            return ContractCallResult(result: AnyCodable(decoded), transactionHash: nil)
         } catch {
             throw ContractError.decodingFailed(error)
         }
     }
 
+    /// Decode ABI function result dynamically based on output types
+    private func decodeAbiResult(function: AbiFunction, data: String) throws -> Any {
+        // Handle functions with no outputs
+        guard !function.outputs.isEmpty else {
+            return ""
+        }
+
+        // Single output - decode based on type
+        if function.outputs.count == 1 {
+            let outputType = function.outputs[0].type
+
+            // Determine the concrete type to decode
+            if outputType.starts(with: "uint") || outputType.starts(with: "int") {
+                return try function.decodeResult(data: data) as BigInt
+            } else if outputType == "string" {
+                return try function.decodeResult(data: data) as String
+            } else if outputType == "bool" {
+                return try function.decodeResult(data: data) as Bool
+            } else if outputType == "address" {
+                return try function.decodeResult(data: data) as String
+            } else if outputType == "bytes" || outputType.starts(with: "bytes") {
+                return try function.decodeResult(data: data) as String
+            } else {
+                // For complex types, try as String
+                return try function.decodeResult(data: data) as String
+            }
+        }
+
+        // Multiple outputs - decode as array of AnyCodable
+        // For now, try to decode as an array of strings as a fallback
+        // A more complete implementation would decode each output based on its type
+        return try function.decodeResult(data: data) as [String]
+    }
+
     /// Private helper: Write data by sending a transaction for nonpayable/payable functions
-    private func write<T>(
+    private func write(
         function: AbiFunction,
         args: [AnyCodable],
-        value: Wei,
+        value: TransactionValue,
         gasLimit: GasLimit?,
         gasPrice: Gwei?
-    ) async throws -> T where T: Codable {
+    ) async throws -> ContractCallResult {
         // Encode the function call
         let callData: String
         do {
@@ -192,13 +228,13 @@ public struct EvmContract: Contract {
         // Send transaction
         let pendingTx = try await evmSigner.signAndSendTransaction(
             params: .init(
-                from: signer.address.value,
+                from: evmSigner.signer.address.value,
                 to: address.value,
                 gas: gasLimit,
                 gasPrice: gasPrice,
                 maxFeePerGas: nil,
                 maxPriorityFeePerGas: nil,
-                value: TransactionValue(wei: value),
+                value: value,
                 data: callData,
                 nonce: nil
             )
@@ -207,22 +243,13 @@ public struct EvmContract: Contract {
         // Wait for transaction receipt
         let receipt = try await pendingTx.wait()
 
-        // For write operations, if the function has outputs, we need to decode from logs
-        // For now, return a dummy value since write operations typically don't return data
-        // In the future, we could decode return data from transaction receipt
-        if function.outputs.isEmpty {
-            // No outputs expected, return unit type or similar
-            if T.self == String.self {
-                return receipt.transactionHash as! T
-            }
-            throw ContractError.invalidResponse("Write function completed but return type mismatch")
-        } else {
-            // Functions with outputs would need special handling
-            // For now, throw an error suggesting to use events instead
-            throw ContractError.invalidResponse(
-                "Write functions with return values are not yet supported. Use events to capture output."
-            )
-        }
+        // For write operations, return the transaction hash
+        // Note: Solidity functions don't return values from transactions, only from calls
+        // Transaction results must be read from events or by calling view functions after the transaction
+        return ContractCallResult(
+            result: AnyCodable(receipt.transactionHash),
+            transactionHash: receipt.transactionHash
+        )
     }
 
     /// Get a function by name

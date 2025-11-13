@@ -89,6 +89,16 @@ struct SolidityDeploymentSheet: View {
                     }
                 }
         }
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button {
+                    dismiss()
+                } label: {
+                    Text("Cancel")
+                }
+                .disabled(isProcessing || queuedTransactionId != nil)
+            }
+        }
         .frame(minWidth: 600)
         .interactiveDismissDisabled(isProcessing || queuedTransactionId != nil)
         .task {

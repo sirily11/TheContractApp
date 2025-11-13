@@ -22,10 +22,10 @@ enum ContractType: String, CaseIterable, Codable {
 
 @Model
 final class EVMContract {
-    var id: Int
+    var id: UUID
     var name: String
     var address: String
-    var abiId: Int?
+    var abiId: UUID?
     var status: DeploymentStatus
     var type: ContractType
     var contractCode: String?
@@ -33,17 +33,17 @@ final class EVMContract {
     var bytecode: String?
     var createdAt: Date
     var updatedAt: Date
-    var endpointId: Int
-    
+    var endpointId: UUID
+
     // Relationships
     @Relationship var abi: EvmAbi?
     @Relationship var endpoint: Endpoint?
-    
-    init(id: Int = 0, name: String, address: String, abiId: Int? = nil, 
+
+    init(id: UUID = UUID(), name: String, address: String, abiId: UUID? = nil,
          status: DeploymentStatus = .pending, type: ContractType = .import,
          contractCode: String? = nil, sourceCode: String? = nil,
          bytecode: String? = nil, createdAt: Date = Date(), updatedAt: Date = Date(),
-         endpointId: Int) {
+         endpointId: UUID) {
         self.id = id
         self.name = name
         self.address = address

@@ -15,8 +15,8 @@ struct ContractFormView: View {
     // Form state
     @State private var name: String = ""
     @State private var address: String = ""
-    @State private var selectedAbiId: Int?
-    @State private var selectedEndpointId: Int?
+    @State private var selectedAbiId: UUID?
+    @State private var selectedEndpointId: UUID?
     @State private var contractType: ContractType = .import
     @State private var sourceCode: String = ""
     @State private var bytecode: String = ""
@@ -118,9 +118,9 @@ struct ContractFormView: View {
                             .padding(.vertical, 4)
                         } else {
                             Picker("Select ABI", selection: $selectedAbiId) {
-                                Text("Select ABI...").tag(nil as Int?)
+                                Text("Select ABI...").tag(nil as UUID?)
                                 ForEach(abis, id: \.id) { abi in
-                                    Text(abi.name).tag(abi.id as Int?)
+                                    Text(abi.name).tag(abi.id as UUID?)
                                 }
                             }
                             .pickerStyle(.menu)
@@ -143,7 +143,7 @@ struct ContractFormView: View {
                             .padding(.vertical, 4)
                         } else {
                             Picker("Select Endpoint", selection: $selectedEndpointId) {
-                                Text("Select Endpoint...").tag(nil as Int?)
+                                Text("Select Endpoint...").tag(nil as UUID?)
                                 ForEach(endpoints, id: \.id) { endpoint in
                                     HStack {
                                         Text(endpoint.name)
@@ -151,7 +151,7 @@ struct ContractFormView: View {
                                             .font(.caption)
                                             .foregroundColor(.secondary)
                                     }
-                                    .tag(endpoint.id as Int?)
+                                    .tag(endpoint.id as UUID?)
                                 }
                             }
                             .pickerStyle(.menu)
@@ -540,9 +540,9 @@ struct ContractFormView: View {
     let contract = EVMContract(
         name: "USDC",
         address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-        abiId: 1,
+        abiId: abi.id,
         status: .deployed,
-        endpointId: 1
+        endpointId: endpoint.id
     )
     contract.abi = abi
     contract.endpoint = endpoint

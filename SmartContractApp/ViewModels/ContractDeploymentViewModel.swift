@@ -147,36 +147,22 @@ final class ContractDeploymentViewModel {
             throw error
         }
         
-        // Create ABI record
-        let evmAbi = EvmAbi(
-            name: "\(name) ABI",
-            abiContent: compilationResult.abi
-        )
-        modelContext.insert(evmAbi)
-        
-        // Create contract record with pending status
-        let contract = EVMContract(
-            name: name,
-            address: "", // Will be set after deployment
-            abiId: evmAbi.id,
-            status: .pending,
-            type: .solidity,
-            sourceCode: sourceCode,
-            bytecode: compilationResult.bytecode,
-            endpointId: endpoint.id
-        )
-        contract.abi = evmAbi
-        contract.endpoint = endpoint
-        modelContext.insert(contract)
-        
-        try modelContext.save()
-        
+        // NOTE: Do NOT save contract to database here - it will be saved in the
+        // event handler when deployment succeeds. This prevents duplicate contracts.
+
         // Deploy the bytecode
         isDeploying = true
         deploymentProgress = .preparingTransaction
+
+        // Parse the ABI for constructor parameters
+        let parser = try AbiParser(fromJsonString: compilationResult.abi)
+        let abiItems = parser.items
+
         try await deployBytecodeToNetwork(
             compilationResult.bytecode,
-            endpoint: endpoint
+            abi: abiItems,
+            endpoint: endpoint,
+            value: .ether(.init(bigInt: .zero))
         )
     }
     
@@ -206,29 +192,28 @@ final class ContractDeploymentViewModel {
         }
         
         try validateBytecode(bytecode)
-        
-        // Create contract record with pending status
-        let contract = EVMContract(
-            name: name,
-            address: "", // Will be set after deployment
-            abiId: abi?.id,
-            status: .pending,
-            type: .bytecode,
-            bytecode: bytecode,
-            endpointId: endpoint.id
-        )
-        contract.abi = abi
-        contract.endpoint = endpoint
-        modelContext.insert(contract)
-        
-        try modelContext.save()
-        
+
+        // NOTE: Do NOT save contract to database here - it will be saved in the
+        // event handler when deployment succeeds. This prevents duplicate contracts.
+
         // Deploy the bytecode
         isDeploying = true
         deploymentProgress = .preparingTransaction
+
+        // Parse the ABI if provided
+        let abiItems: [AbiItem]
+        if let abi = abi {
+            let parser = try AbiParser(fromJsonString: abi.abiContent)
+            abiItems = parser.items
+        } else {
+            abiItems = []
+        }
+
         try await deployBytecodeToNetwork(
             bytecode,
-            endpoint: endpoint
+            abi: abiItems,
+            endpoint: endpoint,
+            value: .ether(.init(bigInt: .zero))
         )
     }
     
@@ -401,7 +386,10 @@ final class ContractDeploymentViewModel {
     /// - Returns: The deployed contract address
     func deployBytecodeToNetwork(
         _ bytecode: String,
-        endpoint: Endpoint
+        abi: [AbiItem],
+        endpoint: Endpoint,
+        value: TransactionValue,
+        constructorParameters: [TransactionParameter] = [],
     ) async throws -> QueuedTransaction {
         // Update progress - Task 8.3: Display transaction progress
         deploymentProgress = .preparingTransaction
@@ -411,10 +399,14 @@ final class ContractDeploymentViewModel {
         // For contract deployment, 'to' is empty and value is 0
         let queuedTx = QueuedTransaction(
             to: "", // Empty for contract creation
-            value: .ether(.init(bigInt: .zero)), // "0" value for deployment
-            data: bytecode, // Bytecode as transaction data
+            value: value,
+            data: nil,
             gasEstimate: nil, // Will be estimated by wallet
-            status: .pending
+            contractFunctionName: .constructor,
+            contractParameters: constructorParameters,
+            status: .pending,
+            bytecode: bytecode,
+            abi: abi
         )
         
         walletSigner.queueTransaction(tx: queuedTx)
