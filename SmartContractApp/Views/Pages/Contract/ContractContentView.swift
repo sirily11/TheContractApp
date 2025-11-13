@@ -88,7 +88,6 @@ struct ContractContentView: View {
             SolidityDeploymentSheet(
                 sourceCode: $soliditySourceCode,
                 contractName: $solidityContractName,
-                viewModel: createDeploymentViewModel(),
                 onDeploy: { contract in
                     selectedContract = contract
                 }

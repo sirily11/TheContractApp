@@ -208,17 +208,17 @@ public struct CallParams: Codable {
 public struct TransactionParams: Codable {
     public let from: String
     public let to: String?
-    public let gas: String?
-    public let gasPrice: String?  // Legacy - ignored for EIP-1559 transactions
-    public let maxFeePerGas: String?  // EIP-1559
-    public let maxPriorityFeePerGas: String?  // EIP-1559
+    public let gas: GasLimit?
+    public let gasPrice: Gwei?  // Legacy - ignored for EIP-1559 transactions
+    public let maxFeePerGas: Gwei?  // EIP-1559
+    public let maxPriorityFeePerGas: Gwei?  // EIP-1559
     public let value: TransactionValue?
     public let data: String?
     public let nonce: String?
 
     public init(
-        from: String, to: String? = nil, gas: String? = nil, gasPrice: String? = nil,
-        maxFeePerGas: String? = nil, maxPriorityFeePerGas: String? = nil,
+        from: String, to: String? = nil, gas: GasLimit? = nil, gasPrice: Gwei? = nil,
+        maxFeePerGas: Gwei? = nil, maxPriorityFeePerGas: Gwei? = nil,
         value: TransactionValue? = nil, data: String? = nil, nonce: String? = nil
     ) {
         self.from = from
@@ -240,10 +240,10 @@ public struct TransactionParams: Codable {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(from, forKey: .from)
         try container.encodeIfPresent(to, forKey: .to)
-        try container.encodeIfPresent(gas, forKey: .gas)
-        try container.encodeIfPresent(gasPrice, forKey: .gasPrice)
-        try container.encodeIfPresent(maxFeePerGas, forKey: .maxFeePerGas)
-        try container.encodeIfPresent(maxPriorityFeePerGas, forKey: .maxPriorityFeePerGas)
+        try container.encodeIfPresent(gas?.toHex(), forKey: .gas)
+        try container.encodeIfPresent(gasPrice.map { "0x" + String($0.toWei().value, radix: 16) }, forKey: .gasPrice)
+        try container.encodeIfPresent(maxFeePerGas.map { "0x" + String($0.toWei().value, radix: 16) }, forKey: .maxFeePerGas)
+        try container.encodeIfPresent(maxPriorityFeePerGas.map { "0x" + String($0.toWei().value, radix: 16) }, forKey: .maxPriorityFeePerGas)
         try container.encodeIfPresent(value?.toHexString(), forKey: .value)
         try container.encodeIfPresent(data, forKey: .data)
         try container.encodeIfPresent(nonce, forKey: .nonce)

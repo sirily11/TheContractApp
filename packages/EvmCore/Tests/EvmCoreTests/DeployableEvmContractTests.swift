@@ -108,7 +108,9 @@ struct DeployableEvmContractTests {
     func testDeployFromSourceCodeNoConstructor() async throws {
         print("Setting up transport and signer...")
         let transport = try HttpTransport(urlString: Self.anvilUrl)
-        let signer = try AnvilSigner(addressString: AnvilAccounts.account0)
+        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey0)
+        let client = EvmClient(transport: transport)
+        let evmSigner = client.withSigner(signer: signer)
 
         print("Creating compiler...")
         let compiler = try await Solc.create(version: "0.8.21")
@@ -137,7 +139,7 @@ struct DeployableEvmContractTests {
             contractName: "SimpleStorage",
             abi: abiParser.items,
             signer: signer,
-            transport: transport,
+            evmSigner: evmSigner,
             compiler: compiler
         )
 
@@ -145,8 +147,8 @@ struct DeployableEvmContractTests {
         let contract = try await deployableContract.deploy(
             constructorArgs: [],
             importCallback: nil,
-            value: BigInt(0),
-            gasLimit: BigInt(1_000_000),
+            value: Wei(bigInt: BigInt(0)),
+            gasLimit: GasLimit(bigInt: BigInt(1_000_000)),
             gasPrice: nil
         )
 
@@ -156,9 +158,9 @@ struct DeployableEvmContractTests {
         let value: BigInt = try await contract.callFunction(
             name: "getValue",
             args: [],
-            value: BigInt(0),
-            gasLimit: nil as BigInt?,
-            gasPrice: nil as BigInt?
+            value: Wei(bigInt: BigInt(0)),
+            gasLimit: nil,
+            gasPrice: nil
         )
 
         print("Initial value: \(value)")
@@ -171,7 +173,9 @@ struct DeployableEvmContractTests {
     func testDeployWithMultipleParameterTypes() async throws {
         print("Setting up transport and signer...")
         let transport = try HttpTransport(urlString: Self.anvilUrl)
-        let signer = try AnvilSigner(addressString: AnvilAccounts.account0)
+        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey0)
+        let client = EvmClient(transport: transport)
+        let evmSigner = client.withSigner(signer: signer)
 
         print("Compiling contract...")
         let compiler = try await Solc.create(version: "0.8.21")
@@ -207,7 +211,7 @@ struct DeployableEvmContractTests {
             bytecode: bytecodeHex,
             abi: abiParser.items,
             signer: signer,
-            transport: transport
+            evmSigner: evmSigner
         )
 
         let contract = try await deployableContract.deploy(
@@ -218,8 +222,8 @@ struct DeployableEvmContractTests {
                 AnyCodable(isActive)
             ],
             importCallback: nil,
-            value: BigInt(0),
-            gasLimit: BigInt(2_000_000),
+            value: Wei(bigInt: BigInt(0)),
+            gasLimit: GasLimit(bigInt: BigInt(2_000_000)),
             gasPrice: nil
         )
 
@@ -229,9 +233,9 @@ struct DeployableEvmContractTests {
         let storedOwner: String = try await contract.callFunction(
             name: "getOwner",
             args: [],
-            value: BigInt(0),
-            gasLimit: nil as BigInt?,
-            gasPrice: nil as BigInt?
+            value: Wei(bigInt: BigInt(0)),
+            gasLimit: nil,
+            gasPrice: nil
         )
         print("Stored owner: \(storedOwner)")
         #expect(storedOwner.lowercased() == ownerAddress.lowercased(), "Owner should match")
@@ -239,9 +243,9 @@ struct DeployableEvmContractTests {
         let storedValue: BigInt = try await contract.callFunction(
             name: "getInitialValue",
             args: [],
-            value: BigInt(0),
-            gasLimit: nil as BigInt?,
-            gasPrice: nil as BigInt?
+            value: Wei(bigInt: BigInt(0)),
+            gasLimit: nil,
+            gasPrice: nil
         )
         print("Stored value: \(storedValue)")
         #expect(storedValue == initialValue, "Initial value should match")
@@ -249,9 +253,9 @@ struct DeployableEvmContractTests {
         let storedName: String = try await contract.callFunction(
             name: "getName",
             args: [],
-            value: BigInt(0),
-            gasLimit: nil as BigInt?,
-            gasPrice: nil as BigInt?
+            value: Wei(bigInt: BigInt(0)),
+            gasLimit: nil,
+            gasPrice: nil
         )
         print("Stored name: \(storedName)")
         #expect(storedName == name, "Name should match")
@@ -259,9 +263,9 @@ struct DeployableEvmContractTests {
         let storedIsActive: Bool = try await contract.callFunction(
             name: "getIsActive",
             args: [],
-            value: BigInt(0),
-            gasLimit: nil as BigInt?,
-            gasPrice: nil as BigInt?
+            value: Wei(bigInt: BigInt(0)),
+            gasLimit: nil,
+            gasPrice: nil
         )
         print("Stored isActive: \(storedIsActive)")
         #expect(storedIsActive == isActive, "IsActive should match")
@@ -273,7 +277,9 @@ struct DeployableEvmContractTests {
     func testDeployWithImportCallback() async throws {
         print("Setting up transport and signer...")
         let transport = try HttpTransport(urlString: Self.anvilUrl)
-        let signer = try AnvilSigner(addressString: AnvilAccounts.account0)
+        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey0)
+        let client = EvmClient(transport: transport)
+        let evmSigner = client.withSigner(signer: signer)
 
         print("Creating compiler...")
         let compiler = try await Solc.create(version: "0.8.21")
@@ -312,7 +318,7 @@ struct DeployableEvmContractTests {
             contractName: "Counter",
             abi: abiParser.items,
             signer: signer,
-            transport: transport,
+            evmSigner: evmSigner,
             compiler: compiler
         )
 
@@ -320,8 +326,8 @@ struct DeployableEvmContractTests {
         let contract = try await deployableContract.deploy(
             constructorArgs: [],
             importCallback: importCallback,
-            value: BigInt(0),
-            gasLimit: BigInt(1_500_000),
+            value: Wei(bigInt: BigInt(0)),
+            gasLimit: GasLimit(bigInt: BigInt(1_500_000)),
             gasPrice: nil
         )
 
@@ -331,9 +337,9 @@ struct DeployableEvmContractTests {
         let initialCount: BigInt = try await contract.callFunction(
             name: "getCount",
             args: [],
-            value: BigInt(0),
-            gasLimit: nil as BigInt?,
-            gasPrice: nil as BigInt?
+            value: Wei(bigInt: BigInt(0)),
+            gasLimit: nil,
+            gasPrice: nil
         )
 
         print("Initial count: \(initialCount)")
@@ -364,7 +370,9 @@ struct DeployableEvmContractTests {
 
         print("Setting up transport and signer...")
         let transport = try HttpTransport(urlString: Self.anvilUrl)
-        let signer = try AnvilSigner(addressString: AnvilAccounts.account0)
+        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey0)
+        let client = EvmClient(transport: transport)
+        let evmSigner = client.withSigner(signer: signer)
 
         print("Compiling contract...")
         let compiler = try await Solc.create(version: "0.8.21")
@@ -397,14 +405,14 @@ struct DeployableEvmContractTests {
             bytecode: bytecodeHex,
             abi: abiParser.items,
             signer: signer,
-            transport: transport
+            evmSigner: evmSigner
         )
 
         let contract = try await deployableContract.deploy(
             constructorArgs: [],
             importCallback: nil,
-            value: deployValue,
-            gasLimit: BigInt(1_000_000),
+            value: Wei(bigInt: deployValue),
+            gasLimit: GasLimit(bigInt: BigInt(1_000_000)),
             gasPrice: nil
         )
 
@@ -414,9 +422,9 @@ struct DeployableEvmContractTests {
         let contractBalance: BigInt = try await contract.callFunction(
             name: "getBalance",
             args: [],
-            value: BigInt(0),
-            gasLimit: nil as BigInt?,
-            gasPrice: nil as BigInt?
+            value: Wei(bigInt: BigInt(0)),
+            gasLimit: nil,
+            gasPrice: nil
         )
 
         print("Contract balance: \(contractBalance)")
@@ -434,13 +442,15 @@ struct DeployableEvmContractTests {
         // This test documents that empty bytecode doesn't throw at the contract level.
 
         let transport = try HttpTransport(urlString: Self.anvilUrl)
-        let signer = try AnvilSigner(addressString: AnvilAccounts.account0)
+        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey0)
+        let client = EvmClient(transport: transport)
+        let evmSigner = client.withSigner(signer: signer)
 
         let deployableContract = DeployableEvmContract(
             bytecode: "",
             abi: [],
             signer: signer,
-            transport: transport
+            evmSigner: evmSigner
         )
 
         // This will fail at the network level, not at validation level
@@ -449,8 +459,8 @@ struct DeployableEvmContractTests {
             _ = try await deployableContract.deploy(
                 constructorArgs: [],
                 importCallback: nil,
-                value: BigInt(0),
-                gasLimit: BigInt(1_000_000),
+                value: Wei(bigInt: BigInt(0)),
+                gasLimit: GasLimit(bigInt: BigInt(1_000_000)),
                 gasPrice: nil
             )
         }
@@ -461,7 +471,9 @@ struct DeployableEvmContractTests {
     @Test("Deploy fails when constructor not found in ABI")
     func testDeployFailsWhenConstructorNotFound() async throws {
         let transport = try HttpTransport(urlString: Self.anvilUrl)
-        let signer = try AnvilSigner(addressString: AnvilAccounts.account0)
+        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey0)
+        let client = EvmClient(transport: transport)
+        let evmSigner = client.withSigner(signer: signer)
 
         // Create ABI without constructor
         let abiJson = """
@@ -482,7 +494,7 @@ struct DeployableEvmContractTests {
             bytecode: "0x6080604052",
             abi: abiParser.items,
             signer: signer,
-            transport: transport
+            evmSigner: evmSigner
         )
 
         // Try to deploy with constructor args when there's no constructor in ABI
@@ -490,8 +502,8 @@ struct DeployableEvmContractTests {
             _ = try await deployableContract.deploy(
                 constructorArgs: [AnyCodable(BigInt(42))],
                 importCallback: nil,
-                value: BigInt(0),
-                gasLimit: BigInt(1_000_000),
+                value: Wei(bigInt: BigInt(0)),
+                gasLimit: GasLimit(bigInt: BigInt(1_000_000)),
                 gasPrice: nil
             )
         }
@@ -502,7 +514,9 @@ struct DeployableEvmContractTests {
     @Test("Deploy fails when constructor argument count mismatch")
     func testDeployFailsWithArgumentCountMismatch() async throws {
         let transport = try HttpTransport(urlString: Self.anvilUrl)
-        let signer = try AnvilSigner(addressString: AnvilAccounts.account0)
+        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey0)
+        let client = EvmClient(transport: transport)
+        let evmSigner = client.withSigner(signer: signer)
 
         // Create ABI with constructor that expects 2 arguments
         let abiJson = """
@@ -523,7 +537,7 @@ struct DeployableEvmContractTests {
             bytecode: "0x6080604052",
             abi: abiParser.items,
             signer: signer,
-            transport: transport
+            evmSigner: evmSigner
         )
 
         // Try to deploy with wrong number of arguments
@@ -531,8 +545,8 @@ struct DeployableEvmContractTests {
             _ = try await deployableContract.deploy(
                 constructorArgs: [AnyCodable(BigInt(42))], // Only 1 arg, expects 2
                 importCallback: nil,
-                value: BigInt(0),
-                gasLimit: BigInt(1_000_000),
+                value: Wei(bigInt: BigInt(0)),
+                gasLimit: GasLimit(bigInt: BigInt(1_000_000)),
                 gasPrice: nil
             )
         }
@@ -553,7 +567,9 @@ struct DeployableEvmContractTests {
             """
 
         let transport = try HttpTransport(urlString: Self.anvilUrl)
-        let signer = try AnvilSigner(addressString: AnvilAccounts.account0)
+        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey0)
+        let client = EvmClient(transport: transport)
+        let evmSigner = client.withSigner(signer: signer)
         let compiler = try await Solc.create(version: "0.8.21")
 
         let deployableContract = DeployableEvmContract(
@@ -561,7 +577,7 @@ struct DeployableEvmContractTests {
             contractName: "Invalid",
             abi: [],
             signer: signer,
-            transport: transport,
+            evmSigner: evmSigner,
             compiler: compiler
         )
 
@@ -569,8 +585,8 @@ struct DeployableEvmContractTests {
             _ = try await deployableContract.deploy(
                 constructorArgs: [],
                 importCallback: nil,
-                value: BigInt(0),
-                gasLimit: BigInt(1_000_000),
+                value: Wei(bigInt: BigInt(0)),
+                gasLimit: GasLimit(bigInt: BigInt(1_000_000)),
                 gasPrice: nil
             )
         }
@@ -581,7 +597,9 @@ struct DeployableEvmContractTests {
     @Test("Deploy fails when contract name not found in compilation output")
     func testDeployFailsWithWrongContractName() async throws {
         let transport = try HttpTransport(urlString: Self.anvilUrl)
-        let signer = try AnvilSigner(addressString: AnvilAccounts.account0)
+        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey0)
+        let client = EvmClient(transport: transport)
+        let evmSigner = client.withSigner(signer: signer)
         let compiler = try await Solc.create(version: "0.8.21")
 
         let deployableContract = DeployableEvmContract(
@@ -589,7 +607,7 @@ struct DeployableEvmContractTests {
             contractName: "NonExistentContract", // Wrong name
             abi: [],
             signer: signer,
-            transport: transport,
+            evmSigner: evmSigner,
             compiler: compiler
         )
 
@@ -597,8 +615,8 @@ struct DeployableEvmContractTests {
             _ = try await deployableContract.deploy(
                 constructorArgs: [],
                 importCallback: nil,
-                value: BigInt(0),
-                gasLimit: BigInt(1_000_000),
+                value: Wei(bigInt: BigInt(0)),
+                gasLimit: GasLimit(bigInt: BigInt(1_000_000)),
                 gasPrice: nil
             )
         }

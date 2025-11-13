@@ -164,7 +164,7 @@ struct EvmClientE2ETests {
     @Test("Get block by number with full transactions")
     func testGetBlockByNumberFullTx() async throws {
         let transport = try HttpTransport(urlString: Self.anvilUrl)
-        let signer = try AnvilSigner(addressString: AnvilAccounts.account0)
+        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey0)
         let client = EvmClient(transport: transport).withSigner(signer: signer)
 
         // Send a transaction first
@@ -239,7 +239,7 @@ struct EvmClientE2ETests {
     @Test("Send transaction and get transaction details")
     func testSendAndGetTransaction() async throws {
         let transport = try HttpTransport(urlString: Self.anvilUrl)
-        let signer = try AnvilSigner(addressString: AnvilAccounts.account0)
+        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey0)
         let client = EvmClient(transport: transport).withSigner(signer: signer)
 
         // Send a transaction
@@ -269,7 +269,7 @@ struct EvmClientE2ETests {
     @Test("Get transaction by block number and index")
     func testGetTransactionByBlockNumberAndIndex() async throws {
         let transport = try HttpTransport(urlString: Self.anvilUrl)
-        let signer = try AnvilSigner(addressString: AnvilAccounts.account0)
+        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey0)
         let client = EvmClient(transport: transport).withSigner(signer: signer)
 
         // Send a transaction
@@ -293,7 +293,7 @@ struct EvmClientE2ETests {
     @Test("Get transaction receipt")
     func testGetTransactionReceipt() async throws {
         let transport = try HttpTransport(urlString: Self.anvilUrl)
-        let signer = try AnvilSigner(addressString: AnvilAccounts.account0)
+        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey0)
         let client = EvmClient(transport: transport).withSigner(signer: signer)
 
         // Send a transaction
@@ -401,7 +401,7 @@ struct EvmClientE2ETests {
     @Test("Get logs with filter params")
     func testGetLogs() async throws {
         let transport = try HttpTransport(urlString: Self.anvilUrl)
-        let signer = try AnvilSigner(addressString: AnvilAccounts.account0)
+        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey0)
         let client = EvmClient(transport: transport).withSigner(signer: signer)
 
         // Send a transaction to generate some activity
@@ -505,7 +505,7 @@ struct EvmClientE2ETests {
     @Test("EvmClientWithSigner full workflow")
     func testEvmClientWithSignerWorkflow() async throws {
         let transport = try HttpTransport(urlString: Self.anvilUrl)
-        let signer = try AnvilSigner(addressString: AnvilAccounts.account0)
+        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey0)
         let client = EvmClient(transport: transport).withSigner(signer: signer)
 
         // Test blockchain info
@@ -684,9 +684,9 @@ struct EvmClientE2ETests {
         let txParams = TransactionParams(
             from: signer.address.value,
             to: AnvilAccounts.account1,
-            gas: "0x5208",  // 21000 in hex
-            maxFeePerGas: "0x3B9ACA00",  // 1 gwei
-            maxPriorityFeePerGas: "0x3B9ACA00",  // 1 gwei
+            gas: GasLimit(hex: "0x5208"),  // 21000 in hex
+            maxFeePerGas: Gwei(bigInt: BigInt(1)),  // 1 gwei
+            maxPriorityFeePerGas: Gwei(bigInt: BigInt(1)),  // 1 gwei
             value: TransactionValue(wei: Wei(bigInt: BigInt(1000))),  // 1000 wei
             nonce: "0x" + String(nonce, radix: 16)  // Use actual nonce
         )

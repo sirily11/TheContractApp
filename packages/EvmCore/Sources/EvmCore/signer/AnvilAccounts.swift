@@ -1,39 +1,7 @@
 import Foundation
 
-/// A signer implementation for Anvil test network that relies on Anvil's implicit signing.
-///
-/// Anvil automatically signs transactions sent via `eth_sendTransaction` using the managed
-/// test accounts, so we don't need to implement cryptographic signing ourselves.
-/// This is appropriate for testing but should not be used in production.
-public struct AnvilSigner: Signer {
-    public let address: Address
-
-    /// Initialize with an Anvil test account address
-    /// - Parameter address: The address of one of Anvil's test accounts
-    public init(address: Address) {
-        self.address = address
-    }
-
-    /// Convenience initializer with address string
-    /// - Parameter addressString: Hex string of the address (with or without 0x prefix)
-    public init(addressString: String) throws {
-        self.address = try Address(fromHexString: addressString)
-    }
-
-    /// Not used in Anvil testing - Anvil handles signing via eth_sendTransaction
-    public func sign(message: Data) async throws -> Data {
-        throw SignerError.unsupportedOperation(
-            "AnvilSigner uses implicit signing via eth_sendTransaction")
-    }
-
-    /// Not used in Anvil testing
-    public func verify(address: Address, message: Data, signature: Data) async throws -> Bool {
-        throw SignerError.unsupportedOperation(
-            "AnvilSigner uses implicit signing via eth_sendTransaction")
-    }
-}
-
 /// Anvil's default test accounts with known addresses and private keys
+/// These accounts are automatically funded with 10000 ETH when Anvil starts
 public struct AnvilAccounts {
     /// First Anvil test account (has 10000 ETH by default)
     public static let account0 = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"

@@ -116,6 +116,7 @@ struct SigningWalletView: View {
     /// Listen to transaction events from the view model
     private func listenToTransactionEvents() async {
         for await event in walletSigner.transactionEventPublisher.values {
+            print("Getting event: \(event)")
             await handleTransactionEvent(event)
         }
     }

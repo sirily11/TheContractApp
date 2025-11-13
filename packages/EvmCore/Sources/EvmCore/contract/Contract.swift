@@ -28,9 +28,9 @@ public protocol Contract {
     var signer: Signer { get }
 
     /**
-    The transport to use for the contract
+    The EVM client with signer for contract interactions
     */
-    var transport: Transport { get }
+    var evmSigner: EvmClientWithSigner { get }
 
     /**
     Calls a function on the contract
@@ -38,11 +38,11 @@ public protocol Contract {
     - Parameter args: The arguments to pass to the function
     - Parameter value: The value to send with the function
     - Parameter gasLimit: The gas limit to use for the function call
-    - Parameter gasPrice: The gas price to use for the function call
+    - Parameter gasPrice: The gas price to use for the function call (in gwei)
     - Returns: The result of the function call
     */
     func callFunction<T>(
-        name: String, args: [AnyCodable], value: BigInt, gasLimit: BigInt?, gasPrice: BigInt?
+        name: String, args: [AnyCodable], value: Wei, gasLimit: GasLimit?, gasPrice: Gwei?
     ) async throws -> T
     where T: Codable
 }
@@ -71,7 +71,7 @@ public protocol DeployableContract {
     var abi: [AbiItem] { get }
 
     var signer: Signer { get }
-    var transport: Transport { get }
+    var evmSigner: EvmClientWithSigner { get }
 
     /**
     Deploys the contract
@@ -79,12 +79,12 @@ public protocol DeployableContract {
     - Parameter importCallback: A callback to resolve import statements
     - Parameter value: The value to send with the deployment
     - Parameter gasLimit: The gas limit to use for the deployment
-    - Parameter gasPrice: The gas price to use for the deployment
+    - Parameter gasPrice: The gas price to use for the deployment (in gwei)
     - Returns: The deployed contract
     */
     func deploy(
-        constructorArgs: [AnyCodable], importCallback: ImportCallback?, value: BigInt,
-        gasLimit: BigInt?, gasPrice: BigInt?
+        constructorArgs: [AnyCodable], importCallback: ImportCallback?, value: Wei,
+        gasLimit: GasLimit?, gasPrice: Gwei?
     )
         async throws -> Contract
 }

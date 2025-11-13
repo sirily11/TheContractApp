@@ -1,12 +1,12 @@
-import Foundation
 import BigInt
+import Foundation
 
 /// Default implementation of the Contract protocol
 public struct EvmContract: Contract {
     public let address: Address
     public let abi: [AbiItem]
     public let signer: Signer
-    public let transport: Transport
+    public let evmSigner: EvmClientWithSigner
 
     /// Derived functions from the ABI
     public var functions: [AbiFunction] {
@@ -30,11 +30,11 @@ public struct EvmContract: Contract {
     ///   - abi: The contract ABI as an array of AbiItem
     ///   - signer: The signer to use for signing transactions
     ///   - transport: The transport to use for RPC communication
-    public init(address: Address, abi: [AbiItem], signer: Signer, transport: Transport) {
+    public init(address: Address, abi: [AbiItem], signer: Signer, evmSigner: EvmClientWithSigner) {
         self.address = address
         self.abi = abi
         self.signer = signer
-        self.transport = transport
+        self.evmSigner = evmSigner
     }
 
     /// Convenience initializer that accepts an AbiParser
@@ -43,25 +43,28 @@ public struct EvmContract: Contract {
     ///   - abiParser: The ABI parser containing the contract ABI
     ///   - signer: The signer to use for signing transactions
     ///   - transport: The transport to use for RPC communication
-    public init(address: Address, abiParser: AbiParser, signer: Signer, transport: Transport) {
-        self.init(address: address, abi: abiParser.items, signer: signer, transport: transport)
+    public init(
+        address: Address, abiParser: AbiParser, signer: Signer, evmSigner: EvmClientWithSigner
+    ) {
+        self.init(address: address, abi: abiParser.items, signer: signer, evmSigner: evmSigner)
     }
 
     /// Call a function on the contract
+    /// Automatically chooses between read (eth_call) or write (transaction) based on function's stateMutability
     /// - Parameters:
     ///   - name: The name of the function to call
     ///   - args: The arguments to pass to the function
-    ///   - value: The value (in wei) to send with the call
-    ///   - gasLimit: Optional gas limit for the call
-    ///   - gasPrice: Optional gas price for the call
+    ///   - value: The value to send with the call/transaction
+    ///   - gasLimit: Optional gas limit for the call/transaction
+    ///   - gasPrice: Optional gas price for the call/transaction (in gwei)
     /// - Returns: The decoded result of the function call
     /// - Throws: ContractError if the function is not found or the call fails
     public func callFunction<T>(
         name: String,
         args: [AnyCodable],
-        value: BigInt,
-        gasLimit: BigInt? = nil,
-        gasPrice: BigInt? = nil
+        value: Wei,
+        gasLimit: GasLimit? = nil,
+        gasPrice: Gwei? = nil
     ) async throws -> T where T: Codable {
         // Find the function in the ABI
         let matchingFunctions = functions.filter { $0.name == name }
@@ -82,10 +85,40 @@ public struct EvmContract: Contract {
             )
         }
 
+        // Choose between read and write based on stateMutability
+        switch function.stateMutability {
+        case .view, .pure:
+            // Read-only operations use eth_call
+            return try await read(
+                function: function,
+                args: args,
+                value: value,
+                gasLimit: gasLimit,
+                gasPrice: gasPrice
+            )
+        case .nonpayable, .payable:
+            // State-changing operations use transactions
+            return try await write(
+                function: function,
+                args: args,
+                value: value,
+                gasLimit: gasLimit,
+                gasPrice: gasPrice
+            )
+        }
+    }
+
+    /// Private helper: Read data from a view/pure function using eth_call
+    private func read<T>(
+        function: AbiFunction,
+        args: [AnyCodable],
+        value: Wei,
+        gasLimit: GasLimit?,
+        gasPrice: Gwei?
+    ) async throws -> T where T: Codable {
         // Encode the function call
         let callData: String
         do {
-            // Convert AnyCodable to Any
             let rawArgs = args.map { $0.value }
             callData = try function.encodeCall(args: rawArgs)
         } catch {
@@ -95,18 +128,18 @@ public struct EvmContract: Contract {
         // Build the eth_call parameters
         var callParams: [String: Any] = [
             "to": address.value,
-            "data": callData
+            "data": callData,
         ]
 
         // Add optional parameters
-        if value > 0 {
-            callParams["value"] = "0x" + String(value, radix: 16)
+        if value.value > 0 {
+            callParams["value"] = "0x" + String(value.value, radix: 16)
         }
         if let gasLimit = gasLimit {
-            callParams["gasLimit"] = "0x" + String(gasLimit, radix: 16)
+            callParams["gasLimit"] = gasLimit.toHex()
         }
         if let gasPrice = gasPrice {
-            callParams["gasPrice"] = "0x" + String(gasPrice, radix: 16)
+            callParams["gasPrice"] = "0x" + String(gasPrice.toWei().value, radix: 16)
         }
 
         // Create the RPC request
@@ -114,14 +147,14 @@ public struct EvmContract: Contract {
             method: "eth_call",
             params: [
                 AnyCodable(callParams),
-                AnyCodable("latest")  // Block parameter
+                AnyCodable("latest"),  // Block parameter
             ]
         )
 
         // Send the request
         let response: RpcResponse
         do {
-            response = try await transport.send(request: request)
+            response = try await evmSigner.transport.send(request: request)
         } catch {
             throw ContractError.transportFailed(error)
         }
@@ -136,6 +169,59 @@ public struct EvmContract: Contract {
             return try function.decodeResult(data: resultData)
         } catch {
             throw ContractError.decodingFailed(error)
+        }
+    }
+
+    /// Private helper: Write data by sending a transaction for nonpayable/payable functions
+    private func write<T>(
+        function: AbiFunction,
+        args: [AnyCodable],
+        value: Wei,
+        gasLimit: GasLimit?,
+        gasPrice: Gwei?
+    ) async throws -> T where T: Codable {
+        // Encode the function call
+        let callData: String
+        do {
+            let rawArgs = args.map { $0.value }
+            callData = try function.encodeCall(args: rawArgs)
+        } catch {
+            throw ContractError.encodingFailed(error)
+        }
+
+        // Send transaction
+        let pendingTx = try await evmSigner.signAndSendTransaction(
+            params: .init(
+                from: signer.address.value,
+                to: address.value,
+                gas: gasLimit,
+                gasPrice: gasPrice,
+                maxFeePerGas: nil,
+                maxPriorityFeePerGas: nil,
+                value: TransactionValue(wei: value),
+                data: callData,
+                nonce: nil
+            )
+        )
+
+        // Wait for transaction receipt
+        let receipt = try await pendingTx.wait()
+
+        // For write operations, if the function has outputs, we need to decode from logs
+        // For now, return a dummy value since write operations typically don't return data
+        // In the future, we could decode return data from transaction receipt
+        if function.outputs.isEmpty {
+            // No outputs expected, return unit type or similar
+            if T.self == String.self {
+                return receipt.transactionHash as! T
+            }
+            throw ContractError.invalidResponse("Write function completed but return type mismatch")
+        } else {
+            // Functions with outputs would need special handling
+            // For now, throw an error suggesting to use events instead
+            throw ContractError.invalidResponse(
+                "Write functions with return values are not yet supported. Use events to capture output."
+            )
         }
     }
 

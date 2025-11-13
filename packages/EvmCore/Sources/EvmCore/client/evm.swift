@@ -1129,11 +1129,8 @@ public struct EvmClientWithSigner: EvmRpcClientProtocol {
 
         // Get gas limit, either from params or estimate it
         let gasLimit: BigInt
-        if let gasHex = params.gas {
-            guard let gasValue = BigInt(gasHex.stripHexPrefix(), radix: 16) else {
-                throw TransactionError.invalidResponse("Invalid gas format")
-            }
-            gasLimit = gasValue
+        if let gas = params.gas {
+            gasLimit = gas.value
         } else {
             gasLimit = try await estimateGas(params: params)
         }
@@ -1145,33 +1142,21 @@ public struct EvmClientWithSigner: EvmRpcClientProtocol {
         let maxFeePerGas: BigInt
 
         // If both fee parameters are provided, use them directly
-        if let priorityFeeHex = params.maxPriorityFeePerGas,
-            let maxFeeHex = params.maxFeePerGas
+        if let priorityFee = params.maxPriorityFeePerGas,
+            let maxFee = params.maxFeePerGas
         {
-            guard let priorityFeeValue = BigInt(priorityFeeHex.stripHexPrefix(), radix: 16) else {
-                throw TransactionError.invalidResponse("Invalid maxPriorityFeePerGas format")
-            }
-            guard let maxFeeValue = BigInt(maxFeeHex.stripHexPrefix(), radix: 16) else {
-                throw TransactionError.invalidResponse("Invalid maxFeePerGas format")
-            }
-            maxPriorityFeePerGas = priorityFeeValue
-            maxFeePerGas = maxFeeValue
-        } else if let priorityFeeHex = params.maxPriorityFeePerGas {
+            maxPriorityFeePerGas = priorityFee.toWei().value
+            maxFeePerGas = maxFee.toWei().value
+        } else if let priorityFee = params.maxPriorityFeePerGas {
             // Only priority fee provided, calculate maxFee
-            guard let priorityFeeValue = BigInt(priorityFeeHex.stripHexPrefix(), radix: 16) else {
-                throw TransactionError.invalidResponse("Invalid maxPriorityFeePerGas format")
-            }
-            maxPriorityFeePerGas = priorityFeeValue
+            maxPriorityFeePerGas = priorityFee.toWei().value
 
             // Calculate maxFeePerGas: gasPrice + priority fee
             let baseGasPrice = try await self.gasPrice()
             maxFeePerGas = baseGasPrice + maxPriorityFeePerGas
-        } else if let maxFeeHex = params.maxFeePerGas {
+        } else if let maxFee = params.maxFeePerGas {
             // Only maxFee provided, get priority fee from network
-            guard let maxFeeValue = BigInt(maxFeeHex.stripHexPrefix(), radix: 16) else {
-                throw TransactionError.invalidResponse("Invalid maxFeePerGas format")
-            }
-            maxFeePerGas = maxFeeValue
+            maxFeePerGas = maxFee.toWei().value
 
             // Try to get maxPriorityFeePerGas from network, fallback to 1 gwei if not supported
             do {

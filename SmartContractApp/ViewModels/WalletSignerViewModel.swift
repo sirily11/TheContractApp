@@ -143,7 +143,14 @@ final class WalletSignerViewModel {
 
     /// Cancel all pending signing requests
     func cancelAllSigningRequests() async {
+        // Cancel each transaction individually
+        let transactionsToCancel = currentShowingTransactions
         currentShowingTransactions = []
+
+        // Send cancelled event for each transaction
+        for transaction in transactionsToCancel {
+            transactionEventSubject.send(.cancelled(transaction))
+        }
     }
 
     /// Cancel a specific signing request by index
@@ -153,6 +160,7 @@ final class WalletSignerViewModel {
             return
         }
         currentShowingTransactions.remove(at: index)
+        transactionEventSubject.send(.cancelled(currentShowingTransactions[index]))
     }
 
     // MARK: - Helper Methods
@@ -164,6 +172,7 @@ final class WalletSignerViewModel {
         if let index = currentShowingTransactions.firstIndex(where: { $0.id == transaction.id }) {
             currentShowingTransactions.remove(at: index)
         }
+        transactionEventSubject.send(.rejected(transaction))
     }
 
     // MARK: - Transaction Sending

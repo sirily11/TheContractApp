@@ -318,24 +318,14 @@ struct ContractFormView: View {
     @ViewBuilder
     private var deploymentSheet: some View {
         if contractType == .solidity {
-            if let walletSigner = getWalletSigner() {
-                let viewModel = ContractDeploymentViewModel(
-                    modelContext: modelContext,
-                    walletSigner: walletSigner
-                )
-                SolidityDeploymentSheet(
-                    sourceCode: $sourceCode,
-                    contractName: $name,
-                    viewModel: viewModel,
-                    onDeploy: { deployedContract in
-                        // Dismiss the form after successful deployment
-                        dismiss()
-                    }
-                )
-            } else {
-                Text("No wallet available for deployment")
-                    .padding()
-            }
+            SolidityDeploymentSheet(
+                sourceCode: $sourceCode,
+                contractName: $name,
+                onDeploy: { deployedContract in
+                    // Dismiss the form after successful deployment
+                    dismiss()
+                }
+            )
         } else if contractType == .bytecode {
             if let walletSigner = getWalletSigner() {
                 let viewModel = ContractDeploymentViewModel(
