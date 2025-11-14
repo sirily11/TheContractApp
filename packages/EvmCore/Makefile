@@ -12,23 +12,13 @@ e2e-network:
 	@sleep 2
 
 test: e2e-network
-	@echo "Running tests..."
-ifeq ($(CI),true)
-	@echo "CI environment detected - running tests sequentially..."
-	@swift test --parallel=false
-else
-	@swift test
-endif
+	@echo "Running tests sequentially to avoid nonce conflicts..."
+	@swift test --no-parallel
 
 # Run tests with code coverage enabled
 coverage: e2e-network
-	@echo "Running tests with code coverage..."
-ifeq ($(CI),true)
-	@echo "CI environment detected - running tests sequentially..."
-	@swift test --enable-code-coverage --parallel=false
-else
-	@swift test --enable-code-coverage
-endif
+	@echo "Running tests with code coverage (sequential)..."
+	@swift test --enable-code-coverage --no-parallel
 	@$(MAKE) coverage-report
 
 # Generate coverage report (text format)

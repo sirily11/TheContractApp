@@ -108,7 +108,7 @@ struct DeployableEvmContractTests {
     func testDeployFromSourceCodeNoConstructor() async throws {
         print("Setting up transport and signer...")
         let transport = try HttpTransport(urlString: Self.anvilUrl)
-        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey0)
+        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey1)
         let client = EvmClient(transport: transport)
         let evmSigner = client.withSigner(signer: signer)
 
@@ -174,7 +174,7 @@ struct DeployableEvmContractTests {
     func testDeployWithMultipleParameterTypes() async throws {
         print("Setting up transport and signer...")
         let transport = try HttpTransport(urlString: Self.anvilUrl)
-        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey0)
+        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey1)
         let client = EvmClient(transport: transport)
         let evmSigner = client.withSigner(signer: signer)
 
@@ -282,7 +282,7 @@ struct DeployableEvmContractTests {
     func testDeployWithImportCallback() async throws {
         print("Setting up transport and signer...")
         let transport = try HttpTransport(urlString: Self.anvilUrl)
-        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey0)
+        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey1)
         let client = EvmClient(transport: transport)
         let evmSigner = client.withSigner(signer: signer)
 
@@ -376,7 +376,7 @@ struct DeployableEvmContractTests {
 
         print("Setting up transport and signer...")
         let transport = try HttpTransport(urlString: Self.anvilUrl)
-        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey0)
+        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey1)
         let client = EvmClient(transport: transport)
         let evmSigner = client.withSigner(signer: signer)
 
@@ -449,7 +449,7 @@ struct DeployableEvmContractTests {
         // This test documents that empty bytecode doesn't throw at the contract level.
 
         let transport = try HttpTransport(urlString: Self.anvilUrl)
-        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey0)
+        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey1)
         let client = EvmClient(transport: transport)
         let evmSigner = client.withSigner(signer: signer)
 
@@ -477,7 +477,7 @@ struct DeployableEvmContractTests {
     @Test("Deploy fails when constructor not found in ABI")
     func testDeployFailsWhenConstructorNotFound() async throws {
         let transport = try HttpTransport(urlString: Self.anvilUrl)
-        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey0)
+        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey1)
         let client = EvmClient(transport: transport)
         let evmSigner = client.withSigner(signer: signer)
 
@@ -519,7 +519,7 @@ struct DeployableEvmContractTests {
     @Test("Deploy fails when constructor argument count mismatch")
     func testDeployFailsWithArgumentCountMismatch() async throws {
         let transport = try HttpTransport(urlString: Self.anvilUrl)
-        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey0)
+        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey1)
         let client = EvmClient(transport: transport)
         let evmSigner = client.withSigner(signer: signer)
 
@@ -571,7 +571,7 @@ struct DeployableEvmContractTests {
             """
 
         let transport = try HttpTransport(urlString: Self.anvilUrl)
-        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey0)
+        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey1)
         let client = EvmClient(transport: transport)
         let evmSigner = client.withSigner(signer: signer)
         let compiler = try await Solc.create(version: "0.8.21")
@@ -600,7 +600,7 @@ struct DeployableEvmContractTests {
     @Test("Deploy fails when contract name not found in compilation output")
     func testDeployFailsWithWrongContractName() async throws {
         let transport = try HttpTransport(urlString: Self.anvilUrl)
-        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey0)
+        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey1)
         let client = EvmClient(transport: transport)
         let evmSigner = client.withSigner(signer: signer)
         let compiler = try await Solc.create(version: "0.8.21")
