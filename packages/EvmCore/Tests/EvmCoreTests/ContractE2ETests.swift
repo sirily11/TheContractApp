@@ -143,7 +143,7 @@ struct ContractE2ETests {
             evmSigner: evmSigner
         )
 
-        let contract = try await deployableContract.deploy(
+        let (contract, deployTxHash) = try await deployableContract.deploy(
             constructorArgs: [AnyCodable(initialValue)],
             importCallback: nil,
             value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
@@ -152,6 +152,7 @@ struct ContractE2ETests {
         )
 
         print("Contract deployed at: \(contract.address.value)")
+        print("Deployment transaction: \(deployTxHash)")
 
         // MARK: - Test Read-Only Function (getValue)
         print("\nTesting read-only function: getValue()")
@@ -167,7 +168,9 @@ struct ContractE2ETests {
 
         print("Current value: \(currentValue)")
         #expect(currentValue == initialValue, "Initial value should be \(initialValue)")
-        #expect(currentValueResult.transactionHash == nil, "Read-only call should not have transaction hash")
+        #expect(
+            currentValueResult.transactionHash == nil,
+            "Read-only call should not have transaction hash")
 
         // MARK: - Test State-Changing Function (setValue)
         print("\nTesting state-changing function: setValue()")
@@ -214,7 +217,8 @@ struct ContractE2ETests {
         let incrementTxHash = incrementResult.result.value as! String
 
         print("Transaction sent and mined: \(incrementTxHash)")
-        #expect(incrementResult.transactionHash != nil, "Write operation should have transaction hash")
+        #expect(
+            incrementResult.transactionHash != nil, "Write operation should have transaction hash")
 
         // Verify value incremented
         let incrementedValueResult = try await contract.callFunction(
@@ -271,7 +275,9 @@ struct ContractE2ETests {
         let contractBalance = contractBalanceResult.result.value as! BigInt
 
         print("Contract balance: \(contractBalance)")
-        #expect(contractBalance == depositAmount.value, "Contract balance should be \(depositAmount.value)")
+        #expect(
+            contractBalance == depositAmount.value,
+            "Contract balance should be \(depositAmount.value)")
 
         // MARK: - Test Payable Function with Parameters (depositFor)
         print("\nTesting payable function with parameters: depositFor()")
@@ -290,7 +296,9 @@ struct ContractE2ETests {
         let depositForTxHash = depositForResult.result.value as! String
 
         print("DepositFor transaction sent and mined: \(depositForTxHash)")
-        #expect(depositForResult.transactionHash != nil, "Payable write with params should have transaction hash")
+        #expect(
+            depositForResult.transactionHash != nil,
+            "Payable write with params should have transaction hash")
 
         // Verify recipient balance
         let recipientBalanceResult = try await contract.callFunction(
@@ -304,7 +312,8 @@ struct ContractE2ETests {
 
         print("Balance for recipient \(recipient): \(recipientBalance)")
         #expect(
-            recipientBalance == depositForAmount.value, "Recipient balance should be \(depositForAmount.value)")
+            recipientBalance == depositForAmount.value,
+            "Recipient balance should be \(depositForAmount.value)")
 
         // Verify total deposited
         let totalDepositedResult = try await contract.callFunction(
@@ -336,6 +345,349 @@ struct ContractE2ETests {
             "Final contract balance should be \(expectedTotal)")
 
         print("\n✅ All tests passed!")
+    }
+
+    @Test("Deploy contract with multiple constructor parameters")
+    func testDeployContractWithComplexConstructor() async throws {
+        // Solidity contract with multiple constructor parameter types including arrays
+        let contractWithConstructorParams = """
+            // SPDX-License-Identifier: MIT
+            pragma solidity ^0.8.0;
+
+            contract ConstructorParamsContract {
+                address public owner;
+                uint256 public initialSupply;
+                string public tokenName;
+                bool public isActive;
+                uint256[] public initialBalances;
+                address public beneficiary;
+
+                constructor(
+                    address _owner,
+                    uint256 _initialSupply,
+                    string memory _tokenName,
+                    bool _isActive,
+                    uint256[] memory _initialBalances,
+                    address _beneficiary
+                ) {
+                    owner = _owner;
+                    initialSupply = _initialSupply;
+                    tokenName = _tokenName;
+                    isActive = _isActive;
+                    initialBalances = _initialBalances;
+                    beneficiary = _beneficiary;
+                }
+
+                function getOwner() public view returns (address) {
+                    return owner;
+                }
+
+                function getInitialSupply() public view returns (uint256) {
+                    return initialSupply;
+                }
+
+                function getTokenName() public view returns (string memory) {
+                    return tokenName;
+                }
+
+                function getIsActive() public view returns (bool) {
+                    return isActive;
+                }
+
+                function getInitialBalances() public view returns (uint256[] memory) {
+                    return initialBalances;
+                }
+
+                function getInitialBalanceAt(uint256 index) public view returns (uint256) {
+                    require(index < initialBalances.length, "Index out of bounds");
+                    return initialBalances[index];
+                }
+
+                function getBeneficiary() public view returns (address) {
+                    return beneficiary;
+                }
+            }
+            """
+
+        print("Setting up transport and signer...")
+        let transport = try HttpTransport(urlString: Self.anvilUrl)
+        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey0)
+        let client = EvmClient(transport: transport)
+        let evmSigner = client.withSigner(signer: signer)
+
+        print("Compiling contract with constructor parameters...")
+        let compiler = try await Solc.create(version: "0.8.21")
+
+        let input = Input(
+            language: "Solidity",
+            sources: [
+                "ConstructorParamsContract.sol": SourceIn(content: contractWithConstructorParams)
+            ],
+            settings: Settings(
+                optimizer: Optimizer(enabled: true, runs: 200),
+                outputSelection: [
+                    "*": [
+                        "*": ["abi", "evm.bytecode.object"]
+                    ]
+                ]
+            )
+        )
+
+        let output = try await compiler.compile(input, options: nil)
+
+        // Check for compilation errors
+        if let errors = output.errors {
+            let errorMessages = errors.filter { $0.severity == "error" }
+            if !errorMessages.isEmpty {
+                throw TestError.compilationFailed(
+                    errorMessages.map { $0.formattedMessage ?? "Unknown error" }.joined(
+                        separator: "\n")
+                )
+            }
+        }
+
+        guard
+            let contractData = output.contracts?["ConstructorParamsContract.sol"]?[
+                "ConstructorParamsContract"
+            ],
+            let bytecodeHex = contractData.evm?.bytecode?.object,
+            let abiArray = contractData.abi
+        else {
+            throw TestError.compilationFailed("Failed to extract contract data")
+        }
+
+        print("Compilation successful!")
+
+        // Parse ABI
+        let abiJsonData = try JSONEncoder().encode(abiArray)
+        let abiJsonString = String(data: abiJsonData, encoding: .utf8)!
+        let abiParser = try AbiParser(fromJsonString: abiJsonString)
+
+        // Prepare constructor arguments
+        let ownerAddress = signer.address.value
+        let initialSupply = BigInt(1_000_000)
+        let tokenName = "TestToken"
+        let isActive = true
+        let initialBalances = [BigInt(100), BigInt(200), BigInt(300)]
+        let beneficiaryAddress = AnvilAccounts.account1
+
+        print("\nDeploying contract with constructor parameters:")
+        print("  owner: \(ownerAddress)")
+        print("  initialSupply: \(initialSupply)")
+        print("  tokenName: \(tokenName)")
+        print("  isActive: \(isActive)")
+        print("  initialBalances: \(initialBalances)")
+        print("  beneficiary: \(beneficiaryAddress)")
+
+        let deployableContract = DeployableEvmContract(
+            bytecode: bytecodeHex,
+            abi: abiParser.items,
+            evmSigner: evmSigner
+        )
+
+        let (contract, deployTxHash) = try await deployableContract.deploy(
+            constructorArgs: [
+                AnyCodable(ownerAddress),
+                AnyCodable(initialSupply),
+                AnyCodable(tokenName),
+                AnyCodable(isActive),
+                AnyCodable(initialBalances),
+                AnyCodable(beneficiaryAddress),
+            ],
+            importCallback: nil,
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
+            gasLimit: GasLimit(bigInt: BigInt(3_000_000)),
+            gasPrice: nil as Gwei?
+        )
+
+        print("Contract deployed at: \(contract.address.value)")
+        print("Deployment transaction: \(deployTxHash)")
+
+        // MARK: - Verify Constructor Parameters
+
+        print("\nVerifying constructor parameters...")
+
+        // Test owner address
+        let ownerResult = try await contract.callFunction(
+            name: "getOwner",
+            args: [],
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
+            gasLimit: nil as GasLimit?,
+            gasPrice: nil as Gwei?
+        )
+        let deployedOwner = ownerResult.result.value as! String
+
+        print("Owner address: \(deployedOwner)")
+        #expect(
+            deployedOwner.lowercased() == ownerAddress.lowercased(),
+            "Owner should be \(ownerAddress)")
+
+        // Test initial supply
+        let supplyResult = try await contract.callFunction(
+            name: "getInitialSupply",
+            args: [],
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
+            gasLimit: nil as GasLimit?,
+            gasPrice: nil as Gwei?
+        )
+        let deployedSupply = supplyResult.result.value as! BigInt
+
+        print("Initial supply: \(deployedSupply)")
+        #expect(deployedSupply == initialSupply, "Initial supply should be \(initialSupply)")
+
+        // Test token name
+        let nameResult = try await contract.callFunction(
+            name: "getTokenName",
+            args: [],
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
+            gasLimit: nil as GasLimit?,
+            gasPrice: nil as Gwei?
+        )
+        let deployedName = nameResult.result.value as! String
+
+        print("Token name: \(deployedName)")
+        #expect(deployedName == tokenName, "Token name should be \(tokenName)")
+
+        // Test isActive boolean
+        let activeResult = try await contract.callFunction(
+            name: "getIsActive",
+            args: [],
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
+            gasLimit: nil as GasLimit?,
+            gasPrice: nil as Gwei?
+        )
+        let deployedIsActive = activeResult.result.value as! Bool
+
+        print("Is active: \(deployedIsActive)")
+        #expect(deployedIsActive == isActive, "Is active should be \(isActive)")
+
+        // Test beneficiary address
+        let beneficiaryResult = try await contract.callFunction(
+            name: "getBeneficiary",
+            args: [],
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
+            gasLimit: nil as GasLimit?,
+            gasPrice: nil as Gwei?
+        )
+        let deployedBeneficiary = beneficiaryResult.result.value as! String
+
+        print("Beneficiary address: \(deployedBeneficiary)")
+        #expect(
+            deployedBeneficiary.lowercased() == beneficiaryAddress.lowercased(),
+            "Beneficiary should be \(beneficiaryAddress)")
+
+        // Test initial balances array (verify each element)
+        for (index, expectedBalance) in initialBalances.enumerated() {
+            let balanceResult = try await contract.callFunction(
+                name: "getInitialBalanceAt",
+                args: [AnyCodable(BigInt(index))],
+                value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
+                gasLimit: nil as GasLimit?,
+                gasPrice: nil as Gwei?
+            )
+            let actualBalance = balanceResult.result.value as! BigInt
+
+            print("Initial balance[\(index)]: \(actualBalance)")
+            #expect(
+                actualBalance == expectedBalance,
+                "Balance at index \(index) should be \(expectedBalance)")
+        }
+
+        print("\n✅ Constructor parameters test passed!")
+    }
+
+    @Test("Deploy contract with uint parameter as string")
+    func testDeployContractWithUint() async throws {
+        // Solidity contract with uint256 constructor parameter
+        let contractWithConstructorParams = """
+            // SPDX-License-Identifier: MIT
+            pragma solidity ^0.8.0;
+            contract MyToken {
+                constructor(uint256 initialSupply) {
+
+                }
+            }
+            """
+
+        print("Setting up transport and signer...")
+        let transport = try HttpTransport(urlString: Self.anvilUrl)
+        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey0)
+        let client = EvmClient(transport: transport)
+        let evmSigner = client.withSigner(signer: signer)
+
+        print("Compiling contract with constructor parameters...")
+        let compiler = try await Solc.create(version: "0.8.21")
+
+        let input = Input(
+            language: "Solidity",
+            sources: [
+                "MyToken.sol": SourceIn(content: contractWithConstructorParams)
+            ],
+            settings: Settings(
+                optimizer: Optimizer(enabled: true, runs: 200),
+                outputSelection: [
+                    "*": [
+                        "*": ["abi", "evm.bytecode.object"]
+                    ]
+                ]
+            )
+        )
+
+        let output = try await compiler.compile(input, options: nil)
+
+        // Check for compilation errors
+        if let errors = output.errors {
+            let errorMessages = errors.filter { $0.severity == "error" }
+            if !errorMessages.isEmpty {
+                throw TestError.compilationFailed(
+                    errorMessages.map { $0.formattedMessage ?? "Unknown error" }.joined(
+                        separator: "\n")
+                )
+            }
+        }
+
+        guard
+            let contractData = output.contracts?["MyToken.sol"]?[
+                "MyToken"
+            ],
+            let bytecodeHex = contractData.evm?.bytecode?.object,
+            let abiArray = contractData.abi
+        else {
+            throw TestError.compilationFailed("Failed to extract contract data")
+        }
+
+        print("Compilation successful!")
+
+        // Parse ABI
+        let abiJsonData = try JSONEncoder().encode(abiArray)
+        let abiJsonString = String(data: abiJsonData, encoding: .utf8)!
+        let abiParser = try AbiParser(fromJsonString: abiJsonString)
+
+        // Prepare constructor arguments
+
+        let initialSupply = "1000000"
+
+        print("\nDeploying contract with constructor parameters:")
+
+        let deployableContract = DeployableEvmContract(
+            bytecode: bytecodeHex,
+            abi: abiParser.items,
+            evmSigner: evmSigner
+        )
+
+        let (contract, deployTxHash) = try await deployableContract.deploy(
+            constructorArgs: [
+                AnyCodable(initialSupply)
+            ],
+            importCallback: nil,
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
+            gasLimit: GasLimit(bigInt: BigInt(3_000_000)),
+            gasPrice: nil as Gwei?
+        )
+
+        print("Contract deployed at: \(contract.address.value)")
+        print("Deployment transaction: \(deployTxHash)")
+        print("\n✅ Uint constructor parameters test passed!")
     }
 
     @Test("Deploy contract without constructor arguments")
@@ -394,7 +746,7 @@ struct ContractE2ETests {
             evmSigner: evmSigner
         )
 
-        let contract = try await deployableContract.deploy(
+        let (contract, deployTxHash) = try await deployableContract.deploy(
             constructorArgs: [],  // No constructor arguments
             importCallback: nil,
             value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
@@ -403,6 +755,7 @@ struct ContractE2ETests {
         )
 
         print("Contract deployed at: \(contract.address.value)")
+        print("Deployment transaction: \(deployTxHash)")
 
         // Test initial value
         let initialValueResult = try await contract.callFunction(
@@ -419,6 +772,7 @@ struct ContractE2ETests {
 
         print("✅ Simple contract deployment test passed!")
     }
+
 }
 
 // MARK: - Test Errors

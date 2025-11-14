@@ -294,6 +294,11 @@ private func encodeStaticParameter(type: String, value: Any) throws -> Data {
             return encodeUInt(BigInt(int))
         } else if let uint = value as? UInt {
             return encodeUInt(BigInt(uint))
+        } else if let string = value as? String {
+            // Support string values for uint types (e.g., "1000000")
+            if let bigInt = BigInt(string) {
+                return encodeUInt(bigInt)
+            }
         }
         throw DeploymentError.encodingFailed("Invalid uint value")
     }
@@ -303,6 +308,11 @@ private func encodeStaticParameter(type: String, value: Any) throws -> Data {
             return encodeInt(bigInt)
         } else if let int = value as? Int {
             return encodeInt(BigInt(int))
+        } else if let string = value as? String {
+            // Support string values for int types (e.g., "-1000000")
+            if let bigInt = BigInt(string) {
+                return encodeInt(bigInt)
+            }
         }
         throw DeploymentError.encodingFailed("Invalid int value")
     }
@@ -344,6 +354,33 @@ private func encodeDynamicParameter(type: String, value: Any) throws -> Data {
             return encodeBytesData(data)
         }
         throw DeploymentError.encodingFailed("Invalid bytes value")
+    }
+
+    // Handle dynamic arrays (e.g., uint256[], address[], etc.)
+    if type.hasSuffix("[]") {
+        guard let array = value as? [Any] else {
+            throw DeploymentError.encodingFailed("Expected array for type \(type)")
+        }
+
+        // Extract element type (remove the [] suffix)
+        let elementType = String(type.dropLast(2))
+
+        // Encode array length
+        var encoded = encodeUInt(BigInt(array.count))
+
+        // Encode each element
+        for element in array {
+            let elementData: Data
+            // Check if element type is static or dynamic
+            if isDynamicType(elementType) {
+                elementData = try encodeDynamicParameter(type: elementType, value: element)
+            } else {
+                elementData = try encodeStaticParameter(type: elementType, value: element)
+            }
+            encoded.append(elementData)
+        }
+
+        return encoded
     }
 
     throw DeploymentError.encodingFailed("Unsupported dynamic parameter type: \(type)")
@@ -510,6 +547,11 @@ extension AbiFunction {
                 return encodeUInt(BigInt(int))
             } else if let uint = value as? UInt {
                 return encodeUInt(BigInt(uint))
+            } else if let string = value as? String {
+                // Support string values for uint types (e.g., "1000000")
+                if let bigInt = BigInt(string) {
+                    return encodeUInt(bigInt)
+                }
             }
             throw ContractError.encodingFailed(NSError(domain: "Invalid uint value", code: -1))
 
@@ -518,6 +560,11 @@ extension AbiFunction {
                 return encodeInt(bigInt)
             } else if let int = value as? Int {
                 return encodeInt(BigInt(int))
+            } else if let string = value as? String {
+                // Support string values for int types (e.g., "-1000000")
+                if let bigInt = BigInt(string) {
+                    return encodeInt(bigInt)
+                }
             }
             throw ContractError.encodingFailed(NSError(domain: "Invalid int value", code: -1))
 

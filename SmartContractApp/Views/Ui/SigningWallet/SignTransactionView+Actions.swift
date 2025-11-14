@@ -100,6 +100,12 @@ extension SignTransactionView {
 
     /// Reject the transaction and dismiss the view
     func rejectTransaction() {
+        do {
+            try walletSigner.rejectTransaction(transaction)
+        } catch {
+            // Log error but still dismiss to avoid UI stuck state
+            print("Error rejecting transaction: \(error.localizedDescription)")
+        }
         dismiss()
     }
 }

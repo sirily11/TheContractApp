@@ -5,6 +5,7 @@
 //  Created by Claude on 11/8/25.
 //
 
+import Solidity
 import SwiftData
 import SwiftUI
 
@@ -25,6 +26,9 @@ struct ContractContentView: View {
     @State private var solidityContractName = ""
     @State private var bytecodeData = ""
     @State private var bytecodeContractName = ""
+
+    // Compilation output from editor (shared with deployment sheet)
+    @State private var compilationOutput: Output? = nil
 
     var body: some View {
         List(contracts, selection: $selectedContract) { contract in
@@ -88,6 +92,7 @@ struct ContractContentView: View {
             SolidityDeploymentSheet(
                 sourceCode: $soliditySourceCode,
                 contractName: $solidityContractName,
+                editorCompilationOutput: $compilationOutput,
                 onDeploy: { contract in
                     selectedContract = contract
                 }

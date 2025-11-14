@@ -6,6 +6,7 @@
 //
 
 @testable import SmartContractApp
+import Solidity
 import SwiftData
 import SwiftUI
 import Testing
@@ -18,7 +19,8 @@ struct SolidityDeploymentTests {
         let wrapper = try SwiftUITestWrapper.withDefaults {
             SolidityDeploymentSheet(
                 sourceCode: .constant("pragma solidity ^0.8.0; contract Test {}"),
-                contractName: .constant("Test Contract")
+                contractName: .constant("Test Contract"),
+                editorCompilationOutput: .constant(nil)
             )
         }
 
@@ -33,7 +35,8 @@ struct SolidityDeploymentTests {
         let wrapper = try SwiftUITestWrapper.withDefaults {
             SolidityDeploymentSheet(
                 sourceCode: .constant("pragma solidity ^0.8.0; contract Test {}"),
-                contractName: .constant("Test")
+                contractName: .constant("Test"),
+                editorCompilationOutput: .constant(nil)
             )
         }
 

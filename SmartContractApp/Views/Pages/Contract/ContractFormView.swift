@@ -5,6 +5,7 @@
 //  Created by Claude on 11/8/25.
 //
 
+import Solidity
 import SwiftData
 import SwiftUI
 
@@ -24,9 +25,12 @@ struct ContractFormView: View {
     // Validation states
     @State private var showingValidationAlert = false
     @State private var validationMessage = ""
-    
+
     // Deployment sheet state
     @State private var showingDeploymentSheet = false
+
+    // Compilation output from editor (shared with deployment sheet)
+    @State private var compilationOutput: Output? = nil
 
     // Query for available ABIs and Endpoints
     @Query(sort: \EvmAbi.name) private var abis: [EvmAbi]
@@ -278,9 +282,12 @@ struct ContractFormView: View {
     private var soliditySection: some View {
         Section(header: Text("Solidity Source Code")) {
             VStack(alignment: .leading, spacing: 8) {
-                SolidityView(content: $sourceCode)
-                    .frame(minHeight: 300, maxHeight: 500)
-                
+                SolidityView(
+                    content: $sourceCode,
+                    compilationOutput: $compilationOutput
+                )
+                .frame(minHeight: 300, maxHeight: 500)
+
                 Text("Enter your Solidity source code. It will be compiled during deployment.")
                     .font(.caption2)
                     .foregroundColor(.secondary)
@@ -321,6 +328,7 @@ struct ContractFormView: View {
             SolidityDeploymentSheet(
                 sourceCode: $sourceCode,
                 contractName: $name,
+                editorCompilationOutput: $compilationOutput,
                 onDeploy: { deployedContract in
                     // Dismiss the form after successful deployment
                     dismiss()

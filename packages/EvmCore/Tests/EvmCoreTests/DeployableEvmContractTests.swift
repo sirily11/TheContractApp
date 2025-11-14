@@ -143,7 +143,7 @@ struct DeployableEvmContractTests {
         )
 
         print("Deploying contract from source...")
-        let contract = try await deployableContract.deploy(
+        let (contract, deployTxHash) = try await deployableContract.deploy(
             constructorArgs: [],
             importCallback: nil,
             value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
@@ -152,6 +152,7 @@ struct DeployableEvmContractTests {
         )
 
         print("Contract deployed at: \(contract.address.value)")
+        print("Deployment transaction: \(deployTxHash)")
 
         // Test the deployed contract
         let valueResult = try await contract.callFunction(
@@ -213,7 +214,7 @@ struct DeployableEvmContractTests {
             evmSigner: evmSigner
         )
 
-        let contract = try await deployableContract.deploy(
+        let (contract, deployTxHash) = try await deployableContract.deploy(
             constructorArgs: [
                 AnyCodable(ownerAddress),
                 AnyCodable(initialValue),
@@ -227,6 +228,7 @@ struct DeployableEvmContractTests {
         )
 
         print("Contract deployed at: \(contract.address.value)")
+        print("Deployment transaction: \(deployTxHash)")
 
         // Verify constructor parameters were set correctly
         let storedOwnerResult = try await contract.callFunction(
@@ -325,7 +327,7 @@ struct DeployableEvmContractTests {
         )
 
         print("Deploying contract with import callback...")
-        let contract = try await deployableContract.deploy(
+        let (contract, deployTxHash) = try await deployableContract.deploy(
             constructorArgs: [],
             importCallback: importCallback,
             value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
@@ -334,6 +336,7 @@ struct DeployableEvmContractTests {
         )
 
         print("Contract deployed at: \(contract.address.value)")
+        print("Deployment transaction: \(deployTxHash)")
 
         // Test the deployed contract
         let initialCountResult = try await contract.callFunction(
@@ -410,7 +413,7 @@ struct DeployableEvmContractTests {
             evmSigner: evmSigner
         )
 
-        let contract = try await deployableContract.deploy(
+        let (contract, deployTxHash) = try await deployableContract.deploy(
             constructorArgs: [],
             importCallback: nil,
             value: TransactionValue(wei: Wei(bigInt: deployValue)),
@@ -419,6 +422,7 @@ struct DeployableEvmContractTests {
         )
 
         print("Contract deployed at: \(contract.address.value)")
+        print("Deployment transaction: \(deployTxHash)")
 
         // Verify contract received the value
         let contractBalanceResult = try await contract.callFunction(

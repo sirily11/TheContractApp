@@ -5,6 +5,7 @@
 //  Created by Kiro on 11/12/25.
 //
 
+import Solidity
 import SwiftData
 import SwiftUI
 
@@ -12,6 +13,8 @@ import SwiftUI
 
 enum DeploymentDestination: Hashable {
     case compilation
+    case constructorParams
+    case deployment
     case success
 }
 
@@ -28,6 +31,7 @@ struct SolidityDeploymentSheet: View {
 
     @Binding var sourceCode: String
     @Binding var contractName: String
+    @Binding var editorCompilationOutput: Output?
 
     // MARK: - Navigation
 
@@ -44,6 +48,7 @@ struct SolidityDeploymentSheet: View {
     @State var compiledBytecode: String?
     @State var compiledAbi: String?
     @State var deployedAddress: String?
+    @State var constructorParameters: [TransactionParameter] = []
     @State var showingValidationAlert = false
     @State var validationMessage = ""
 
@@ -86,6 +91,12 @@ struct SolidityDeploymentSheet: View {
                     case .compilation:
                         compilationProgressPage
                             .onAppear { currentDestination = .compilation }
+                    case .constructorParams:
+                        constructorParamsPage
+                            .onAppear { currentDestination = .constructorParams }
+                    case .deployment:
+                        deploymentProgressPage
+                            .onAppear { currentDestination = .deployment }
                     case .success:
                         successPage
                             .onAppear { currentDestination = .success }
@@ -108,14 +119,28 @@ struct SolidityDeploymentSheet: View {
                             Button("Close") {
                                 dismiss()
                             }
-                        } else if case .failed = deploymentState {
+                        } else if !isProcessing {
+                            Button("Back") {
+                                navigationPath.removeLast()
+                                currentDestination = nil
+                            }
+                        }
+                    case .constructorParams:
+                        // Constructor params page: Show Back
+                        Button("Back") {
+                            navigationPath.removeLast()
+                            currentDestination = .compilation
+                        }
+                    case .deployment:
+                        // Deployment page: Hide button when processing, show Close when failed
+                        if case .failed = deploymentState {
                             Button("Close") {
                                 dismiss()
                             }
                         } else if !isProcessing {
                             Button("Back") {
                                 navigationPath.removeLast()
-                                currentDestination = nil
+                                currentDestination = .constructorParams
                             }
                         }
                     case .success:
@@ -162,12 +187,14 @@ struct SolidityDeploymentSheet: View {
     """
 
     @Previewable @State var contractName = "SimpleStorage"
+    @Previewable @State var compilationOutput: Output? = nil
 
     // Use PreviewHelper for consistent test data setup
     return try! PreviewHelper.wrap {
         SolidityDeploymentSheet(
             sourceCode: $sourceCode,
-            contractName: $contractName
+            contractName: $contractName,
+            editorCompilationOutput: $compilationOutput
         )
     }
 }

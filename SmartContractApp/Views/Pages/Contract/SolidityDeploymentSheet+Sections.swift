@@ -58,31 +58,22 @@ extension SolidityDeploymentSheet {
             }
     }
 
-    // MARK: - Page 2: Compilation & Deployment Progress
+    // MARK: - Page 2: Compilation Progress
 
     var compilationProgressPage: some View {
         ScrollView {
             VStack(spacing: 24) {
-                Text("Deployment Progress")
+                Text("Compiling Contract")
                     .font(.title2)
                     .fontWeight(.semibold)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                VStack(spacing: 2) {
-                    // Step 1: Compile Contract
-                    ProgressStepView(
-                        title: "Compile Contract",
-                        state: compilationState,
-                        systemImage: "doc.text"
-                    )
-
-                    // Step 2: Deploy to Network
-                    ProgressStepView(
-                        title: "Deploy to Network",
-                        state: deploymentState,
-                        systemImage: "network"
-                    )
-                }
+                // Compilation progress indicator
+                ProgressStepView(
+                    title: "Compile Contract",
+                    state: compilationState,
+                    systemImage: "doc.text"
+                )
 
                 // Show compilation error details
                 if case .failed(let errorMessage) = compilationState {
@@ -112,6 +103,103 @@ extension SolidityDeploymentSheet {
                     .background(Color.red.opacity(0.1))
                     .cornerRadius(8)
                 }
+            }
+            .padding()
+        }
+        .navigationTitle("Compiling Contract")
+        #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+        #endif
+            .navigationBarBackButtonHidden(isProcessing)
+            .onAppear {
+                // Start compilation automatically when page appears
+                if case .idle = compilationState {
+                    Task {
+                        await compileContract()
+                    }
+                }
+            }
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    if case .success = compilationState {
+                        Button("Next") {
+                            navigationPath.append(DeploymentDestination.constructorParams)
+                        }
+                        .buttonStyle(.borderedProminent)
+                    } else if case .failed = compilationState {
+                        Button("Retry") {
+                            resetCompilationState()
+                            Task {
+                                await compileContract()
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                }
+            }
+    }
+
+    // MARK: - Page 3: Constructor Parameters
+
+    var constructorParamsPage: some View {
+        Form {
+            if constructorParameters.isEmpty {
+                Section {
+                    VStack(spacing: 12) {
+                        Image(systemName: "checkmark.circle")
+                            .font(.largeTitle)
+                            .foregroundColor(.green)
+                        Text("No Constructor Parameters")
+                            .font(.headline)
+                        Text("This contract has no constructor parameters. Click Next to proceed with deployment.")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 32)
+                }
+            } else {
+                Section {
+                    Text("Enter the constructor parameters for your contract. These values will be used when deploying the contract to the network.")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+
+                TransactionParameterFormView(parameters: $constructorParameters)
+            }
+        }
+        .formStyle(.grouped)
+        .navigationTitle("Constructor Parameters")
+        #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+        #endif
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Next") {
+                        navigationPath.append(DeploymentDestination.deployment)
+                    }
+                    .disabled(!isConstructorFormValid)
+                }
+            }
+    }
+
+    // MARK: - Page 4: Deployment Progress
+
+    var deploymentProgressPage: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                Text("Deploying Contract")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                // Deployment progress indicator
+                ProgressStepView(
+                    title: "Deploy to Network",
+                    state: deploymentState,
+                    systemImage: "network"
+                )
 
                 // Show deployment error details
                 if case .failed(let errorMessage) = deploymentState {
@@ -159,22 +247,17 @@ extension SolidityDeploymentSheet {
             .navigationBarTitleDisplayMode(.inline)
         #endif
             .navigationBarBackButtonHidden(isProcessing)
+            .onAppear {
+                // Start deployment automatically when page appears
+                if case .idle = deploymentState {
+                    startDeployment()
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
-                    if case .idle = compilationState, case .idle = deploymentState {
-                        Button("Deploy") {
-                            startDeployment()
-                        }
-                        .buttonStyle(.borderedProminent)
-                    } else if case .failed = compilationState {
-                        Button("Back") {
-                            resetStates()
-                            navigationPath.removeLast()
-                        }
-                        .buttonStyle(.borderedProminent)
-                    } else if case .failed = deploymentState {
+                    if case .failed = deploymentState {
                         Button("Retry") {
-                            resetStates()
+                            resetDeploymentState()
                             startDeployment()
                         }
                         .buttonStyle(.borderedProminent)
@@ -183,7 +266,7 @@ extension SolidityDeploymentSheet {
             }
     }
 
-    // MARK: - Page 3: Success
+    // MARK: - Page 5: Success
 
     var successPage: some View {
         VStack(spacing: 24) {

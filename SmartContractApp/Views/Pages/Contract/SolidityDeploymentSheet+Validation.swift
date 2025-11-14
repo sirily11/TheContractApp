@@ -5,6 +5,7 @@
 //  Created by Kiro on 11/12/25.
 //
 
+import EvmCore
 import Foundation
 
 // MARK: - Validation
@@ -29,6 +30,32 @@ extension SolidityDeploymentSheet {
         !contractName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
             !sourceCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
             selectedEndpoint != nil
+    }
+
+    /// Validates that all constructor parameters have values
+    ///
+    /// Returns `true` if:
+    /// - There are no constructor parameters (empty array), OR
+    /// - All constructor parameters have non-empty values
+    ///
+    /// For basic validation, we check if the string representation of the value is not empty.
+    /// Individual input views provide more detailed type-specific validation with visual feedback.
+    var isConstructorFormValid: Bool {
+        // If no parameters, form is valid
+        guard !constructorParameters.isEmpty else {
+            return true
+        }
+
+        // Check that all parameters have values
+        // For now, we'll do a basic check - each parameter should have a non-empty string value
+        return constructorParameters.allSatisfy { param in
+            // Get the string representation of the value
+            if let stringValue = param.value.value as? String {
+                return !stringValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            }
+            // For non-string types (bool, arrays, etc.), consider them valid if they have any value
+            return true
+        }
     }
 
     /// Returns the appropriate progress message based on current deployment state
