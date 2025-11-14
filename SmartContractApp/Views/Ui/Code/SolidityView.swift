@@ -12,6 +12,8 @@ import Solidity
 
 struct SolidityView: View {
     @Binding var content: String
+    var compilationOutput: Binding<Output?>?
+
     @State private var position: CodeEditor.Position = .init()
     @State private var messages: Set<TextLocated<Message>> = Set()
     @State private var isCompiling: Bool = false
@@ -109,6 +111,9 @@ struct SolidityView: View {
 
             // Compile
             let output = try await compiler.compile(input, options: nil)
+
+            // Store compilation output if binding is provided
+            compilationOutput?.wrappedValue = output
 
             // Convert errors to messages
             if let errors = output.errors {

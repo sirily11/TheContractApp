@@ -1,5 +1,5 @@
-import Foundation
 import BigInt
+import Foundation
 import Solidity
 
 /// A contract that can be deployed to the blockchain
@@ -8,32 +8,33 @@ public struct DeployableEvmContract: DeployableContract {
     public let contractName: String?
     public let bytecode: String?
     public let abi: [AbiItem]
-    public let signer: Signer
-    public let transport: Transport
+    public let evmSigner: EvmClientWithSigner
     public let compiler: SolidityCompiler?
+
+    /// Computed property that returns the signer from evmSigner
+    public var signer: Signer {
+        return evmSigner.signer
+    }
 
     /// Initialize with source code (will be compiled during deployment)
     /// - Parameters:
     ///   - sourceCode: Solidity source code
     ///   - contractName: Name of the contract to deploy (required for source compilation)
     ///   - abi: Contract ABI
-    ///   - signer: Signer for the deployment transaction
-    ///   - transport: Transport for RPC communication
+    ///   - evmSigner: EVM client with signer for the deployment transaction
     ///   - compiler: Solidity compiler instance for compiling source code
     public init(
         sourceCode: String,
         contractName: String,
         abi: [AbiItem],
-        signer: Signer,
-        transport: Transport,
+        evmSigner: EvmClientWithSigner,
         compiler: SolidityCompiler
     ) {
         self.sourceCode = sourceCode
         self.contractName = contractName
         self.bytecode = nil
         self.abi = abi
-        self.signer = signer
-        self.transport = transport
+        self.evmSigner = evmSigner
         self.compiler = compiler
     }
 
@@ -41,15 +42,13 @@ public struct DeployableEvmContract: DeployableContract {
     /// - Parameters:
     ///   - bytecode: Compiled contract bytecode (hex string)
     ///   - abi: Contract ABI
-    ///   - signer: Signer for the deployment transaction
-    ///   - transport: Transport for RPC communication
-    public init(bytecode: String, abi: [AbiItem], signer: Signer, transport: Transport) {
+    ///   - evmSigner: EVM client with signer for the deployment transaction
+    public init(bytecode: String, abi: [AbiItem], evmSigner: EvmClientWithSigner) {
         self.sourceCode = nil
         self.contractName = nil
         self.bytecode = bytecode
         self.abi = abi
-        self.signer = signer
-        self.transport = transport
+        self.evmSigner = evmSigner
         self.compiler = nil
     }
 
@@ -57,24 +56,25 @@ public struct DeployableEvmContract: DeployableContract {
     /// - Parameters:
     ///   - constructorArgs: Arguments for the constructor
     ///   - importCallback: Optional callback for resolving imports (used during compilation)
-    ///   - value: Value to send with deployment (in wei)
+    ///   - value: Value to send with deployment
     ///   - gasLimit: Optional gas limit
-    ///   - gasPrice: Optional gas price
+    ///   - gasPrice: Optional gas price (in gwei)
     /// - Returns: A deployed contract instance
     public func deploy(
         constructorArgs: [AnyCodable],
         importCallback: ImportCallback?,
-        value: BigInt,
-        gasLimit: BigInt?,
-        gasPrice: BigInt?
-    ) async throws -> Contract {
+        value: TransactionValue,
+        gasLimit: GasLimit?,
+        gasPrice: Gwei?
+    ) async throws -> (Contract, String) {
         // Get the bytecode (either provided or compile from source)
         let deployBytecode: String
         if let bytecode = self.bytecode {
             deployBytecode = bytecode
         } else if let sourceCode = self.sourceCode,
-                  let contractName = self.contractName,
-                  let compiler = self.compiler {
+            let contractName = self.contractName,
+            let compiler = self.compiler
+        {
             // Compile the source code
             deployBytecode = try await compileContract(
                 sourceCode: sourceCode,
@@ -120,43 +120,29 @@ public struct DeployableEvmContract: DeployableContract {
                 // Encode parameters directly
                 encodedArgs = try encodeConstructorArguments(inputs: inputs, args: rawArgs)
             } catch {
-                throw DeploymentError.encodingFailed("Failed to encode constructor arguments: \(error)")
+                throw DeploymentError.encodingFailed(
+                    "Failed to encode constructor arguments: \(error)")
             }
 
             // Append encoded arguments to bytecode
             deployData += encodedArgs.stripHexPrefix()
         }
 
-        // Create transaction helper
-        let txHelper = TransactionHelper(transport: transport)
-
         // Send deployment transaction
-        let txHash: String
-        do {
-            txHash = try await txHelper.sendTransaction(
-                from: signer.address,
-                to: nil, // nil for contract deployment
-                data: deployData,
-                value: value,
+        let pendingTransaction = try await evmSigner.signAndSendTransaction(
+            params: .init(
+                from: signer.address.value,
+                to: nil,
                 gas: gasLimit,
-                gasPrice: gasPrice
+                gasPrice: gasPrice,
+                maxFeePerGas: nil,
+                maxPriorityFeePerGas: nil,
+                value: value,
+                data: deployData,
+                nonce: nil
             )
-        } catch {
-            throw DeploymentError.transactionFailed("Failed to send deployment transaction: \(error)")
-        }
-
-        // Wait for transaction receipt
-        let receipt: TransactionReceipt
-        do {
-            receipt = try await txHelper.waitForReceipt(txHash: txHash)
-        } catch {
-            throw DeploymentError.transactionFailed("Failed to get transaction receipt: \(error)")
-        }
-
-        // Check if deployment was successful
-        guard receipt.isSuccessful else {
-            throw DeploymentError.deploymentFailed("Deployment transaction failed with status: \(receipt.status)")
-        }
+        )
+        let receipt = try await pendingTransaction.wait()
 
         // Extract contract address
         guard let contractAddressHex = receipt.contractAddress else {
@@ -166,12 +152,11 @@ public struct DeployableEvmContract: DeployableContract {
         let contractAddress = try Address(fromHexString: contractAddressHex)
 
         // Create and return deployed contract instance
-        return EvmContract(
+        return (EvmContract(
             address: contractAddress,
             abi: abi,
-            signer: signer,
-            transport: transport
-        )
+            evmSigner: evmSigner
+        ), receipt.transactionHash)
     }
 
     /// Compile Solidity source code and extract the bytecode
@@ -214,19 +199,22 @@ public struct DeployableEvmContract: DeployableContract {
         if let errors = output.errors {
             let criticalErrors = errors.filter { $0.severity == "error" }
             if !criticalErrors.isEmpty {
-                let errorMessages = criticalErrors.compactMap { $0.formattedMessage ?? $0.message }.joined(separator: "\n")
+                let errorMessages = criticalErrors.compactMap { $0.formattedMessage ?? $0.message }
+                    .joined(separator: "\n")
                 throw DeploymentError.compilationFailed("Compilation errors:\n\(errorMessages)")
             }
         }
 
         // Extract bytecode
         guard let contracts = output.contracts,
-              let fileContracts = contracts["contract.sol"],
-              let contract = fileContracts[contractName],
-              let evm = contract.evm,
-              let bytecode = evm.bytecode,
-              let bytecodeObject = bytecode.object else {
-            throw DeploymentError.compilationFailed("Failed to extract bytecode from compilation output")
+            let fileContracts = contracts["contract.sol"],
+            let contract = fileContracts[contractName],
+            let evm = contract.evm,
+            let bytecode = evm.bytecode,
+            let bytecodeObject = bytecode.object
+        else {
+            throw DeploymentError.compilationFailed(
+                "Failed to extract bytecode from compilation output")
         }
 
         // Ensure bytecode is not empty
@@ -252,7 +240,7 @@ private func encodeConstructorArguments(inputs: [AbiParameter], args: [Any]) thr
     var dynamicOffsets: [Int] = []
 
     // First pass: identify static vs dynamic and calculate offsets
-    var currentOffset = inputs.count * 32 // Initial offset after all static parts
+    var currentOffset = inputs.count * 32  // Initial offset after all static parts
 
     for (param, arg) in zip(inputs, args) {
         if isDynamicType(param.type) {
@@ -261,12 +249,12 @@ private func encodeConstructorArguments(inputs: [AbiParameter], args: [Any]) thr
             let dynamicData = try encodeDynamicParameter(type: param.type, value: arg)
             dynamicParts.append(dynamicData)
             currentOffset += dynamicData.count
-            staticParts.append(Data()) // Placeholder, will be replaced with offset
+            staticParts.append(Data())  // Placeholder, will be replaced with offset
         } else {
             // For static types, encode directly
             let staticData = try encodeStaticParameter(type: param.type, value: arg)
             staticParts.append(staticData)
-            dynamicOffsets.append(-1) // Not a dynamic type
+            dynamicOffsets.append(-1)  // Not a dynamic type
         }
     }
 
@@ -306,6 +294,11 @@ private func encodeStaticParameter(type: String, value: Any) throws -> Data {
             return encodeUInt(BigInt(int))
         } else if let uint = value as? UInt {
             return encodeUInt(BigInt(uint))
+        } else if let string = value as? String {
+            // Support string values for uint types (e.g., "1000000")
+            if let bigInt = BigInt(string) {
+                return encodeUInt(bigInt)
+            }
         }
         throw DeploymentError.encodingFailed("Invalid uint value")
     }
@@ -315,6 +308,11 @@ private func encodeStaticParameter(type: String, value: Any) throws -> Data {
             return encodeInt(bigInt)
         } else if let int = value as? Int {
             return encodeInt(BigInt(int))
+        } else if let string = value as? String {
+            // Support string values for int types (e.g., "-1000000")
+            if let bigInt = BigInt(string) {
+                return encodeInt(bigInt)
+            }
         }
         throw DeploymentError.encodingFailed("Invalid int value")
     }
@@ -356,6 +354,33 @@ private func encodeDynamicParameter(type: String, value: Any) throws -> Data {
             return encodeBytesData(data)
         }
         throw DeploymentError.encodingFailed("Invalid bytes value")
+    }
+
+    // Handle dynamic arrays (e.g., uint256[], address[], etc.)
+    if type.hasSuffix("[]") {
+        guard let array = value as? [Any] else {
+            throw DeploymentError.encodingFailed("Expected array for type \(type)")
+        }
+
+        // Extract element type (remove the [] suffix)
+        let elementType = String(type.dropLast(2))
+
+        // Encode array length
+        var encoded = encodeUInt(BigInt(array.count))
+
+        // Encode each element
+        for element in array {
+            let elementData: Data
+            // Check if element type is static or dynamic
+            if isDynamicType(elementType) {
+                elementData = try encodeDynamicParameter(type: elementType, value: element)
+            } else {
+                elementData = try encodeStaticParameter(type: elementType, value: element)
+            }
+            encoded.append(elementData)
+        }
+
+        return encoded
     }
 
     throw DeploymentError.encodingFailed("Unsupported dynamic parameter type: \(type)")
@@ -483,7 +508,8 @@ extension AbiFunction {
         // Handle arrays
         if arrayDepth > 0 {
             guard let array = value as? [Any] else {
-                throw ContractError.encodingFailed(NSError(domain: "Expected array for type \(type)", code: -1))
+                throw ContractError.encodingFailed(
+                    NSError(domain: "Expected array for type \(type)", code: -1))
             }
 
             var encoded = Data()
@@ -521,6 +547,11 @@ extension AbiFunction {
                 return encodeUInt(BigInt(int))
             } else if let uint = value as? UInt {
                 return encodeUInt(BigInt(uint))
+            } else if let string = value as? String {
+                // Support string values for uint types (e.g., "1000000")
+                if let bigInt = BigInt(string) {
+                    return encodeUInt(bigInt)
+                }
             }
             throw ContractError.encodingFailed(NSError(domain: "Invalid uint value", code: -1))
 
@@ -529,6 +560,11 @@ extension AbiFunction {
                 return encodeInt(bigInt)
             } else if let int = value as? Int {
                 return encodeInt(BigInt(int))
+            } else if let string = value as? String {
+                // Support string values for int types (e.g., "-1000000")
+                if let bigInt = BigInt(string) {
+                    return encodeInt(bigInt)
+                }
             }
             throw ContractError.encodingFailed(NSError(domain: "Invalid int value", code: -1))
 
@@ -554,7 +590,8 @@ extension AbiFunction {
             throw ContractError.encodingFailed(NSError(domain: "Invalid bytes value", code: -1))
 
         default:
-            throw ContractError.encodingFailed(NSError(domain: "Unsupported type: \(baseType)", code: -1))
+            throw ContractError.encodingFailed(
+                NSError(domain: "Unsupported type: \(baseType)", code: -1))
         }
     }
 

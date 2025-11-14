@@ -13,6 +13,7 @@
 		DF6933692EBF93C100940F80 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = DF6933682EBF93C100940F80 /* AppIcon.icon */; };
 		DF72D0F12EBDA3F30007C5EB /* EvmCore in Frameworks */ = {isa = PBXBuildFile; productRef = DF72D0F02EBDA3F30007C5EB /* EvmCore */; };
 		DF72D0F32EBDA3F30007C5EB /* Solidity in Frameworks */ = {isa = PBXBuildFile; productRef = DF72D0F22EBDA3F30007C5EB /* Solidity */; };
+		DFBEF2CC2EC62696004A1BCF /* ViewInspector in Frameworks */ = {isa = PBXBuildFile; productRef = DFBEF2CB2EC62696004A1BCF /* ViewInspector */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -74,6 +75,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DFBEF2CC2EC62696004A1BCF /* ViewInspector in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -156,6 +158,7 @@
 			);
 			name = SmartContractAppTests;
 			packageProductDependencies = (
+				DFBEF2CB2EC62696004A1BCF /* ViewInspector */,
 			);
 			productName = SmartContractAppTests;
 			productReference = DF72D0832EBB4A1F0007C5EB /* SmartContractAppTests.xctest */;
@@ -220,6 +223,7 @@
 				DF72D0EF2EBDA3F30007C5EB /* XCLocalSwiftPackageReference "packages/EvmCore" */,
 				DF6933402EBDE82C00940F80 /* XCRemoteSwiftPackageReference "CodeEditorView" */,
 				DF6933492EBDF63000940F80 /* XCRemoteSwiftPackageReference "keychain-swift" */,
+				DFBEF2CA2EC62696004A1BCF /* XCRemoteSwiftPackageReference "ViewInspector" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = DF72D0752EBB4A1F0007C5EB /* Products */;
@@ -649,6 +653,14 @@
 				minimumVersion = 24.0.0;
 			};
 		};
+		DFBEF2CA2EC62696004A1BCF /* XCRemoteSwiftPackageReference "ViewInspector" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/nalexn/ViewInspector";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.10.3;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -674,6 +686,11 @@
 		DF72D0F22EBDA3F30007C5EB /* Solidity */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Solidity;
+		};
+		DFBEF2CB2EC62696004A1BCF /* ViewInspector */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DFBEF2CA2EC62696004A1BCF /* XCRemoteSwiftPackageReference "ViewInspector" */;
+			productName = ViewInspector;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

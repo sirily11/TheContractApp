@@ -22,8 +22,8 @@ struct SigningWalletView: View {
 
     // MARK: - AppStorage for persistence
 
-    @AppStorage("selectedEndpointId") private var selectedEndpointId: Int = 0
-    @AppStorage("selectedWalletId") private var selectedWalletId: Int = 0
+    @AppStorage("selectedEndpointId") private var selectedEndpointIdString: String = ""
+    @AppStorage("selectedWalletId") private var selectedWalletIdString: String = ""
 
     // MARK: - SwiftData Queries
 
@@ -32,12 +32,33 @@ struct SigningWalletView: View {
 
     // MARK: - Computed Properties
 
+    private var selectedEndpointId: UUID? {
+        UUID(uuidString: selectedEndpointIdString)
+    }
+
+    private var selectedWalletId: UUID? {
+        UUID(uuidString: selectedWalletIdString)
+    }
+
+    private var selectedWalletIdBinding: Binding<UUID> {
+        Binding(
+            get: { selectedWalletId ?? (wallets.first?.id ?? UUID()) },
+            set: { selectedWalletIdString = $0.uuidString }
+        )
+    }
+
     private var selectedEndpoint: Endpoint? {
-        endpoints.first { $0.id == selectedEndpointId } ?? endpoints.first
+        if let id = selectedEndpointId {
+            return endpoints.first { $0.id == id }
+        }
+        return endpoints.first
     }
 
     private var selectedWallet: EVMWallet? {
-        wallets.first { $0.id == selectedWalletId } ?? wallets.first
+        if let id = selectedWalletId {
+            return wallets.first { $0.id == id }
+        }
+        return wallets.first
     }
 
     private var walletAddress: String {
@@ -73,7 +94,7 @@ struct SigningWalletView: View {
                 // Wallet header (address + balance) with wallet picker
                 WalletHeaderView(
                     wallets: wallets,
-                    selectedWalletId: $selectedWalletId,
+                    selectedWalletId: selectedWalletIdBinding,
                     endpoint: selectedEndpoint,
                     refreshInterval: 10.0 // Refresh balance every 10 seconds
                 )
@@ -116,6 +137,7 @@ struct SigningWalletView: View {
     /// Listen to transaction events from the view model
     private func listenToTransactionEvents() async {
         for await event in walletSigner.transactionEventPublisher.values {
+            print("Getting event: \(event)")
             await handleTransactionEvent(event)
         }
     }
@@ -172,7 +194,7 @@ struct SigningWalletView: View {
             } else {
                 ForEach(endpoints, id: \.id) { endpoint in
                     Button(action: {
-                        selectedEndpointId = endpoint.id
+                        selectedEndpointIdString = endpoint.id.uuidString
                         showingEndpointPopover = false
                     }) {
                         HStack {
@@ -206,12 +228,13 @@ struct SigningWalletView: View {
         }
         .padding()
         .frame(minWidth: 250)
-        .onChange(of: selectedEndpointId) { _, newValue in
+        .onChange(of: selectedEndpointIdString) { _, newValue in
             // Sync with first available endpoint if selection is invalid
-            if endpoints.first(where: { $0.id == newValue }) == nil,
+            if let uuid = UUID(uuidString: newValue),
+               endpoints.first(where: { $0.id == uuid }) == nil,
                let firstEndpoint = endpoints.first
             {
-                selectedEndpointId = firstEndpoint.id
+                selectedEndpointIdString = firstEndpoint.id.uuidString
             }
         }
     }
@@ -274,7 +297,6 @@ enum WalletTab: String, CaseIterable {
 
     // Create a sample wallet
     let wallet = EVMWallet(
-        id: 1,
         alias: "Test Wallet",
         address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
         keychainPath: "preview/test_wallet"
@@ -283,7 +305,6 @@ enum WalletTab: String, CaseIterable {
 
     // Create endpoint
     let endpoint = Endpoint(
-        id: 1,
         name: "Localhost",
         url: "http://127.0.0.1:8545",
         chainId: "31337"

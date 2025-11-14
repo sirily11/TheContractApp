@@ -88,7 +88,6 @@ enum TransactionMockDataGenerator {
                 gasUsed: status != .pending ? String(Int.random(in: 21000...200000)) : nil,
                 gasPrice: String(Int.random(in: 20000000000...50000000000)),
                 contractFunctionName: type == .contractCall ? randomFunctionName() : nil,
-                contractParameters: type == .contractCall ? randomParameters() : nil
             )
 
             transactions.append(transaction)
@@ -118,8 +117,8 @@ enum TransactionMockDataGenerator {
                 value: .wei(.init(hex: weiValue)),
                 data: isContractCall ? randomData() : nil,
                 gasEstimate: String(Int.random(in: 21000...200000)),
-                contractFunctionName: isContractCall ? randomFunctionName() : nil,
-                contractParameters: isContractCall ? randomParameters() : nil,
+                contractFunctionName: isContractCall ? .function(name: randomFunctionName()) : nil,
+
                 status: .pending
             )
 
@@ -180,13 +179,11 @@ enum TransactionMockDataGenerator {
         return functions.randomElement()!
     }
 
-    private static func randomParameters() -> Data? {
-        let parameters = [
-            TransactionParameter(name: "to", type: "address", value: randomAddress()),
-            TransactionParameter(name: "amount", type: "uint256", value: String(Int.random(in: 100...10000)))
+    private static func randomParameters() -> [TransactionParameter] {
+        return [
+            TransactionParameter(name: "to", type: .address, value: .init(randomAddress)),
+            TransactionParameter(name: "amount", type: .uint(256), value: .init(String(Int.random(in: 100...10000))))
         ]
-
-        return try? JSONEncoder().encode(parameters)
     }
 }
 

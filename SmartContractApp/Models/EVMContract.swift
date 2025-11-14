@@ -14,33 +14,44 @@ enum DeploymentStatus: String, CaseIterable, Codable {
     case failed = "failed"
 }
 
+enum ContractType: String, CaseIterable, Codable {
+    case `import` = "import"
+    case solidity = "solidity"
+    case bytecode = "bytecode"
+}
+
 @Model
 final class EVMContract {
-    var id: Int
+    var id: UUID
     var name: String
     var address: String
-    var abiId: Int?
+    var abiId: UUID?
     var status: DeploymentStatus
+    var type: ContractType
     var contractCode: String?
+    var sourceCode: String?
     var bytecode: String?
     var createdAt: Date
     var updatedAt: Date
-    var endpointId: Int
-    
+    var endpointId: UUID
+
     // Relationships
     @Relationship var abi: EvmAbi?
     @Relationship var endpoint: Endpoint?
-    
-    init(id: Int = 0, name: String, address: String, abiId: Int? = nil, 
-         status: DeploymentStatus = .pending, contractCode: String? = nil, 
+
+    init(id: UUID = UUID(), name: String, address: String, abiId: UUID? = nil,
+         status: DeploymentStatus = .pending, type: ContractType = .import,
+         contractCode: String? = nil, sourceCode: String? = nil,
          bytecode: String? = nil, createdAt: Date = Date(), updatedAt: Date = Date(),
-         endpointId: Int) {
+         endpointId: UUID) {
         self.id = id
         self.name = name
         self.address = address
         self.abiId = abiId
         self.status = status
+        self.type = type
         self.contractCode = contractCode
+        self.sourceCode = sourceCode
         self.bytecode = bytecode
         self.createdAt = createdAt
         self.updatedAt = updatedAt

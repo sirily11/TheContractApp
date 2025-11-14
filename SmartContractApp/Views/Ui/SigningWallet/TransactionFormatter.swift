@@ -64,7 +64,7 @@ struct TransactionFormatter {
     ///   - parameters: Array of transaction parameters
     /// - Returns: Formatted function signature (e.g., "transfer(address,uint256)")
     static func formatFunctionSignature(functionName: String, parameters: [TransactionParameter]) -> String {
-        let paramTypes = parameters.map { $0.type }.joined(separator: ",")
+        let paramTypes = parameters.map { $0.type.displayString }.joined(separator: ",")
         return "\(functionName)(\(paramTypes))"
     }
 
@@ -73,8 +73,8 @@ struct TransactionFormatter {
     /// - Returns: Array of formatted parameter strings
     static func formatParameters(_ parameters: [TransactionParameter]) -> [String] {
         return parameters.map { param in
-            let value = param.type.lowercased().contains("address") ? truncateAddress(param.value) : param.value
-            return "\(param.name): \(param.type) = \(value)"
+            let value = param.type.displayString.lowercased().contains("address") ? truncateAddress(param.value.toString()) : param.value.toString()
+            return "\(param.name): \(param.type.displayString) = \(value)"
         }
     }
 

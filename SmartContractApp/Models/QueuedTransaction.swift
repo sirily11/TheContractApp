@@ -15,6 +15,20 @@ enum QueuedTransactionStatus: String, CaseIterable, Codable {
     case rejected
 }
 
+enum ContractFunctionName: Codable, Hashable {
+    case function(name: String)
+    case constructor
+
+    func toString() -> String {
+        switch self {
+        case .function(name: let name):
+            return name
+        case .constructor:
+            return "<constructor>"
+        }
+    }
+}
+
 struct QueuedTransaction: Identifiable, Codable, Hashable {
     let id: UUID
     let queuedAt: Date
@@ -24,8 +38,10 @@ struct QueuedTransaction: Identifiable, Codable, Hashable {
     let gasEstimate: String?
 
     // Contract call details (optional)
-    let contractFunctionName: String?
-    let contractParameters: Data? // JSON encoded [TransactionParameter]
+    let contractFunctionName: ContractFunctionName?
+    let contractParameters: [TransactionParameter]
+    let bytecode: String?
+    let abi: [AbiItem]?
 
     var status: QueuedTransactionStatus
 
@@ -39,10 +55,12 @@ struct QueuedTransaction: Identifiable, Codable, Hashable {
         value: TransactionValue,
         data: String? = nil,
         gasEstimate: String? = nil,
-        contractFunctionName: String? = nil,
-        contractParameters: Data? = nil,
+        contractFunctionName: ContractFunctionName? = nil,
+        contractParameters: [TransactionParameter] = [],
         status: QueuedTransactionStatus = .pending,
-        walletId: UUID? = nil
+        walletId: UUID? = nil,
+        bytecode: String? = nil,
+        abi: [AbiItem]? = nil
     ) {
         self.id = id
         self.queuedAt = queuedAt
@@ -54,10 +72,12 @@ struct QueuedTransaction: Identifiable, Codable, Hashable {
         self.contractParameters = contractParameters
         self.status = status
         self.walletId = walletId
+        self.bytecode = bytecode
+        self.abi = abi
     }
-    
+
     // MARK: - Hashable Implementation
-    
+
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
         hasher.combine(queuedAt)
@@ -70,44 +90,21 @@ struct QueuedTransaction: Identifiable, Codable, Hashable {
         hasher.combine(status)
         hasher.combine(walletId)
     }
-    
+
     static func == (lhs: QueuedTransaction, rhs: QueuedTransaction) -> Bool {
         return lhs.id == rhs.id &&
-               lhs.queuedAt == rhs.queuedAt &&
-               lhs.to == rhs.to &&
-               lhs.value.toWei().value == rhs.value.toWei().value &&
-               lhs.data == rhs.data &&
-               lhs.gasEstimate == rhs.gasEstimate &&
-               lhs.contractFunctionName == rhs.contractFunctionName &&
-               lhs.contractParameters == rhs.contractParameters &&
-               lhs.status == rhs.status &&
-               lhs.walletId == rhs.walletId
+            lhs.queuedAt == rhs.queuedAt &&
+            lhs.to == rhs.to &&
+            lhs.value.toWei().value == rhs.value.toWei().value &&
+            lhs.data == rhs.data &&
+            lhs.gasEstimate == rhs.gasEstimate &&
+            lhs.contractFunctionName == rhs.contractFunctionName &&
+            lhs.contractParameters == rhs.contractParameters &&
+            lhs.status == rhs.status &&
+            lhs.walletId == rhs.walletId
     }
 
     // MARK: - Helper Methods
-
-    /// Returns decoded contract parameters
-    func getContractParameters() -> [TransactionParameter]? {
-        guard let contractParameters = contractParameters else { return nil }
-        return try? JSONDecoder().decode([TransactionParameter].self, from: contractParameters)
-    }
-
-    /// Returns a new instance with contract parameters encoded
-    func withContractParameters(_ parameters: [TransactionParameter]) throws -> QueuedTransaction {
-        let encoded = try JSONEncoder().encode(parameters)
-        return QueuedTransaction(
-            id: id,
-            queuedAt: queuedAt,
-            to: to,
-            value: value,
-            data: data,
-            gasEstimate: gasEstimate,
-            contractFunctionName: contractFunctionName,
-            contractParameters: encoded,
-            status: status,
-            walletId: walletId
-        )
-    }
 
     /// Returns true if this is a contract interaction
     var isContractCall: Bool {
@@ -146,16 +143,14 @@ extension QueuedTransaction {
     /// Sample ERC20 transfer
     static var sampleERC20Transfer: QueuedTransaction {
         let params = TransactionParameter.sampleTransfer
-        let paramsData = try? JSONEncoder().encode(params)
-
         return QueuedTransaction(
             queuedAt: Date().addingTimeInterval(-300), // 5 minutes ago
             to: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", // USDC contract
             value: .ether(.init(bigInt: .zero)),
             data: "0xa9059cbb000000000000000000000000742d35cc6634c0532925a3b844bc9e7595f0beb0000000000000000000000000000000000000000000000000de0b6b3a7640000",
             gasEstimate: "65000",
-            contractFunctionName: "transfer",
-            contractParameters: paramsData,
+            contractFunctionName: .function(name: "transfer"),
+            contractParameters: params,
             status: .pending
         )
     }
@@ -163,7 +158,6 @@ extension QueuedTransaction {
     /// Sample approve transaction
     static var sampleApprove: QueuedTransaction {
         let params = TransactionParameter.sampleApprove
-        let paramsData = try? JSONEncoder().encode(params)
 
         return QueuedTransaction(
             queuedAt: Date().addingTimeInterval(-60), // 1 minute ago
@@ -171,8 +165,8 @@ extension QueuedTransaction {
             value: .ether(.init(bigInt: .zero)),
             data: "0x095ea7b30000000000000000000000001234567890abcdef1234567890abcdef123456780000000000000000000000000000000000000000000000004563918244f40000",
             gasEstimate: "46000",
-            contractFunctionName: "approve",
-            contractParameters: paramsData,
+            contractFunctionName: .function(name: "approve"),
+            contractParameters: params,
             status: .pending
         )
     }
@@ -180,7 +174,6 @@ extension QueuedTransaction {
     /// Sample complex contract interaction (Uniswap swap)
     static var sampleSwap: QueuedTransaction {
         let params = TransactionParameter.sampleSwap
-        let paramsData = try? JSONEncoder().encode(params)
 
         return QueuedTransaction(
             queuedAt: Date().addingTimeInterval(-30), // 30 seconds ago
@@ -188,8 +181,8 @@ extension QueuedTransaction {
             value: .ether(.init(bigInt: .init(integerLiteral: 2))),
             data: "0x7ff36ab5000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000800000000000000000000000742d35cc6634c0532925a3b844bc9e7595f0beb0000000000000000000000000000000000000000000000000000000063ffffff",
             gasEstimate: "180000",
-            contractFunctionName: "swapExactETHForTokens",
-            contractParameters: paramsData,
+            contractFunctionName: .function(name: "swapExactETHForTokens"),
+            contractParameters: params,
             status: .pending
         )
     }

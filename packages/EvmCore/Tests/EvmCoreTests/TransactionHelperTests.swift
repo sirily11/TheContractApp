@@ -207,9 +207,9 @@ struct TransactionHelperTests {
         let from = try Address("0x1234567890123456789012345678901234567890")
         let to = try Address("0x0987654321098765432109876543210987654321")
         let data = "0x12345678"
-        let value = BigInt(1_000_000_000_000_000_000) // 1 ETH
-        let gas = BigInt(21_000)
-        let gasPrice = BigInt(20_000_000_000) // 20 Gwei
+        let value = Wei(bigInt: BigInt(1_000_000_000_000_000_000)) // 1 ETH
+        let gas = GasLimit(bigInt: BigInt(21_000))
+        let gasPrice = Gwei(bigInt: BigInt(20_000_000_000)) // 20 Gwei
 
         let txHash = try await helper.sendTransaction(
             from: from,
@@ -225,9 +225,9 @@ struct TransactionHelperTests {
         #expect(capturedParams?["from"] as? String == from.value)
         #expect(capturedParams?["to"] as? String == to.value)
         #expect(capturedParams?["data"] as? String == data)
-        #expect(capturedParams?["value"] as? String == "0x" + String(value, radix: 16))
-        #expect(capturedParams?["gas"] as? String == "0x" + String(gas, radix: 16))
-        #expect(capturedParams?["gasPrice"] as? String == "0x" + String(gasPrice, radix: 16))
+        #expect(capturedParams?["value"] as? String == "0x" + String(value.value, radix: 16))
+        #expect(capturedParams?["gas"] as? String == gas.toHex())
+        #expect(capturedParams?["gasPrice"] as? String == "0x" + String(gasPrice.toWei().value, radix: 16))
     }
 
     @Test("sendTransaction without to address (contract deployment)")
@@ -294,7 +294,7 @@ struct TransactionHelperTests {
 
         let from = try Address("0x1234567890123456789012345678901234567890")
         let to = try Address("0x0987654321098765432109876543210987654321")
-        let value = BigInt(500_000_000_000_000_000) // 0.5 ETH
+        let value = Wei(bigInt: BigInt(500_000_000_000_000_000)) // 0.5 ETH
 
         let txHash = try await helper.sendTransaction(
             from: from,
@@ -305,7 +305,7 @@ struct TransactionHelperTests {
 
         let capturedParams = paramsCapture.getStringParams()
         #expect(txHash == "0xtxhash")
-        #expect(capturedParams?["value"] as? String == "0x" + String(value, radix: 16))
+        #expect(capturedParams?["value"] as? String == "0x" + String(value.value, radix: 16))
     }
 
     @Test("sendTransaction throws on invalid response")
@@ -692,7 +692,7 @@ struct TransactionHelperTests {
         )
 
         let capturedParams = paramsCapture.getStringParams()
-        #expect(gas == BigInt(21_000))
+        #expect(gas.value == BigInt(21_000))
         #expect(capturedParams?["from"] as? String == from.value)
         #expect(capturedParams?["to"] as? String == to.value)
         #expect(capturedParams?["data"] as? String == data)
@@ -725,7 +725,7 @@ struct TransactionHelperTests {
         let from = try Address("0x1234567890123456789012345678901234567890")
         let to = try Address("0x0987654321098765432109876543210987654321")
         let data = "0x12345678"
-        let value = BigInt(1_000_000_000_000_000_000)
+        let value = Wei(bigInt: BigInt(1_000_000_000_000_000_000))
 
         let gas = try await helper.estimateGas(
             from: from,
@@ -735,11 +735,11 @@ struct TransactionHelperTests {
         )
 
         let capturedParams = paramsCapture.getStringParams()
-        #expect(gas == BigInt(30_000))
+        #expect(gas.value == BigInt(30_000))
         #expect(capturedParams?["from"] as? String == from.value)
         #expect(capturedParams?["to"] as? String == to.value)
         #expect(capturedParams?["data"] as? String == data)
-        #expect(capturedParams?["value"] as? String == "0x" + String(value, radix: 16))
+        #expect(capturedParams?["value"] as? String == "0x" + String(value.value, radix: 16))
     }
 
     @Test("estimateGas for contract deployment")
@@ -775,7 +775,7 @@ struct TransactionHelperTests {
         )
 
         let capturedParams = paramsCapture.getStringParams()
-        #expect(gas == BigInt(200_000))
+        #expect(gas.value == BigInt(200_000))
         #expect(capturedParams?["from"] as? String == from.value)
         #expect(capturedParams?["to"] == nil)
         #expect(capturedParams?["data"] as? String == bytecode)

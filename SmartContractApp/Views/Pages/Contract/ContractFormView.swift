@@ -5,6 +5,7 @@
 //  Created by Claude on 11/8/25.
 //
 
+import Solidity
 import SwiftData
 import SwiftUI
 
@@ -15,12 +16,21 @@ struct ContractFormView: View {
     // Form state
     @State private var name: String = ""
     @State private var address: String = ""
-    @State private var selectedAbiId: Int?
-    @State private var selectedEndpointId: Int?
+    @State private var selectedAbiId: UUID?
+    @State private var selectedEndpointId: UUID?
+    @State private var contractType: ContractType = .import
+    @State private var sourceCode: String = ""
+    @State private var bytecode: String = ""
 
     // Validation states
     @State private var showingValidationAlert = false
     @State private var validationMessage = ""
+
+    // Deployment sheet state
+    @State private var showingDeploymentSheet = false
+
+    // Compilation output from editor (shared with deployment sheet)
+    @State private var compilationOutput: Output? = nil
 
     // Query for available ABIs and Endpoints
     @Query(sort: \EvmAbi.name) private var abis: [EvmAbi]
@@ -36,6 +46,21 @@ struct ContractFormView: View {
 
     var body: some View {
         Form {
+            Section(header: Text("Contract Type")) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Type")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Picker("Contract Type", selection: $contractType) {
+                        Text("Import Existing").tag(ContractType.import)
+                        Text("Solidity Source").tag(ContractType.solidity)
+                        Text("Bytecode").tag(ContractType.bytecode)
+                    }
+                    .pickerStyle(.segmented)
+                    .disabled(isEditing) // Don't allow changing type when editing
+                }
+            }
+            
             Section(header: Text("Contract Details")) {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Name")
@@ -45,83 +70,96 @@ struct ContractFormView: View {
                         .textFieldStyle(RoundedBorderTextFieldStyle())
                 }
 
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Contract Address")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    TextField("0x...", text: $address)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                    #if os(iOS)
-                        .keyboardType(.asciiCapable)
-                        .autocapitalization(.none)
-                        .disableAutocorrection(true)
-                    #endif
-                    if !address.isEmpty && !isValidAddress(address) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .font(.caption2)
-                            Text("Invalid address format. Must be 0x followed by 40 hex characters.")
-                                .font(.caption2)
+                // Show address field only for import type
+                if contractType == .import {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Contract Address")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        TextField("0x...", text: $address)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                        #if os(iOS)
+                            .keyboardType(.asciiCapable)
+                            .autocapitalization(.none)
+                            .disableAutocorrection(true)
+                        #endif
+                        if !address.isEmpty && !isValidAddress(address) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .font(.caption2)
+                                Text("Invalid address format. Must be 0x followed by 40 hex characters.")
+                                    .font(.caption2)
+                            }
+                            .foregroundColor(.orange)
                         }
-                        .foregroundColor(.orange)
                     }
                 }
             }
+            
+            // Type-specific sections
+            if contractType == .solidity {
+                soliditySection
+            } else if contractType == .bytecode {
+                bytecodeSection
+            }
 
-            Section(header: Text("Configuration")) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("ABI")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+            // Configuration section - show for import type or when editing deployed contracts
+            if contractType == .import || (isEditing && contract?.status == .deployed) {
+                Section(header: Text("Configuration")) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("ABI")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
 
-                    if abis.isEmpty {
-                        HStack {
-                            Text("No ABIs available")
-                                .font(.callout)
-                                .foregroundColor(.secondary)
-                                .italic()
-                            Spacer()
-                        }
-                        .padding(.vertical, 4)
-                    } else {
-                        Picker("Select ABI", selection: $selectedAbiId) {
-                            Text("Select ABI...").tag(nil as Int?)
-                            ForEach(abis, id: \.id) { abi in
-                                Text(abi.name).tag(abi.id as Int?)
+                        if abis.isEmpty {
+                            HStack {
+                                Text("No ABIs available")
+                                    .font(.callout)
+                                    .foregroundColor(.secondary)
+                                    .italic()
+                                Spacer()
                             }
-                        }
-                        .pickerStyle(.menu)
-                    }
-                }
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Endpoint")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-
-                    if endpoints.isEmpty {
-                        HStack {
-                            Text("No endpoints available")
-                                .font(.callout)
-                                .foregroundColor(.secondary)
-                                .italic()
-                            Spacer()
-                        }
-                        .padding(.vertical, 4)
-                    } else {
-                        Picker("Select Endpoint", selection: $selectedEndpointId) {
-                            Text("Select Endpoint...").tag(nil as Int?)
-                            ForEach(endpoints, id: \.id) { endpoint in
-                                HStack {
-                                    Text(endpoint.name)
-                                    Text("(Chain \(endpoint.chainId))")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
+                            .padding(.vertical, 4)
+                        } else {
+                            Picker("Select ABI", selection: $selectedAbiId) {
+                                Text("Select ABI...").tag(nil as UUID?)
+                                ForEach(abis, id: \.id) { abi in
+                                    Text(abi.name).tag(abi.id as UUID?)
                                 }
-                                .tag(endpoint.id as Int?)
                             }
+                            .pickerStyle(.menu)
                         }
-                        .pickerStyle(.menu)
+                    }
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Endpoint")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+
+                        if endpoints.isEmpty {
+                            HStack {
+                                Text("No endpoints available")
+                                    .font(.callout)
+                                    .foregroundColor(.secondary)
+                                    .italic()
+                                Spacer()
+                            }
+                            .padding(.vertical, 4)
+                        } else {
+                            Picker("Select Endpoint", selection: $selectedEndpointId) {
+                                Text("Select Endpoint...").tag(nil as UUID?)
+                                ForEach(endpoints, id: \.id) { endpoint in
+                                    HStack {
+                                        Text(endpoint.name)
+                                        Text("(Chain \(endpoint.chainId))")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    .tag(endpoint.id as UUID?)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                        }
                     }
                 }
             }
@@ -168,10 +206,17 @@ struct ContractFormView: View {
                     }
 
                     ToolbarItem(placement: .navigationBarTrailing) {
-                        Button(isEditing ? "Update" : "Create") {
-                            saveContract()
+                        if shouldShowDeployButton {
+                            Button("Deploy") {
+                                showingDeploymentSheet = true
+                            }
+                            .disabled(!isFormValid)
+                        } else {
+                            Button(isEditing ? "Update" : "Create") {
+                                saveContract()
+                            }
+                            .disabled(!isFormValid)
                         }
-                        .disabled(!isFormValid)
                     }
                 #else
                     ToolbarItem(placement: .cancellationAction) {
@@ -181,12 +226,22 @@ struct ContractFormView: View {
                     }
 
                     ToolbarItem(placement: .primaryAction) {
-                        Button(isEditing ? "Update" : "Create") {
-                            saveContract()
+                        if shouldShowDeployButton {
+                            Button("Deploy") {
+                                showingDeploymentSheet = true
+                            }
+                            .disabled(!isFormValid)
+                        } else {
+                            Button(isEditing ? "Update" : "Create") {
+                                saveContract()
+                            }
+                            .disabled(!isFormValid)
                         }
-                        .disabled(!isFormValid)
                     }
                 #endif
+            }
+            .sheet(isPresented: $showingDeploymentSheet) {
+                deploymentSheet
             }
             .onAppear {
                 if let contract = contract {
@@ -200,11 +255,116 @@ struct ContractFormView: View {
             }
     }
 
+    // MARK: - Computed Properties
+    
+    private var shouldShowDeployButton: Bool {
+        !isEditing && (contractType == .solidity || contractType == .bytecode)
+    }
+    
     private var isFormValid: Bool {
-        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-            !address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-            isValidAddress(address) &&
-            selectedEndpointId != nil
+        let nameValid = !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        
+        switch contractType {
+        case .import:
+            return nameValid &&
+                !address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+                isValidAddress(address) &&
+                selectedEndpointId != nil
+        case .solidity:
+            return nameValid && !sourceCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        case .bytecode:
+            return nameValid && !bytecode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+    }
+    
+    // MARK: - View Sections
+    
+    private var soliditySection: some View {
+        Section(header: Text("Solidity Source Code")) {
+            VStack(alignment: .leading, spacing: 8) {
+                SolidityView(
+                    content: $sourceCode,
+                    compilationOutput: $compilationOutput
+                )
+                .frame(minHeight: 300, maxHeight: 500)
+
+                Text("Enter your Solidity source code. It will be compiled during deployment.")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
+    
+    private var bytecodeSection: some View {
+        Section(header: Text("Contract Bytecode")) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Bytecode")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                #if os(macOS)
+                TextEditor(text: $bytecode)
+                    .font(.system(.body, design: .monospaced))
+                    .frame(minHeight: 100, maxHeight: 200)
+                    .border(Color.gray.opacity(0.3), width: 1)
+                #else
+                TextEditor(text: $bytecode)
+                    .font(.system(.body, design: .monospaced))
+                    .frame(minHeight: 100, maxHeight: 200)
+                    .autocapitalization(.none)
+                    .disableAutocorrection(true)
+                #endif
+                
+                Text("Enter the compiled bytecode (must start with 0x)")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private var deploymentSheet: some View {
+        if contractType == .solidity {
+            SolidityDeploymentSheet(
+                sourceCode: $sourceCode,
+                contractName: $name,
+                editorCompilationOutput: $compilationOutput,
+                onDeploy: { deployedContract in
+                    // Dismiss the form after successful deployment
+                    dismiss()
+                }
+            )
+        } else if contractType == .bytecode {
+            if let walletSigner = getWalletSigner() {
+                let viewModel = ContractDeploymentViewModel(
+                    modelContext: modelContext,
+                    walletSigner: walletSigner
+                )
+                BytecodeDeploymentSheet(
+                    bytecode: $bytecode,
+                    contractName: $name,
+                    viewModel: viewModel,
+                    onDeploy: { deployedContract in
+                        // Dismiss the form after successful deployment
+                        dismiss()
+                    }
+                )
+            } else {
+                Text("No wallet available for deployment")
+                    .padding()
+            }
+        }
+    }
+    
+    // MARK: - Helper Functions
+    
+    private func getWalletSigner() -> WalletSignerViewModel? {
+        // Query for the first available wallet
+        let descriptor = FetchDescriptor<EVMWallet>()
+        guard let wallet = try? modelContext.fetch(descriptor).first else {
+            return nil
+        }
+        return WalletSignerViewModel(modelContext: modelContext, currentWallet: wallet)
     }
 
     private func isValidAddress(_ address: String) -> Bool {
@@ -234,6 +394,9 @@ struct ContractFormView: View {
         address = contract.address
         selectedAbiId = contract.abiId
         selectedEndpointId = contract.endpointId
+        contractType = contract.type
+        sourceCode = contract.sourceCode ?? ""
+        bytecode = contract.bytecode ?? ""
     }
 
     private func saveContract() {
@@ -245,21 +408,41 @@ struct ContractFormView: View {
         if let existingContract = contract {
             // Update existing contract
             existingContract.name = trimmedName
-            existingContract.address = trimmedAddress
-            existingContract.abiId = selectedAbiId
-            existingContract.endpointId = selectedEndpointId!
             existingContract.updatedAt = Date()
-
-            // Update relationships
-            existingContract.abi = abis.first { $0.id == selectedAbiId }
-            existingContract.endpoint = endpoints.first { $0.id == selectedEndpointId }
+            
+            // Update type-specific fields
+            switch contractType {
+            case .import:
+                existingContract.address = trimmedAddress
+                existingContract.abiId = selectedAbiId
+                existingContract.endpointId = selectedEndpointId!
+                existingContract.abi = abis.first { $0.id == selectedAbiId }
+                existingContract.endpoint = endpoints.first { $0.id == selectedEndpointId }
+            case .solidity:
+                existingContract.sourceCode = sourceCode
+                // Preserve other fields when updating source code
+            case .bytecode:
+                existingContract.bytecode = bytecode
+                // Allow updating ABI association for bytecode contracts
+                if let abiId = selectedAbiId {
+                    existingContract.abiId = abiId
+                    existingContract.abi = abis.first { $0.id == abiId }
+                }
+            }
         } else {
-            // Create new contract
+            // Create new contract (only for import type, others use deployment)
+            guard contractType == .import else {
+                validationMessage = "Use the Deploy button to create Solidity or Bytecode contracts"
+                showingValidationAlert = true
+                return
+            }
+            
             let newContract = EVMContract(
                 name: trimmedName,
                 address: trimmedAddress,
                 abiId: selectedAbiId,
                 status: .deployed,
+                type: .import,
                 endpointId: selectedEndpointId!
             )
 
@@ -281,7 +464,6 @@ struct ContractFormView: View {
 
     private func validateForm() -> Bool {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        let trimmedAddress = address.trimmingCharacters(in: .whitespacesAndNewlines)
 
         if trimmedName.isEmpty {
             validationMessage = "Please enter a name for the contract."
@@ -289,22 +471,45 @@ struct ContractFormView: View {
             return false
         }
 
-        if trimmedAddress.isEmpty {
-            validationMessage = "Please enter a contract address."
-            showingValidationAlert = true
-            return false
-        }
+        switch contractType {
+        case .import:
+            let trimmedAddress = address.trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            if trimmedAddress.isEmpty {
+                validationMessage = "Please enter a contract address."
+                showingValidationAlert = true
+                return false
+            }
 
-        if !isValidAddress(trimmedAddress) {
-            validationMessage = "Please enter a valid Ethereum address (0x followed by 40 hex characters)."
-            showingValidationAlert = true
-            return false
-        }
+            if !isValidAddress(trimmedAddress) {
+                validationMessage = "Please enter a valid Ethereum address (0x followed by 40 hex characters)."
+                showingValidationAlert = true
+                return false
+            }
 
-        if selectedEndpointId == nil {
-            validationMessage = "Please select an endpoint."
-            showingValidationAlert = true
-            return false
+            if selectedEndpointId == nil {
+                validationMessage = "Please select an endpoint."
+                showingValidationAlert = true
+                return false
+            }
+            
+        case .solidity:
+            let trimmedSource = sourceCode.trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            if trimmedSource.isEmpty {
+                validationMessage = "Please enter Solidity source code."
+                showingValidationAlert = true
+                return false
+            }
+            
+        case .bytecode:
+            let trimmedBytecode = bytecode.trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            if trimmedBytecode.isEmpty {
+                validationMessage = "Please enter contract bytecode."
+                showingValidationAlert = true
+                return false
+            }
         }
 
         return true
@@ -343,9 +548,9 @@ struct ContractFormView: View {
     let contract = EVMContract(
         name: "USDC",
         address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-        abiId: 1,
+        abiId: abi.id,
         status: .deployed,
-        endpointId: 1
+        endpointId: endpoint.id
     )
     contract.abi = abi
     contract.endpoint = endpoint

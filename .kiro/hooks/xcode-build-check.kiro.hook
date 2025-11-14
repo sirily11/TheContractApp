@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "name": "Xcode Build Check",
+  "description": "Runs xcodebuild for SmartContractApp scheme in Debug configuration after file edits finish, filtering output to show only errors, warnings, and build status",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "SmartContractApp/**/*.swift",
+      "packages/EvmCore/Sources/**/*.swift"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Run the following command and report the build status:\n\n```bash\nxcodebuild -scheme SmartContractApp -configuration Debug build 2>&1 | grep -E \"(error|warning|BUILD SUCCEEDED|BUILD FAILED)\" | tail -20\n```\n\nAnalyze the output and provide:\n1. Build status (succeeded or failed)\n2. Summary of any errors or warnings\n3. Suggested fixes if there are issues"
+  }
+}

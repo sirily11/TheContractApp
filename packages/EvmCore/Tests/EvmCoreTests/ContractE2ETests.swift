@@ -75,7 +75,9 @@ struct ContractE2ETests {
         // MARK: - Setup
         print("Setting up transport and signer...")
         let transport = try HttpTransport(urlString: Self.anvilUrl)
-        let signer = try AnvilSigner(addressString: AnvilAccounts.account0)
+        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey0)
+        let client = EvmClient(transport: transport)
+        let evmSigner = client.withSigner(signer: signer)
 
         // MARK: - Compilation
         print("Compiling contract...")
@@ -138,73 +140,65 @@ struct ContractE2ETests {
         let deployableContract = DeployableEvmContract(
             bytecode: bytecodeHex,
             abi: abiParser.items,
-            signer: signer,
-            transport: transport
+            evmSigner: evmSigner
         )
 
-        let contract = try await deployableContract.deploy(
+        let (contract, deployTxHash) = try await deployableContract.deploy(
             constructorArgs: [AnyCodable(initialValue)],
             importCallback: nil,
-            value: BigInt(0),
-            gasLimit: BigInt(3_000_000),
-            gasPrice: nil
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
+            gasLimit: GasLimit(bigInt: BigInt(3_000_000)),
+            gasPrice: nil as Gwei?
         )
 
         print("Contract deployed at: \(contract.address.value)")
+        print("Deployment transaction: \(deployTxHash)")
 
         // MARK: - Test Read-Only Function (getValue)
         print("\nTesting read-only function: getValue()")
 
-        let currentValue: BigInt = try await contract.callFunction(
+        let currentValueResult = try await contract.callFunction(
             name: "getValue",
             args: [],
-            value: BigInt(0),
-            gasLimit: nil as BigInt?,
-            gasPrice: nil as BigInt?
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
+            gasLimit: nil as GasLimit?,
+            gasPrice: nil as Gwei?
         )
+        let currentValue = currentValueResult.result.value as! BigInt
 
         print("Current value: \(currentValue)")
         #expect(currentValue == initialValue, "Initial value should be \(initialValue)")
+        #expect(
+            currentValueResult.transactionHash == nil,
+            "Read-only call should not have transaction hash")
 
         // MARK: - Test State-Changing Function (setValue)
         print("\nTesting state-changing function: setValue()")
 
         let newValue = BigInt(100)
-        let txHelper = TransactionHelper(transport: transport)
 
-        // Find setValue function
-        guard let setValueFunc = contract.functions.first(where: { $0.name == "setValue" }) else {
-            throw TestError.testFailed("setValue function not found")
-        }
-
-        // Encode function call
-        let setValueCallData = try setValueFunc.encodeCall(args: [newValue])
-
-        // Send transaction
-        let setValueTxHash = try await txHelper.sendTransaction(
-            from: signer.address,
-            to: contract.address,
-            data: setValueCallData,
-            value: BigInt(0),
-            gas: BigInt(100_000),
-            gasPrice: nil
+        // Call writable function using callFunction
+        let setValueResult = try await contract.callFunction(
+            name: "setValue",
+            args: [AnyCodable(newValue)],
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
+            gasLimit: GasLimit(bigInt: BigInt(100_000)),
+            gasPrice: nil as Gwei?
         )
+        let setValueTxHash = setValueResult.result.value as! String
 
-        print("Transaction sent: \(setValueTxHash)")
-
-        // Wait for receipt
-        let setValueReceipt = try await txHelper.waitForReceipt(txHash: setValueTxHash)
-        print("Transaction mined in block: \(setValueReceipt.blockNumber)")
-        #expect(setValueReceipt.isSuccessful, "setValue transaction should succeed")
+        print("Transaction sent and mined: \(setValueTxHash)")
+        #expect(setValueResult.transactionHash == setValueTxHash, "Transaction hash should match")
 
         // Verify value changed
-        let updatedValue: BigInt = try await contract.callFunction(
+        let updatedValueResult = try await contract.callFunction(
             name: "getValue",
             args: [],
-            value: BigInt(0),
-            gasLimit: nil as BigInt?,
-            gasPrice: nil as BigInt?
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
+            gasLimit: nil as GasLimit?,
+            gasPrice: nil as Gwei?
         )
+        let updatedValue = updatedValueResult.result.value as! BigInt
 
         print("Updated value: \(updatedValue)")
         #expect(updatedValue == newValue, "Value should be updated to \(newValue)")
@@ -212,31 +206,29 @@ struct ContractE2ETests {
         // MARK: - Test State-Changing Function (increment)
         print("\nTesting state-changing function: increment()")
 
-        guard let incrementFunc = contract.functions.first(where: { $0.name == "increment" }) else {
-            throw TestError.testFailed("increment function not found")
-        }
-
-        let incrementCallData = try incrementFunc.encodeCall(args: [])
-        let incrementTxHash = try await txHelper.sendTransaction(
-            from: signer.address,
-            to: contract.address,
-            data: incrementCallData,
-            value: BigInt(0),
-            gas: BigInt(100_000),
-            gasPrice: nil
+        // Call writable function using callFunction
+        let incrementResult = try await contract.callFunction(
+            name: "increment",
+            args: [],
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
+            gasLimit: GasLimit(bigInt: BigInt(100_000)),
+            gasPrice: nil as Gwei?
         )
+        let incrementTxHash = incrementResult.result.value as! String
 
-        let incrementReceipt = try await txHelper.waitForReceipt(txHash: incrementTxHash)
-        #expect(incrementReceipt.isSuccessful, "increment transaction should succeed")
+        print("Transaction sent and mined: \(incrementTxHash)")
+        #expect(
+            incrementResult.transactionHash != nil, "Write operation should have transaction hash")
 
         // Verify value incremented
-        let incrementedValue: BigInt = try await contract.callFunction(
+        let incrementedValueResult = try await contract.callFunction(
             name: "getValue",
             args: [],
-            value: BigInt(0),
-            gasLimit: nil as BigInt?,
-            gasPrice: nil as BigInt?
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
+            gasLimit: nil as GasLimit?,
+            gasPrice: nil as Gwei?
         )
+        let incrementedValue = incrementedValueResult.result.value as! BigInt
 
         print("Incremented value: \(incrementedValue)")
         #expect(incrementedValue == newValue + 1, "Value should be incremented to \(newValue + 1)")
@@ -244,108 +236,108 @@ struct ContractE2ETests {
         // MARK: - Test Payable Function (deposit)
         print("\nTesting payable function: deposit()")
 
-        let depositAmount = BigInt(1_000_000_000_000_000_000)  // 1 ETH in wei
+        let depositAmount = Wei(bigInt: BigInt(1_000_000_000_000_000_000))  // 1 ETH in wei
 
-        guard let depositFunc = contract.functions.first(where: { $0.name == "deposit" }) else {
-            throw TestError.testFailed("deposit function not found")
-        }
-
-        let depositCallData = try depositFunc.encodeCall(args: [])
-        let depositTxHash = try await txHelper.sendTransaction(
-            from: signer.address,
-            to: contract.address,
-            data: depositCallData,
-            value: depositAmount,
-            gas: BigInt(100_000),
-            gasPrice: nil
+        // Call payable writable function using callFunction
+        let depositResult = try await contract.callFunction(
+            name: "deposit",
+            args: [],
+            value: TransactionValue(wei: depositAmount),
+            gasLimit: GasLimit(bigInt: BigInt(100_000)),
+            gasPrice: nil as Gwei?
         )
+        let depositTxHash = depositResult.result.value as! String
 
-        let depositReceipt = try await txHelper.waitForReceipt(txHash: depositTxHash)
-        print("Deposit transaction mined: \(depositReceipt.transactionHash)")
-        #expect(depositReceipt.isSuccessful, "deposit transaction should succeed")
+        print("Deposit transaction sent and mined: \(depositTxHash)")
+        #expect(depositResult.transactionHash != nil, "Payable write should have transaction hash")
 
         // Verify balance updated
-        let balance: BigInt = try await contract.callFunction(
+        let balanceResult = try await contract.callFunction(
             name: "getBalance",
             args: [AnyCodable(signer.address.value)],
-            value: BigInt(0),
-            gasLimit: nil as BigInt?,
-            gasPrice: nil as BigInt?
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
+            gasLimit: nil as GasLimit?,
+            gasPrice: nil as Gwei?
         )
+        let balance = balanceResult.result.value as! BigInt
 
         print("Balance for \(signer.address.value): \(balance)")
-        #expect(balance == depositAmount, "Balance should be \(depositAmount)")
+        #expect(balance == depositAmount.value, "Balance should be \(depositAmount.value)")
 
         // Verify contract balance
-        let contractBalance: BigInt = try await contract.callFunction(
+        let contractBalanceResult = try await contract.callFunction(
             name: "getContractBalance",
             args: [],
-            value: BigInt(0),
-            gasLimit: nil as BigInt?,
-            gasPrice: nil as BigInt?
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
+            gasLimit: nil as GasLimit?,
+            gasPrice: nil as Gwei?
         )
+        let contractBalance = contractBalanceResult.result.value as! BigInt
 
         print("Contract balance: \(contractBalance)")
-        #expect(contractBalance == depositAmount, "Contract balance should be \(depositAmount)")
+        #expect(
+            contractBalance == depositAmount.value,
+            "Contract balance should be \(depositAmount.value)")
 
         // MARK: - Test Payable Function with Parameters (depositFor)
         print("\nTesting payable function with parameters: depositFor()")
 
         let recipient = AnvilAccounts.account1
-        let depositForAmount = BigInt(500_000_000_000_000_000)  // 0.5 ETH in wei
+        let depositForAmount = Wei(bigInt: BigInt(500_000_000_000_000_000))  // 0.5 ETH in wei
 
-        guard let depositForFunc = contract.functions.first(where: { $0.name == "depositFor" })
-        else {
-            throw TestError.testFailed("depositFor function not found")
-        }
-
-        let depositForCallData = try depositForFunc.encodeCall(args: [recipient])
-        let depositForTxHash = try await txHelper.sendTransaction(
-            from: signer.address,
-            to: contract.address,
-            data: depositForCallData,
-            value: depositForAmount,
-            gas: BigInt(100_000),
-            gasPrice: nil
+        // Call payable writable function with parameters using callFunction
+        let depositForResult = try await contract.callFunction(
+            name: "depositFor",
+            args: [AnyCodable(recipient)],
+            value: TransactionValue(wei: depositForAmount),
+            gasLimit: GasLimit(bigInt: BigInt(100_000)),
+            gasPrice: nil as Gwei?
         )
+        let depositForTxHash = depositForResult.result.value as! String
 
-        let depositForReceipt = try await txHelper.waitForReceipt(txHash: depositForTxHash)
-        #expect(depositForReceipt.isSuccessful, "depositFor transaction should succeed")
+        print("DepositFor transaction sent and mined: \(depositForTxHash)")
+        #expect(
+            depositForResult.transactionHash != nil,
+            "Payable write with params should have transaction hash")
 
         // Verify recipient balance
-        let recipientBalance: BigInt = try await contract.callFunction(
+        let recipientBalanceResult = try await contract.callFunction(
             name: "getBalance",
             args: [AnyCodable(recipient)],
-            value: BigInt(0),
-            gasLimit: nil as BigInt?,
-            gasPrice: nil as BigInt?
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
+            gasLimit: nil as GasLimit?,
+            gasPrice: nil as Gwei?
         )
+        let recipientBalance = recipientBalanceResult.result.value as! BigInt
 
         print("Balance for recipient \(recipient): \(recipientBalance)")
         #expect(
-            recipientBalance == depositForAmount, "Recipient balance should be \(depositForAmount)")
+            recipientBalance == depositForAmount.value,
+            "Recipient balance should be \(depositForAmount.value)")
 
         // Verify total deposited
-        let totalDeposited: BigInt = try await contract.callFunction(
+        let totalDepositedResult = try await contract.callFunction(
             name: "getTotalDeposited",
             args: [],
-            value: BigInt(0),
-            gasLimit: nil as BigInt?,
-            gasPrice: nil as BigInt?
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
+            gasLimit: nil as GasLimit?,
+            gasPrice: nil as Gwei?
         )
+        let totalDeposited = totalDepositedResult.result.value as! BigInt
 
-        let expectedTotal = depositAmount + depositForAmount
+        let expectedTotal = depositAmount.value + depositForAmount.value
         print("Total deposited: \(totalDeposited)")
         #expect(totalDeposited == expectedTotal, "Total deposited should be \(expectedTotal)")
 
         // Verify final contract balance
-        let finalContractBalance: BigInt = try await contract.callFunction(
+        let finalContractBalanceResult = try await contract.callFunction(
             name: "getContractBalance",
             args: [],
-            value: BigInt(0),
-            gasLimit: nil as BigInt?,
-            gasPrice: nil as BigInt?
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
+            gasLimit: nil as GasLimit?,
+            gasPrice: nil as Gwei?
         )
+        let finalContractBalance = finalContractBalanceResult.result.value as! BigInt
 
         print("Final contract balance: \(finalContractBalance)")
         #expect(
@@ -353,6 +345,349 @@ struct ContractE2ETests {
             "Final contract balance should be \(expectedTotal)")
 
         print("\n✅ All tests passed!")
+    }
+
+    @Test("Deploy contract with multiple constructor parameters")
+    func testDeployContractWithComplexConstructor() async throws {
+        // Solidity contract with multiple constructor parameter types including arrays
+        let contractWithConstructorParams = """
+            // SPDX-License-Identifier: MIT
+            pragma solidity ^0.8.0;
+
+            contract ConstructorParamsContract {
+                address public owner;
+                uint256 public initialSupply;
+                string public tokenName;
+                bool public isActive;
+                uint256[] public initialBalances;
+                address public beneficiary;
+
+                constructor(
+                    address _owner,
+                    uint256 _initialSupply,
+                    string memory _tokenName,
+                    bool _isActive,
+                    uint256[] memory _initialBalances,
+                    address _beneficiary
+                ) {
+                    owner = _owner;
+                    initialSupply = _initialSupply;
+                    tokenName = _tokenName;
+                    isActive = _isActive;
+                    initialBalances = _initialBalances;
+                    beneficiary = _beneficiary;
+                }
+
+                function getOwner() public view returns (address) {
+                    return owner;
+                }
+
+                function getInitialSupply() public view returns (uint256) {
+                    return initialSupply;
+                }
+
+                function getTokenName() public view returns (string memory) {
+                    return tokenName;
+                }
+
+                function getIsActive() public view returns (bool) {
+                    return isActive;
+                }
+
+                function getInitialBalances() public view returns (uint256[] memory) {
+                    return initialBalances;
+                }
+
+                function getInitialBalanceAt(uint256 index) public view returns (uint256) {
+                    require(index < initialBalances.length, "Index out of bounds");
+                    return initialBalances[index];
+                }
+
+                function getBeneficiary() public view returns (address) {
+                    return beneficiary;
+                }
+            }
+            """
+
+        print("Setting up transport and signer...")
+        let transport = try HttpTransport(urlString: Self.anvilUrl)
+        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey0)
+        let client = EvmClient(transport: transport)
+        let evmSigner = client.withSigner(signer: signer)
+
+        print("Compiling contract with constructor parameters...")
+        let compiler = try await Solc.create(version: "0.8.21")
+
+        let input = Input(
+            language: "Solidity",
+            sources: [
+                "ConstructorParamsContract.sol": SourceIn(content: contractWithConstructorParams)
+            ],
+            settings: Settings(
+                optimizer: Optimizer(enabled: true, runs: 200),
+                outputSelection: [
+                    "*": [
+                        "*": ["abi", "evm.bytecode.object"]
+                    ]
+                ]
+            )
+        )
+
+        let output = try await compiler.compile(input, options: nil)
+
+        // Check for compilation errors
+        if let errors = output.errors {
+            let errorMessages = errors.filter { $0.severity == "error" }
+            if !errorMessages.isEmpty {
+                throw TestError.compilationFailed(
+                    errorMessages.map { $0.formattedMessage ?? "Unknown error" }.joined(
+                        separator: "\n")
+                )
+            }
+        }
+
+        guard
+            let contractData = output.contracts?["ConstructorParamsContract.sol"]?[
+                "ConstructorParamsContract"
+            ],
+            let bytecodeHex = contractData.evm?.bytecode?.object,
+            let abiArray = contractData.abi
+        else {
+            throw TestError.compilationFailed("Failed to extract contract data")
+        }
+
+        print("Compilation successful!")
+
+        // Parse ABI
+        let abiJsonData = try JSONEncoder().encode(abiArray)
+        let abiJsonString = String(data: abiJsonData, encoding: .utf8)!
+        let abiParser = try AbiParser(fromJsonString: abiJsonString)
+
+        // Prepare constructor arguments
+        let ownerAddress = signer.address.value
+        let initialSupply = BigInt(1_000_000)
+        let tokenName = "TestToken"
+        let isActive = true
+        let initialBalances = [BigInt(100), BigInt(200), BigInt(300)]
+        let beneficiaryAddress = AnvilAccounts.account1
+
+        print("\nDeploying contract with constructor parameters:")
+        print("  owner: \(ownerAddress)")
+        print("  initialSupply: \(initialSupply)")
+        print("  tokenName: \(tokenName)")
+        print("  isActive: \(isActive)")
+        print("  initialBalances: \(initialBalances)")
+        print("  beneficiary: \(beneficiaryAddress)")
+
+        let deployableContract = DeployableEvmContract(
+            bytecode: bytecodeHex,
+            abi: abiParser.items,
+            evmSigner: evmSigner
+        )
+
+        let (contract, deployTxHash) = try await deployableContract.deploy(
+            constructorArgs: [
+                AnyCodable(ownerAddress),
+                AnyCodable(initialSupply),
+                AnyCodable(tokenName),
+                AnyCodable(isActive),
+                AnyCodable(initialBalances),
+                AnyCodable(beneficiaryAddress),
+            ],
+            importCallback: nil,
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
+            gasLimit: GasLimit(bigInt: BigInt(3_000_000)),
+            gasPrice: nil as Gwei?
+        )
+
+        print("Contract deployed at: \(contract.address.value)")
+        print("Deployment transaction: \(deployTxHash)")
+
+        // MARK: - Verify Constructor Parameters
+
+        print("\nVerifying constructor parameters...")
+
+        // Test owner address
+        let ownerResult = try await contract.callFunction(
+            name: "getOwner",
+            args: [],
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
+            gasLimit: nil as GasLimit?,
+            gasPrice: nil as Gwei?
+        )
+        let deployedOwner = ownerResult.result.value as! String
+
+        print("Owner address: \(deployedOwner)")
+        #expect(
+            deployedOwner.lowercased() == ownerAddress.lowercased(),
+            "Owner should be \(ownerAddress)")
+
+        // Test initial supply
+        let supplyResult = try await contract.callFunction(
+            name: "getInitialSupply",
+            args: [],
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
+            gasLimit: nil as GasLimit?,
+            gasPrice: nil as Gwei?
+        )
+        let deployedSupply = supplyResult.result.value as! BigInt
+
+        print("Initial supply: \(deployedSupply)")
+        #expect(deployedSupply == initialSupply, "Initial supply should be \(initialSupply)")
+
+        // Test token name
+        let nameResult = try await contract.callFunction(
+            name: "getTokenName",
+            args: [],
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
+            gasLimit: nil as GasLimit?,
+            gasPrice: nil as Gwei?
+        )
+        let deployedName = nameResult.result.value as! String
+
+        print("Token name: \(deployedName)")
+        #expect(deployedName == tokenName, "Token name should be \(tokenName)")
+
+        // Test isActive boolean
+        let activeResult = try await contract.callFunction(
+            name: "getIsActive",
+            args: [],
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
+            gasLimit: nil as GasLimit?,
+            gasPrice: nil as Gwei?
+        )
+        let deployedIsActive = activeResult.result.value as! Bool
+
+        print("Is active: \(deployedIsActive)")
+        #expect(deployedIsActive == isActive, "Is active should be \(isActive)")
+
+        // Test beneficiary address
+        let beneficiaryResult = try await contract.callFunction(
+            name: "getBeneficiary",
+            args: [],
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
+            gasLimit: nil as GasLimit?,
+            gasPrice: nil as Gwei?
+        )
+        let deployedBeneficiary = beneficiaryResult.result.value as! String
+
+        print("Beneficiary address: \(deployedBeneficiary)")
+        #expect(
+            deployedBeneficiary.lowercased() == beneficiaryAddress.lowercased(),
+            "Beneficiary should be \(beneficiaryAddress)")
+
+        // Test initial balances array (verify each element)
+        for (index, expectedBalance) in initialBalances.enumerated() {
+            let balanceResult = try await contract.callFunction(
+                name: "getInitialBalanceAt",
+                args: [AnyCodable(BigInt(index))],
+                value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
+                gasLimit: nil as GasLimit?,
+                gasPrice: nil as Gwei?
+            )
+            let actualBalance = balanceResult.result.value as! BigInt
+
+            print("Initial balance[\(index)]: \(actualBalance)")
+            #expect(
+                actualBalance == expectedBalance,
+                "Balance at index \(index) should be \(expectedBalance)")
+        }
+
+        print("\n✅ Constructor parameters test passed!")
+    }
+
+    @Test("Deploy contract with uint parameter as string")
+    func testDeployContractWithUint() async throws {
+        // Solidity contract with uint256 constructor parameter
+        let contractWithConstructorParams = """
+            // SPDX-License-Identifier: MIT
+            pragma solidity ^0.8.0;
+            contract MyToken {
+                constructor(uint256 initialSupply) {
+
+                }
+            }
+            """
+
+        print("Setting up transport and signer...")
+        let transport = try HttpTransport(urlString: Self.anvilUrl)
+        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey0)
+        let client = EvmClient(transport: transport)
+        let evmSigner = client.withSigner(signer: signer)
+
+        print("Compiling contract with constructor parameters...")
+        let compiler = try await Solc.create(version: "0.8.21")
+
+        let input = Input(
+            language: "Solidity",
+            sources: [
+                "MyToken.sol": SourceIn(content: contractWithConstructorParams)
+            ],
+            settings: Settings(
+                optimizer: Optimizer(enabled: true, runs: 200),
+                outputSelection: [
+                    "*": [
+                        "*": ["abi", "evm.bytecode.object"]
+                    ]
+                ]
+            )
+        )
+
+        let output = try await compiler.compile(input, options: nil)
+
+        // Check for compilation errors
+        if let errors = output.errors {
+            let errorMessages = errors.filter { $0.severity == "error" }
+            if !errorMessages.isEmpty {
+                throw TestError.compilationFailed(
+                    errorMessages.map { $0.formattedMessage ?? "Unknown error" }.joined(
+                        separator: "\n")
+                )
+            }
+        }
+
+        guard
+            let contractData = output.contracts?["MyToken.sol"]?[
+                "MyToken"
+            ],
+            let bytecodeHex = contractData.evm?.bytecode?.object,
+            let abiArray = contractData.abi
+        else {
+            throw TestError.compilationFailed("Failed to extract contract data")
+        }
+
+        print("Compilation successful!")
+
+        // Parse ABI
+        let abiJsonData = try JSONEncoder().encode(abiArray)
+        let abiJsonString = String(data: abiJsonData, encoding: .utf8)!
+        let abiParser = try AbiParser(fromJsonString: abiJsonString)
+
+        // Prepare constructor arguments
+
+        let initialSupply = "1000000"
+
+        print("\nDeploying contract with constructor parameters:")
+
+        let deployableContract = DeployableEvmContract(
+            bytecode: bytecodeHex,
+            abi: abiParser.items,
+            evmSigner: evmSigner
+        )
+
+        let (contract, deployTxHash) = try await deployableContract.deploy(
+            constructorArgs: [
+                AnyCodable(initialSupply)
+            ],
+            importCallback: nil,
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
+            gasLimit: GasLimit(bigInt: BigInt(3_000_000)),
+            gasPrice: nil as Gwei?
+        )
+
+        print("Contract deployed at: \(contract.address.value)")
+        print("Deployment transaction: \(deployTxHash)")
+        print("\n✅ Uint constructor parameters test passed!")
     }
 
     @Test("Deploy contract without constructor arguments")
@@ -376,7 +711,9 @@ struct ContractE2ETests {
 
         print("Setting up transport and signer...")
         let transport = try HttpTransport(urlString: Self.anvilUrl)
-        let signer = try AnvilSigner(addressString: AnvilAccounts.account0)
+        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey0)
+        let client = EvmClient(transport: transport)
+        let evmSigner = client.withSigner(signer: signer)
 
         print("Compiling simple contract...")
         let compiler = try await Solc.create(version: "0.8.21")
@@ -406,34 +743,36 @@ struct ContractE2ETests {
         let deployableContract = DeployableEvmContract(
             bytecode: bytecodeHex,
             abi: abiParser.items,
-            signer: signer,
-            transport: transport
+            evmSigner: evmSigner
         )
 
-        let contract = try await deployableContract.deploy(
+        let (contract, deployTxHash) = try await deployableContract.deploy(
             constructorArgs: [],  // No constructor arguments
             importCallback: nil,
-            value: BigInt(0),
-            gasLimit: BigInt(1_000_000),
-            gasPrice: nil
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
+            gasLimit: GasLimit(bigInt: BigInt(1_000_000)),
+            gasPrice: nil as Gwei?
         )
 
         print("Contract deployed at: \(contract.address.value)")
+        print("Deployment transaction: \(deployTxHash)")
 
         // Test initial value
-        let initialValue: BigInt = try await contract.callFunction(
+        let initialValueResult = try await contract.callFunction(
             name: "getValue",
             args: [],
-            value: BigInt(0),
-            gasLimit: nil as BigInt?,
-            gasPrice: nil as BigInt?
+            value: TransactionValue(wei: Wei(bigInt: BigInt(0))),
+            gasLimit: nil as GasLimit?,
+            gasPrice: nil as Gwei?
         )
+        let initialValue = initialValueResult.result.value as! BigInt
 
         print("Initial value: \(initialValue)")
         #expect(initialValue == 0, "Initial value should be 0")
 
         print("✅ Simple contract deployment test passed!")
     }
+
 }
 
 // MARK: - Test Errors

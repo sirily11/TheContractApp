@@ -14,17 +14,17 @@ public struct TransactionHelper {
     ///   - from: The sender address
     ///   - to: The recipient address (nil for contract deployment)
     ///   - data: The transaction data (contract bytecode or function call data)
-    ///   - value: The value to send in wei (default: 0)
+    ///   - value: The value to send
     ///   - gas: Optional gas limit
-    ///   - gasPrice: Optional gas price
+    ///   - gasPrice: Optional gas price (in gwei)
     /// - Returns: The transaction hash
     public func sendTransaction(
         from: Address,
         to: Address?,
         data: String,
-        value: BigInt = 0,
-        gas: BigInt? = nil,
-        gasPrice: BigInt? = nil
+        value: Wei = Wei(bigInt: 0),
+        gas: GasLimit? = nil,
+        gasPrice: Gwei? = nil
     ) async throws -> String {
         var params: [String: Any] = [
             "from": from.value,
@@ -35,16 +35,16 @@ public struct TransactionHelper {
             params["to"] = to.value
         }
 
-        if value > 0 {
-            params["value"] = "0x" + String(value, radix: 16)
+        if value.value > 0 {
+            params["value"] = "0x" + String(value.value, radix: 16)
         }
 
         if let gas = gas {
-            params["gas"] = "0x" + String(gas, radix: 16)
+            params["gas"] = gas.toHex()
         }
 
         if let gasPrice = gasPrice {
-            params["gasPrice"] = "0x" + String(gasPrice, radix: 16)
+            params["gasPrice"] = "0x" + String(gasPrice.toWei().value, radix: 16)
         }
 
         let request = RpcRequest(
@@ -157,8 +157,8 @@ public struct TransactionHelper {
         from: Address,
         to: Address?,
         data: String,
-        value: BigInt = 0
-    ) async throws -> BigInt {
+        value: Wei = Wei(bigInt: 0)
+    ) async throws -> GasLimit {
         var params: [String: Any] = [
             "from": from.value,
             "data": data
@@ -168,8 +168,8 @@ public struct TransactionHelper {
             params["to"] = to.value
         }
 
-        if value > 0 {
-            params["value"] = "0x" + String(value, radix: 16)
+        if value.value > 0 {
+            params["value"] = "0x" + String(value.value, radix: 16)
         }
 
         let request = RpcRequest(
@@ -187,7 +187,7 @@ public struct TransactionHelper {
             throw TransactionError.invalidResponse("Invalid gas estimate format")
         }
 
-        return gas
+        return GasLimit(bigInt: gas)
     }
 }
 

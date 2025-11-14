@@ -102,7 +102,7 @@ struct SendView: View {
             } message: {
                 Text(errorMessage)
             }
-            .task(id: "\(wallet?.id ?? 0)-\(endpoint?.id ?? 0)") {
+            .task(id: "\(wallet?.id.uuidString ?? "")-\(endpoint?.id.uuidString ?? "")") {
                 // Cancel previous task when wallet or endpoint changes
                 balanceTask?.cancel()
 
@@ -295,13 +295,11 @@ struct Asset: Identifiable, Equatable {
 
 #Preview {
     let wallet = EVMWallet(
-        id: 1,
         alias: "Main Wallet",
         address: "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0",
         keychainPath: "preview1"
     )
     let endpoint = Endpoint(
-        id: 1,
         name: "Mainnet",
         url: "https://eth.llamarpc.com",
         chainId: "1",

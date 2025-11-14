@@ -31,10 +31,10 @@ private struct ParameterRow: View {
     }
 
     private var formattedValue: String {
-        if parameter.type.lowercased().contains("address") {
-            return TransactionFormatter.truncateAddress(parameter.value)
+        if parameter.type.displayString.lowercased().contains("address") {
+            return TransactionFormatter.truncateAddress(parameter.value.toString())
         }
-        return parameter.value
+        return parameter.value.toString()
     }
 }
 
@@ -154,7 +154,7 @@ extension SignTransactionView {
                     Label("Function", systemImage: "function")
                         .foregroundColor(.secondary)
                     Spacer()
-                    Text(functionName)
+                    Text(functionName.toString())
                         .font(.system(.body, design: .monospaced))
                 }
 
@@ -169,13 +169,13 @@ extension SignTransactionView {
                 }
 
                 // Parameters
-                if let parameters = transaction.getContractParameters(), !parameters.isEmpty {
+                if !transaction.contractParameters.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Parameters (\(parameters.count))")
+                        Text("Parameters (\(transaction.contractParameters.count))")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
 
-                        ForEach(parameters) { param in
+                        ForEach(transaction.contractParameters) { param in
                             ParameterRow(parameter: param)
                         }
                     }

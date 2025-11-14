@@ -10,7 +10,7 @@ import SwiftData
 
 @Model
 final class EvmAbi {
-    var id: Int
+    var id: UUID
     var name: String
     var abiContent: String // JSON string containing the ABI
     var sourceUrl: String? // Optional URL for remote ABI source
@@ -18,7 +18,7 @@ final class EvmAbi {
     var createdAt: Date
     var updatedAt: Date
 
-    init(id: Int = 0, name: String, abiContent: String,
+    init(id: UUID = UUID(), name: String, abiContent: String,
          sourceUrl: String? = nil, sourceFileName: String? = nil,
          createdAt: Date = Date(), updatedAt: Date = Date()) {
         self.id = id

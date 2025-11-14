@@ -511,7 +511,6 @@ struct AbiDetailView: View {
     return NavigationStack {
         AbiDetailView(
             abi: EvmAbi(
-                id: 1,
                 name: "ERC20 Token",
                 abiContent: sampleAbi
             )

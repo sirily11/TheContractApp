@@ -28,7 +28,7 @@ enum ChainValidationError: Error, LocalizedError {
 
 @Model
 final class Endpoint {
-    var id: Int
+    var id: UUID
     var name: String
     var url: String
     var chainId: String
@@ -39,7 +39,7 @@ final class Endpoint {
     var createdAt: Date
     var updatedAt: Date
 
-    init(id: Int = 0, name: String, url: String, chainId: String,
+    init(id: UUID = UUID(), name: String, url: String, chainId: String,
          autoDetectChainId: Bool = false,
          nativeTokenSymbol: String = "ETH",
          nativeTokenName: String = "Ethereum",

@@ -5,6 +5,7 @@
 //  Created by Claude on 11/8/25.
 //
 
+import Solidity
 import SwiftData
 import SwiftUI
 
@@ -17,6 +18,17 @@ struct ContractContentView: View {
     @State private var showingEditSheet = false
     @State private var showingDeleteAlert = false
     @State private var contractToDelete: EVMContract?
+
+    // Deployment sheets
+    @State private var showingSolidityDeploymentSheet = false
+    @State private var showingBytecodeDeploymentSheet = false
+    @State private var soliditySourceCode = ""
+    @State private var solidityContractName = ""
+    @State private var bytecodeData = ""
+    @State private var bytecodeContractName = ""
+
+    // Compilation output from editor (shared with deployment sheet)
+    @State private var compilationOutput: Output? = nil
 
     var body: some View {
         List(contracts, selection: $selectedContract) { contract in
@@ -51,15 +63,11 @@ struct ContractContentView: View {
             #endif
         }
         .sheet(isPresented: $showingCreateSheet) {
-            NavigationStack {
-                ContractFormView()
-            }
+            ContractFormView()
         }
         .sheet(isPresented: $showingEditSheet) {
             if let contract = selectedContract {
-                NavigationStack {
-                    ContractFormView(contract: contract)
-                }
+                ContractFormView(contract: contract)
             } else {
                 Text("No contract selected")
             }
@@ -80,18 +88,77 @@ struct ContractContentView: View {
                 )
             }
         }
+        .sheet(isPresented: $showingSolidityDeploymentSheet) {
+            SolidityDeploymentSheet(
+                sourceCode: $soliditySourceCode,
+                contractName: $solidityContractName,
+                editorCompilationOutput: $compilationOutput,
+                onDeploy: { contract in
+                    selectedContract = contract
+                }
+            )
+        }
+        .sheet(isPresented: $showingBytecodeDeploymentSheet) {
+            BytecodeDeploymentSheet(
+                bytecode: $bytecodeData,
+                contractName: $bytecodeContractName,
+                viewModel: createDeploymentViewModel(),
+                onDeploy: { contract in
+                    selectedContract = contract
+                }
+            )
+        }
     }
 
     private var contractCreationMenu: some View {
         Menu {
+            Menu("Deploy") {
+                Button {
+                    // Reset state and show Solidity deployment sheet
+                    soliditySourceCode = ""
+                    solidityContractName = ""
+                    showingSolidityDeploymentSheet = true
+                } label: {
+                    Label("Solidity", systemImage: "document")
+                }
+
+                Button {
+                    // Reset state and show Bytecode deployment sheet
+                    bytecodeData = ""
+                    bytecodeContractName = ""
+                    showingBytecodeDeploymentSheet = true
+                } label: {
+                    Label("Bytecode", systemImage: "doc.text")
+                }
+            }
+
             Button(action: {
                 showingCreateSheet = true
             }) {
-                Label("Create New Contract", systemImage: "plus.square")
+                Label("Import Existing Contract", systemImage: "plus.square")
             }
+
         } label: {
             Image(systemName: "plus")
         }
+    }
+
+    private func createDeploymentViewModel() -> ContractDeploymentViewModel {
+        // Fetch the first available wallet from the model context
+        // In a real app, this would use the currently selected wallet
+        let fetchDescriptor = FetchDescriptor<EVMWallet>()
+        let wallets = (try? modelContext.fetch(fetchDescriptor)) ?? []
+        let currentWallet = wallets.first
+
+        let walletSigner = WalletSignerViewModel(
+            modelContext: modelContext,
+            currentWallet: currentWallet
+        )
+
+        return ContractDeploymentViewModel(
+            modelContext: modelContext,
+            walletSigner: walletSigner
+        )
     }
 
     private func deleteContract(_ contract: EVMContract) {
@@ -121,16 +188,16 @@ struct ContractContentView: View {
     let contract1 = EVMContract(
         name: "USDC",
         address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-        abiId: 1,
+        abiId: abi.id,
         status: .deployed,
-        endpointId: 1
+        endpointId: endpoint.id
     )
     let contract2 = EVMContract(
         name: "DAI",
         address: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
-        abiId: 1,
+        abiId: abi.id,
         status: .pending,
-        endpointId: 1
+        endpointId: endpoint.id
     )
 
     contract1.abi = abi
