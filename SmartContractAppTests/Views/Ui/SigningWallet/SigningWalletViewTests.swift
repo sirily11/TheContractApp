@@ -14,6 +14,7 @@ import SwiftUI
 import Testing
 @testable import SmartContractApp
 
+@Suite(.serialized)
 struct SigningWalletViewTests {
 
     // MARK: - Test Infrastructure
@@ -324,6 +325,7 @@ struct SigningWalletViewTests {
 
 // MARK: - QueuedTransactionsView Tests
 
+@Suite(.serialized)
 struct QueuedTransactionsViewTests {
 
     // MARK: - Test Infrastructure

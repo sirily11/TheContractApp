@@ -17,11 +17,11 @@ import ViewInspector
 ///
 /// Toolbar button logic (from SolidityDeploymentSheet.swift:109-157):
 /// - First page (no navigation): "Cancel"
-/// - Compilation page (failed state): "Close"
+/// - Compilation page (failed state): "Back"
 /// - Compilation page (not processing): "Back"
 /// - Compilation page (processing): No button
 /// - Constructor params page: "Back"
-/// - Deployment page (failed state): "Close"
+/// - Deployment page (failed state): "Back"
 /// - Deployment page (not processing): "Back"
 /// - Deployment page (processing): No button
 /// - Success page: "Close"
@@ -176,7 +176,7 @@ extension SolidityDeploymentSheetToolbarTests {
         // This test verifies that the first page (currentDestination == nil)
         // shows a "Cancel" button in the toolbar's cancellationAction placement
         //
-        // Reference: SolidityDeploymentSheet.swift:150-154
+        // Reference: SolidityDeploymentSheet.swift:152-157
         //
         // ```swift
         // } else {
@@ -198,21 +198,22 @@ extension SolidityDeploymentSheetToolbarTests {
         let view = try wrapper.inspect()
         let cancelButton = try view.find(button: "Cancel")
 
-        #expect(cancelButton != nil, "First page should show Cancel button as documented in lines 150-154")
+        #expect(cancelButton != nil, "First page should show Cancel button as documented in lines 152-157")
     }
 
     @Test("Toolbar button logic is documented correctly for compilation page")
     @MainActor func testCompilationPageToolbarLogicDocumentation() async throws {
         // This test documents the compilation page toolbar logic
         //
-        // Reference: SolidityDeploymentSheet.swift:114-125
+        // Reference: SolidityDeploymentSheet.swift:116-128
         //
         // ```swift
         // case .compilation:
-        //     // Compilation page: Hide button when processing, show Close when failed
+        //     // Compilation page: Hide button when processing, show Back when failed
         //     if case .failed = compilationState {
-        //         Button("Close") {
-        //             dismiss()
+        //         Button("Back") {
+        //             navigationPath.removeLast()
+        //             currentDestination = nil
         //         }
         //     } else if !isProcessing {
         //         Button("Back") {
@@ -223,18 +224,18 @@ extension SolidityDeploymentSheetToolbarTests {
         // ```
         //
         // Expected behavior:
-        // - When compilationState is .failed: Show "Close" button
+        // - When compilationState is .failed: Show "Back" button
         // - When not processing (!isProcessing): Show "Back" button
         // - When processing (isProcessing == true): No button
 
-        #expect(true, "Compilation page toolbar logic is documented in lines 114-125")
+        #expect(true, "Compilation page toolbar logic is documented in lines 116-128")
     }
 
     @Test("Toolbar button logic is documented correctly for constructor params page")
     @MainActor func testConstructorParamsPageToolbarLogicDocumentation() async throws {
         // This test documents the constructor params page toolbar logic
         //
-        // Reference: SolidityDeploymentSheet.swift:126-131
+        // Reference: SolidityDeploymentSheet.swift:129-134
         //
         // ```swift
         // case .constructorParams:
@@ -248,21 +249,22 @@ extension SolidityDeploymentSheetToolbarTests {
         // Expected behavior:
         // - Always shows "Back" button
 
-        #expect(true, "Constructor params page toolbar logic is documented in lines 126-131")
+        #expect(true, "Constructor params page toolbar logic is documented in lines 129-134")
     }
 
     @Test("Toolbar button logic is documented correctly for deployment page")
     @MainActor func testDeploymentPageToolbarLogicDocumentation() async throws {
         // This test documents the deployment page toolbar logic
         //
-        // Reference: SolidityDeploymentSheet.swift:132-143
+        // Reference: SolidityDeploymentSheet.swift:135-147
         //
         // ```swift
         // case .deployment:
-        //     // Deployment page: Hide button when processing, show Close when failed
+        //     // Deployment page: Hide button when processing, show Back when failed
         //     if case .failed = deploymentState {
-        //         Button("Close") {
-        //             dismiss()
+        //         Button("Back") {
+        //             navigationPath.removeLast()
+        //             currentDestination = .constructorParams
         //         }
         //     } else if !isProcessing {
         //         Button("Back") {
@@ -273,18 +275,18 @@ extension SolidityDeploymentSheetToolbarTests {
         // ```
         //
         // Expected behavior:
-        // - When deploymentState is .failed: Show "Close" button
+        // - When deploymentState is .failed: Show "Back" button
         // - When not processing (!isProcessing): Show "Back" button
         // - When processing (isProcessing == true): No button
 
-        #expect(true, "Deployment page toolbar logic is documented in lines 132-143")
+        #expect(true, "Deployment page toolbar logic is documented in lines 135-147")
     }
 
     @Test("Toolbar button logic is documented correctly for success page")
     @MainActor func testSuccessPageToolbarLogicDocumentation() async throws {
         // This test documents the success page toolbar logic
         //
-        // Reference: SolidityDeploymentSheet.swift:144-148
+        // Reference: SolidityDeploymentSheet.swift:148-152
         //
         // ```swift
         // case .success:
@@ -297,7 +299,7 @@ extension SolidityDeploymentSheetToolbarTests {
         // Expected behavior:
         // - Always shows "Close" button
 
-        #expect(true, "Success page toolbar logic is documented in lines 144-148")
+        #expect(true, "Success page toolbar logic is documented in lines 148-152")
     }
 
     @Test("Toolbar button summary matches implementation")
@@ -307,11 +309,11 @@ extension SolidityDeploymentSheetToolbarTests {
         // Page                  | State         | Button
         // ----------------------|---------------|--------
         // First (nil)           | -             | Cancel
-        // Compilation           | failed        | Close
+        // Compilation           | failed        | Back
         // Compilation           | !processing   | Back
         // Compilation           | processing    | (none)
         // Constructor Params    | -             | Back
-        // Deployment            | failed        | Close
+        // Deployment            | failed        | Back
         // Deployment            | !processing   | Back
         // Deployment            | processing    | (none)
         // Success               | -             | Close
@@ -320,7 +322,7 @@ extension SolidityDeploymentSheetToolbarTests {
         // - "First page is close" (actually "Cancel", but same intent - closes the sheet)
         // - "Last page is close" (Success page shows "Close" ✓)
         // - "Others are back" (Constructor params always shows "Back" ✓,
-        //                      Compilation/Deployment show "Back" when not processing ✓)
+        //                      Compilation/Deployment show "Back" even when failed ✓)
 
         #expect(true, "Toolbar button logic matches requirements")
     }

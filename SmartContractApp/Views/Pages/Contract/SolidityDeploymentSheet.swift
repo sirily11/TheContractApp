@@ -114,10 +114,11 @@ struct SolidityDeploymentSheet: View {
                 if let destination = currentDestination {
                     switch destination {
                     case .compilation:
-                        // Compilation page: Hide button when processing, show Close when failed
+                        // Compilation page: Hide button when processing, show Back when failed
                         if case .failed = compilationState {
-                            Button("Close") {
-                                dismiss()
+                            Button("Back") {
+                                navigationPath.removeLast()
+                                currentDestination = nil
                             }
                         } else if !isProcessing {
                             Button("Back") {
@@ -132,10 +133,11 @@ struct SolidityDeploymentSheet: View {
                             currentDestination = .compilation
                         }
                     case .deployment:
-                        // Deployment page: Hide button when processing, show Close when failed
+                        // Deployment page: Hide button when processing, show Back when failed
                         if case .failed = deploymentState {
-                            Button("Close") {
-                                dismiss()
+                            Button("Back") {
+                                navigationPath.removeLast()
+                                currentDestination = .constructorParams
                             }
                         } else if !isProcessing {
                             Button("Back") {

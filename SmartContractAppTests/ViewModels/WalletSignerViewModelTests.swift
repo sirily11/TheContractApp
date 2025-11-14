@@ -13,7 +13,37 @@ import SwiftData
 import Testing
 @testable import SmartContractApp
 
+@Suite(.serialized)
 struct WalletSignerViewModelTests {
+
+    // MARK: - Diagnostic Test
+
+    @Test @MainActor func testSimpleDiagnostic() async throws {
+        // Super simple test to verify test infrastructure works
+        #expect(true)
+    }
+
+    @Test @MainActor func testModelContextCreation() async throws {
+        // Test if we can create a ModelContext
+        let context = createTestContext()
+        #expect(context != nil)
+    }
+
+    @Test @MainActor func testWalletCreation() async throws {
+        // Test if we can create a wallet
+        let context = createTestContext()
+        let wallet = createTestWallet(context: context)
+        #expect(wallet.address == "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266")
+    }
+
+    @Test @MainActor func testViewModelCreation() async throws {
+        // Test if we can create a view model
+        let context = createTestContext()
+        let wallet = createTestWallet(context: context)
+        let viewModel = WalletSignerViewModel(modelContext: context, currentWallet: wallet)
+        #expect(viewModel != nil)
+        #expect(viewModel.currentShowingTransactions.isEmpty)
+    }
 
     // MARK: - Test Infrastructure
 
