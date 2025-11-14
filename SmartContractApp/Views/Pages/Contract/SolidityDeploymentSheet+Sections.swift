@@ -49,31 +49,12 @@ extension SolidityDeploymentSheet {
                 }
             }
             .toolbar {
-                #if os(iOS)
-                    ToolbarItem(placement: .navigationBarLeading) {
-                        Button("Cancel") {
-                            dismiss()
-                        }
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Next") {
+                        startCompilationFlow()
                     }
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Button("Next") {
-                            startCompilationFlow()
-                        }
-                        .disabled(!isReviewFormValid)
-                    }
-                #else
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel") {
-                            dismiss()
-                        }
-                    }
-                    ToolbarItem(placement: .primaryAction) {
-                        Button("Next") {
-                            startCompilationFlow()
-                        }
-                        .disabled(!isReviewFormValid)
-                    }
-                #endif
+                    .disabled(!isReviewFormValid)
+                }
             }
     }
 
@@ -179,63 +160,26 @@ extension SolidityDeploymentSheet {
         #endif
             .navigationBarBackButtonHidden(isProcessing)
             .toolbar {
-                #if os(iOS)
-                    ToolbarItem(placement: .navigationBarLeading) {
-                        if !isProcessing {
-                            Button("Back") {
-                                navigationPath.removeLast()
-                            }
+                ToolbarItem(placement: .primaryAction) {
+                    if case .idle = compilationState, case .idle = deploymentState {
+                        Button("Deploy") {
+                            startDeployment()
                         }
-                    }
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        if case .idle = compilationState, case .idle = deploymentState {
-                            Button("Deploy") {
-                                startDeployment()
-                            }
-                            .buttonStyle(.borderedProminent)
-                        } else if case .failed = compilationState {
-                            Button("Back") {
-                                resetStates()
-                                navigationPath.removeLast()
-                            }
-                            .buttonStyle(.borderedProminent)
-                        } else if case .failed = deploymentState {
-                            Button("Retry") {
-                                resetStates()
-                                startDeployment()
-                            }
-                            .buttonStyle(.borderedProminent)
+                        .buttonStyle(.borderedProminent)
+                    } else if case .failed = compilationState {
+                        Button("Back") {
+                            resetStates()
+                            navigationPath.removeLast()
                         }
-                    }
-                #else
-                    ToolbarItem(placement: .cancellationAction) {
-                        if !isProcessing {
-                            Button("Back") {
-                                navigationPath.removeLast()
-                            }
+                        .buttonStyle(.borderedProminent)
+                    } else if case .failed = deploymentState {
+                        Button("Retry") {
+                            resetStates()
+                            startDeployment()
                         }
+                        .buttonStyle(.borderedProminent)
                     }
-                    ToolbarItem(placement: .primaryAction) {
-                        if case .idle = compilationState, case .idle = deploymentState {
-                            Button("Deploy") {
-                                startDeployment()
-                            }
-                            .buttonStyle(.borderedProminent)
-                        } else if case .failed = compilationState {
-                            Button("Back") {
-                                resetStates()
-                                navigationPath.removeLast()
-                            }
-                            .buttonStyle(.borderedProminent)
-                        } else if case .failed = deploymentState {
-                            Button("Retry") {
-                                resetStates()
-                                startDeployment()
-                            }
-                            .buttonStyle(.borderedProminent)
-                        }
-                    }
-                #endif
+                }
             }
     }
 

@@ -181,8 +181,8 @@ enum TransactionMockDataGenerator {
 
     private static func randomParameters() -> [TransactionParameter] {
         return [
-            TransactionParameter(name: "to", type: "address", value: .init(randomAddress)),
-            TransactionParameter(name: "amount", type: "uint256", value: .init(String(Int.random(in: 100...10000))))
+            TransactionParameter(name: "to", type: .address, value: .init(randomAddress)),
+            TransactionParameter(name: "amount", type: .uint(256), value: .init(String(Int.random(in: 100...10000))))
         ]
     }
 }

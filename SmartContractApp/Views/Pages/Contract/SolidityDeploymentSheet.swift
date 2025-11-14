@@ -32,6 +32,7 @@ struct SolidityDeploymentSheet: View {
     // MARK: - Navigation
 
     @State var navigationPath = NavigationPath()
+    @State var currentDestination: DeploymentDestination?
 
     // MARK: - State Properties
 
@@ -84,19 +85,51 @@ struct SolidityDeploymentSheet: View {
                     switch destination {
                     case .compilation:
                         compilationProgressPage
+                            .onAppear { currentDestination = .compilation }
                     case .success:
                         successPage
+                            .onAppear { currentDestination = .success }
+                    }
+                }
+                .onAppear {
+                    if navigationPath.isEmpty {
+                        currentDestination = nil
                     }
                 }
         }
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
-                Button {
-                    dismiss()
-                } label: {
-                    Text("Cancel")
+                // Show different buttons based on current page
+                if let destination = currentDestination {
+                    switch destination {
+                    case .compilation:
+                        // Compilation page: Hide button when processing, show Close when failed
+                        if case .failed = compilationState {
+                            Button("Close") {
+                                dismiss()
+                            }
+                        } else if case .failed = deploymentState {
+                            Button("Close") {
+                                dismiss()
+                            }
+                        } else if !isProcessing {
+                            Button("Back") {
+                                navigationPath.removeLast()
+                                currentDestination = nil
+                            }
+                        }
+                    case .success:
+                        // Success page: Show Close
+                        Button("Close") {
+                            dismiss()
+                        }
+                    }
+                } else {
+                    // First page: Show Cancel
+                    Button("Cancel") {
+                        dismiss()
+                    }
                 }
-                .disabled(isProcessing || queuedTransactionId != nil)
             }
         }
         .frame(minWidth: 600)
@@ -130,37 +163,11 @@ struct SolidityDeploymentSheet: View {
 
     @Previewable @State var contractName = "SimpleStorage"
 
-    let config = ModelConfiguration(isStoredInMemoryOnly: true)
-    let container = try! ModelContainer(
-        for: Endpoint.self, EVMContract.self, EvmAbi.self,
-        configurations: config
-    )
-
-    // Add sample endpoint
-    let endpoint = Endpoint(
-        name: "Anvil Local",
-        url: "http://127.0.0.1:8545",
-        chainId: "31337"
-    )
-    container.mainContext.insert(endpoint)
-
-    // Create mock wallet signer
-    let mockWallet = EVMWallet(
-        alias: "Test Wallet",
-        address: "0x1234567890123456789012345678901234567890",
-        keychainPath: "test_wallet"
-    )
-    container.mainContext.insert(mockWallet)
-
-    let walletSigner = WalletSignerViewModel(
-        modelContext: container.mainContext,
-        currentWallet: mockWallet
-    )
-
-    return SolidityDeploymentSheet(
-        sourceCode: $sourceCode,
-        contractName: $contractName
-    )
-    .modelContainer(container)
-    .environment(walletSigner)
+    // Use PreviewHelper for consistent test data setup
+    return try! PreviewHelper.wrap {
+        SolidityDeploymentSheet(
+            sourceCode: $sourceCode,
+            contractName: $contractName
+        )
+    }
 }

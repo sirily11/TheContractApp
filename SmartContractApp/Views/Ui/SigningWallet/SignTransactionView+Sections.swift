@@ -31,7 +31,7 @@ private struct ParameterRow: View {
     }
 
     private var formattedValue: String {
-        if parameter.type.lowercased().contains("address") {
+        if parameter.type.displayString.lowercased().contains("address") {
             return TransactionFormatter.truncateAddress(parameter.value.toString())
         }
         return parameter.value.toString()

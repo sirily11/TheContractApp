@@ -98,7 +98,7 @@ extension TransactionDetailView {
 
                 Spacer()
 
-                Text(parameter.type)
+                Text(parameter.type.displayString)
                     .font(.caption)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
