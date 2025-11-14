@@ -76,12 +76,21 @@ struct TestEnvironmentConfiguration {
 
 /// A reusable wrapper view that provides all necessary environment objects for testing SwiftUI views
 struct SwiftUITestWrapper<Content: View>: View {
+    /// The configuration used to create this wrapper (exposed for testing)
     let configuration: TestEnvironmentConfiguration
+
+    /// The content view being wrapped
     let content: Content
 
-    // Environment objects created from configuration
+    // Environment objects created from configuration (exposed for testing)
+
+    /// The in-memory model container with test data
     let modelContainer: ModelContainer
+
+    /// The wallet signer view model
     let walletSigner: WalletSignerViewModel
+
+    /// The window state manager
     let windowStateManager: WindowStateManager
 
     init(
