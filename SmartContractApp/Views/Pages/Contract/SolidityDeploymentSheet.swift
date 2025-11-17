@@ -192,7 +192,7 @@ struct SolidityDeploymentSheet: View {
     @Previewable @State var compilationOutput: Output? = nil
 
     // Use PreviewHelper for consistent test data setup
-    return try! PreviewHelper.wrap {
+    try! PreviewHelper.wrap {
         SolidityDeploymentSheet(
             sourceCode: $sourceCode,
             contractName: $contractName,

@@ -547,7 +547,7 @@ public struct EvmClient: EvmRpcClientProtocol {
     }
 }
 
-public struct EvmClientWithSigner: EvmRpcClientProtocol {
+public struct EvmClientWithSigner: EvmRpcClientProtocol, EvmSignerProtocol {
     public let transport: Transport
     public let signer: Signer
 

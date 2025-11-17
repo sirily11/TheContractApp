@@ -66,33 +66,33 @@ struct BytecodeDeploymentSheet: View {
             #endif
                 .toolbar {
                     #if os(iOS)
-                    ToolbarItem(placement: .navigationBarLeading) {
-                        Button("Cancel") {
-                            dismiss()
+                        ToolbarItem(placement: .navigationBarLeading) {
+                            Button("Cancel") {
+                                dismiss()
+                            }
+                            .disabled(isDeploying)
                         }
-                        .disabled(isDeploying)
-                    }
                 
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Button("Deploy") {
-                            deployContract()
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            Button("Deploy") {
+                                deployContract()
+                            }
+                            .disabled(!isFormValid || isDeploying)
                         }
-                        .disabled(!isFormValid || isDeploying)
-                    }
                     #else
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel") {
-                            dismiss()
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Cancel") {
+                                dismiss()
+                            }
+                            .disabled(isDeploying)
                         }
-                        .disabled(isDeploying)
-                    }
                 
-                    ToolbarItem(placement: .primaryAction) {
-                        Button("Deploy") {
-                            deployContract()
+                        ToolbarItem(placement: .primaryAction) {
+                            Button("Deploy") {
+                                deployContract()
+                            }
+                            .disabled(!isFormValid || isDeploying)
                         }
-                        .disabled(!isFormValid || isDeploying)
-                    }
                     #endif
                 }
                 .alert("Validation Error", isPresented: $showingValidationAlert) {
@@ -144,22 +144,22 @@ struct BytecodeDeploymentSheet: View {
                     .foregroundColor(.secondary)
                 
                 #if os(macOS)
-                TextEditor(text: $bytecode)
-                    .font(.system(.body, design: .monospaced))
-                    .frame(minHeight: 100, maxHeight: 200)
-                    .border(Color.gray.opacity(0.3), width: 1)
-                    .onChange(of: bytecode) { _, newValue in
-                        validateBytecodeFormat(newValue)
-                    }
+                    TextEditor(text: $bytecode)
+                        .font(.system(.body, design: .monospaced))
+                        .frame(minHeight: 100, maxHeight: 200)
+                        .border(Color.gray.opacity(0.3), width: 1)
+                        .onChange(of: bytecode) { _, newValue in
+                            validateBytecodeFormat(newValue)
+                        }
                 #else
-                TextEditor(text: $bytecode)
-                    .font(.system(.body, design: .monospaced))
-                    .frame(minHeight: 100, maxHeight: 200)
-                    .autocapitalization(.none)
-                    .disableAutocorrection(true)
-                    .onChange(of: bytecode) { _, newValue in
-                        validateBytecodeFormat(newValue)
-                    }
+                    TextEditor(text: $bytecode)
+                        .font(.system(.body, design: .monospaced))
+                        .frame(minHeight: 100, maxHeight: 200)
+                        .autocapitalization(.none)
+                        .disableAutocorrection(true)
+                        .onChange(of: bytecode) { _, newValue in
+                            validateBytecodeFormat(newValue)
+                        }
                 #endif
                 
                 Text("Enter the compiled bytecode (must start with 0x)")
@@ -519,9 +519,9 @@ struct BytecodeDeploymentSheet: View {
             container.mainContext.insert(mockWallet)
             
             let walletSigner = WalletSignerViewModel(
-                modelContext: container.mainContext,
                 currentWallet: mockWallet
             )
+            walletSigner.modelContext = container.mainContext
             
             return ContractDeploymentViewModel(
                 modelContext: container.mainContext,

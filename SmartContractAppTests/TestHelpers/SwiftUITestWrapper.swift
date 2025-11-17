@@ -125,10 +125,9 @@ struct SwiftUITestWrapper<Content: View>: View {
         }
 
         // Create wallet signer view model
-        self.walletSigner = WalletSignerViewModel(
-            modelContext: container.mainContext,
-            currentWallet: configuration.currentWallet
-        )
+        let walletSigner = WalletSignerViewModel(currentWallet: configuration.currentWallet)
+        walletSigner.modelContext = container.mainContext
+        self.walletSigner = walletSigner
 
         // Create window state manager
         self.windowStateManager = WindowStateManager()

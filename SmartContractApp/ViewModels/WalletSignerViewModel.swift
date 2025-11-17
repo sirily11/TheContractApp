@@ -16,7 +16,7 @@ import SwiftData
 final class WalletSignerViewModel {
     // MARK: - Properties
 
-    private let modelContext: ModelContext
+    var modelContext: ModelContext!
     private var continuation: AsyncStream<Data>.Continuation?
     private(set) var currentShowingTransactions: [QueuedTransaction] = []
 
@@ -41,6 +41,20 @@ final class WalletSignerViewModel {
         return currentShowingTransactions.count
     }
 
+    // MARK: - Selection Management
+
+    /// Update the selected wallet (called from app-level wrapper)
+    /// - Parameter wallet: The wallet to select
+    func setSelectedWallet(_ wallet: EVMWallet?) {
+        currentWallet = wallet
+    }
+
+    /// Get the current selected wallet
+    /// - Returns: The currently selected wallet, if any
+    func getCurrentWallet() -> EVMWallet? {
+        return currentWallet
+    }
+
     // MARK: - Transaction Processing State
 
     /// Whether a transaction is currently being processed on-chain
@@ -60,17 +74,34 @@ final class WalletSignerViewModel {
 
     // MARK: - WalletSigner Protocol
 
-    var walletSigner: Signer {
+    enum SignerError: LocalizedError {
+        case noWalletSelected
+        case privateKeyRetrievalFailed
+        case signerCreationFailed
+
+        var errorDescription: String? {
+            switch self {
+            case .noWalletSelected:
+                return "No wallet selected for signing"
+            case .privateKeyRetrievalFailed:
+                return "Failed to retrieve private key from keychain"
+            case .signerCreationFailed:
+                return "Failed to create signer from private key"
+            }
+        }
+    }
+
+    func getWalletSigner() throws -> Signer {
         guard let wallet = currentWallet else {
-            fatalError("No wallet selected for signing")
+            throw SignerError.noWalletSelected
         }
 
         guard let privateKey = try? wallet.getPrivateKey() else {
-            fatalError("Failed to retrieve private key from keychain")
+            throw SignerError.privateKeyRetrievalFailed
         }
 
         guard let signer = try? PrivateKeySigner(hexPrivateKey: privateKey) else {
-            fatalError("Failed to create signer from private key")
+            throw SignerError.signerCreationFailed
         }
 
         return signer
@@ -84,8 +115,7 @@ final class WalletSignerViewModel {
 
     // MARK: - Initialization
 
-    init(modelContext: ModelContext, currentWallet: EVMWallet? = nil) {
-        self.modelContext = modelContext
+    init(currentWallet: EVMWallet? = nil) {
         self.currentWallet = currentWallet
     }
 
@@ -117,7 +147,7 @@ final class WalletSignerViewModel {
                     continuation.yield(.preparing)
 
                     // Get the signer
-                    let signer = self.walletSigner
+                    let signer = try self.getWalletSigner()
 
                     continuation.yield(.signing)
 
@@ -256,10 +286,6 @@ final class WalletSignerViewModel {
     }
 
     func makeFunctionCall(tx: QueuedTransaction, endpoint: Endpoint) async throws -> (String, String?) {
-        guard let bytecode = tx.bytecode else {
-            throw WalletSignerError.missingBytecode
-        }
-
         guard let abi = tx.abi else {
             throw WalletSignerError.missingAbi
         }
@@ -272,7 +298,7 @@ final class WalletSignerViewModel {
         let client = EvmClient(transport: transport)
 
         // Get the signer
-        let signer = walletSigner
+        let signer = try getWalletSigner()
 
         // Create client with signer
         let signerClient = client.withSigner(signer: signer)
@@ -284,9 +310,12 @@ final class WalletSignerViewModel {
             let result = try await contract.callFunction(name: name, args: tx.contractParameters.map { $0.value }, value: tx.value)
             return (result.transactionHash ?? "", nil)
         case .constructor:
+            guard let bytecode = tx.bytecode else {
+                throw WalletSignerError.invalidTransactionData
+            }
             let contract = DeployableEvmContract(bytecode: bytecode, abi: abi, evmSigner: signerClient)
             let (result, addr) = try await contract.deploy(constructorArgs: tx.contractParameters.map { $0.value }, importCallback: nil, value: tx.value, gasLimit: nil, gasPrice: nil)
-            return (addr, result.address.value)
+            return (addr ?? "", result.address.value)
         case .none:
             throw WalletSignerError.invalidTransactionData
         }
@@ -312,7 +341,7 @@ final class WalletSignerViewModel {
         let client = EvmClient(transport: transport)
 
         // Get the signer
-        let signer = walletSigner
+        let signer = try getWalletSigner()
 
         // Create client with signer
         let signerClient = client.withSigner(signer: signer)
@@ -322,7 +351,7 @@ final class WalletSignerViewModel {
             from: wallet.address,
             to: to,
             gas: .init(hex: "0x" + String(gasLimit, radix: 16)),
-            value: value,
+            value: value
         )
 
         // Send the transaction

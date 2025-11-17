@@ -50,7 +50,6 @@ struct ContractContentView: View {
             }
         }
         .navigationTitle("Contracts")
-        .navigationSplitViewColumnWidth(min: 300, ideal: 350)
         .toolbar {
             #if os(iOS)
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -150,10 +149,8 @@ struct ContractContentView: View {
         let wallets = (try? modelContext.fetch(fetchDescriptor)) ?? []
         let currentWallet = wallets.first
 
-        let walletSigner = WalletSignerViewModel(
-            modelContext: modelContext,
-            currentWallet: currentWallet
-        )
+        let walletSigner = WalletSignerViewModel(currentWallet: currentWallet)
+        walletSigner.modelContext = modelContext
 
         return ContractDeploymentViewModel(
             modelContext: modelContext,

@@ -241,9 +241,13 @@ public struct TransactionParams: Codable {
         try container.encode(from, forKey: .from)
         try container.encodeIfPresent(to, forKey: .to)
         try container.encodeIfPresent(gas?.toHex(), forKey: .gas)
-        try container.encodeIfPresent(gasPrice.map { "0x" + String($0.toWei().value, radix: 16) }, forKey: .gasPrice)
-        try container.encodeIfPresent(maxFeePerGas.map { "0x" + String($0.toWei().value, radix: 16) }, forKey: .maxFeePerGas)
-        try container.encodeIfPresent(maxPriorityFeePerGas.map { "0x" + String($0.toWei().value, radix: 16) }, forKey: .maxPriorityFeePerGas)
+        try container.encodeIfPresent(
+            gasPrice.map { "0x" + String($0.toWei().value, radix: 16) }, forKey: .gasPrice)
+        try container.encodeIfPresent(
+            maxFeePerGas.map { "0x" + String($0.toWei().value, radix: 16) }, forKey: .maxFeePerGas)
+        try container.encodeIfPresent(
+            maxPriorityFeePerGas.map { "0x" + String($0.toWei().value, radix: 16) },
+            forKey: .maxPriorityFeePerGas)
         try container.encodeIfPresent(value?.toHexString(), forKey: .value)
         try container.encodeIfPresent(data, forKey: .data)
         try container.encodeIfPresent(nonce, forKey: .nonce)
@@ -477,18 +481,12 @@ public protocol EvmRpcClientProtocol {
 }
 
 /// A signer that can be used to sign transactions and messages
-public protocol EvmSignerProtocol: Signer, Contract {
-    /**
-    Signs a transaction and sends it to the network
-    - Parameter params: The transaction parameters
-    - Returns: The transaction hash
-    */
-    func signAndSendTransaction(params: TransactionParams) async throws -> String
+public protocol EvmSignerProtocol {
 
     /**
-    Signs a raw transaction and returns the signed transaction
+    Sign and send a transaction to the network
     - Parameter params: The transaction parameters
-    - Returns: The signed transaction
+    - Returns: The pending transaction
     */
-    func signTransaction(params: TransactionParams) async throws -> String
+    func signAndSendTransaction(params: TransactionParams) async throws -> PendingTransaction
 }
