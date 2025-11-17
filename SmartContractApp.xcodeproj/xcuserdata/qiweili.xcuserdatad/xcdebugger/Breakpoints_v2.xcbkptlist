@@ -132,5 +132,51 @@
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "0BD84B07-2279-4850-B1B0-FA379C62B0BD"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "SmartContractApp/Views/Pages/Contract/FunctionListView.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "70"
+            endingLineNumber = "70"
+            landmarkName = "functionList"
+            landmarkType = "24">
+            <Locations>
+               <Location
+                  uuid = "0BD84B07-2279-4850-B1B0-FA379C62B0BD - 52d5edda3de47aa"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "(1) suspend resume partial function for closure #1 () async -&gt; () in closure #1 () -&gt; () in closure #1 (EvmCore.AbiFunction) -&gt; SmartContractApp.FunctionRowView in closure #1 () -&gt; SwiftUI.ForEach&lt;Swift.Array&lt;EvmCore.AbiFunction&gt;, Swift.String, SmartContractApp.FunctionRowView&gt; in closure #1 () -&gt; SwiftUI.TupleView&lt;(Swift.Optional&lt;SwiftUI.Section&lt;SwiftUI.HStack&lt;SwiftUI.TupleView&lt;(SwiftUI.Image, SwiftUI.Text)&gt;&gt;, SwiftUI.ForEach&lt;Swift.Array&lt;EvmCore.AbiFunction&gt;, Swift.String, SmartContractApp.FunctionRowView&gt;, SwiftUI.EmptyView&gt;&gt;, Swift.Optional&lt;SwiftUI.Section&lt;SwiftUI.HStack&lt;SwiftUI.TupleView&lt;(SwiftUI.Image, SwiftUI.Text)&gt;&gt;, SwiftUI.ForEach&lt;Swift.Array&lt;EvmCore.AbiFunction&gt;, Swift.String, SmartContractApp.FunctionRowView&gt;, SwiftUI.EmptyView&gt;&gt;)&gt; in SmartContractApp.FunctionListView.functionList.getter : some"
+                  moduleName = "SmartContractApp.debug.dylib"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/qiweili/Desktop/rxlab/SmartContractApp/SmartContractApp/Views/Pages/Contract/FunctionListView.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "70"
+                  endingLineNumber = "70">
+               </Location>
+               <Location
+                  uuid = "0BD84B07-2279-4850-B1B0-FA379C62B0BD - f04e6d66bfbc75"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "closure #1 () -&gt; SwiftUI.TupleView&lt;(SwiftUI.Image, SwiftUI.Text)&gt; in closure #2 () -&gt; SwiftUI.HStack&lt;SwiftUI.TupleView&lt;(SwiftUI.Image, SwiftUI.Text)&gt;&gt; in closure #1 () -&gt; SwiftUI.TupleView&lt;(Swift.Optional&lt;SwiftUI.Section&lt;SwiftUI.HStack&lt;SwiftUI.TupleView&lt;(SwiftUI.Image, SwiftUI.Text)&gt;&gt;, SwiftUI.ForEach&lt;Swift.Array&lt;EvmCore.AbiFunction&gt;, Swift.String, SmartContractApp.FunctionRowView&gt;, SwiftUI.EmptyView&gt;&gt;, Swift.Optional&lt;SwiftUI.Section&lt;SwiftUI.HStack&lt;SwiftUI.TupleView&lt;(SwiftUI.Image, SwiftUI.Text)&gt;&gt;, SwiftUI.ForEach&lt;Swift.Array&lt;EvmCore.AbiFunction&gt;, Swift.String, SmartContractApp.FunctionRowView&gt;, SwiftUI.EmptyView&gt;&gt;)&gt; in SmartContractApp.FunctionListView.functionList.getter : some"
+                  moduleName = "SmartContractApp.debug.dylib"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/qiweili/Desktop/rxlab/SmartContractApp/SmartContractApp/Views/Pages/Contract/FunctionListView.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "70"
+                  endingLineNumber = "70">
+               </Location>
+            </Locations>
+         </BreakpointContent>
+      </BreakpointProxy>
    </Breakpoints>
 </Bucket>

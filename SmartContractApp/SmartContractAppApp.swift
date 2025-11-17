@@ -12,6 +12,7 @@ import SwiftUI
 struct SmartContractAppApp: App {
     @State private var windowStateManager = WindowStateManager()
     @State private var walletSignerViewModel: WalletSignerViewModel?
+    @State private var contractInteractionViewModel: ContractInteractionViewModel?
 
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
@@ -20,6 +21,7 @@ struct SmartContractAppApp: App {
             EvmAbi.self,
             EVMWallet.self,
             Transaction.self,
+            ContractFunctionCall.self,
         ])
 
         let modelConfiguration = ModelConfiguration(
@@ -62,7 +64,8 @@ struct SmartContractAppApp: App {
             ContentViewWrapper(
                 modelContext: sharedModelContainer.mainContext,
                 windowStateManager: windowStateManager,
-                walletSignerViewModel: getOrCreateViewModel()
+                walletSignerViewModel: getOrCreateWalletSignerViewModel(),
+                contractInteractionViewModel: getOrCreateContractInteractionViewModel()
             )
         }
         .modelContainer(sharedModelContainer)
@@ -71,7 +74,7 @@ struct SmartContractAppApp: App {
         WindowGroup(id: "signing-wallet") {
             SigningWalletWindowWrapper(
                 windowStateManager: windowStateManager,
-                walletSignerViewModel: getOrCreateViewModel()
+                walletSignerViewModel: getOrCreateWalletSignerViewModel()
             )
             .containerBackground(.thinMaterial, for: .window)
         }
@@ -82,12 +85,25 @@ struct SmartContractAppApp: App {
         #endif
     }
 
-    private func getOrCreateViewModel() -> WalletSignerViewModel {
+    private func getOrCreateWalletSignerViewModel() -> WalletSignerViewModel {
         if let viewModel = walletSignerViewModel {
             return viewModel
         }
         let viewModel = WalletSignerViewModel(modelContext: sharedModelContainer.mainContext)
         walletSignerViewModel = viewModel
+        return viewModel
+    }
+
+    private func getOrCreateContractInteractionViewModel() -> ContractInteractionViewModel {
+        if let viewModel = contractInteractionViewModel {
+            return viewModel
+        }
+        let walletSigner = getOrCreateWalletSignerViewModel()
+        let viewModel = ContractInteractionViewModel(
+            modelContext: sharedModelContainer.mainContext,
+            walletSigner: walletSigner
+        )
+        contractInteractionViewModel = viewModel
         return viewModel
     }
 }
@@ -97,10 +113,12 @@ private struct ContentViewWrapper: View {
     let modelContext: ModelContext
     let windowStateManager: WindowStateManager
     let walletSignerViewModel: WalletSignerViewModel
+    let contractInteractionViewModel: ContractInteractionViewModel
 
     var body: some View {
         ContentView()
             .environment(walletSignerViewModel)
+            .environment(contractInteractionViewModel)
             .environment(windowStateManager)
     }
 }

@@ -50,7 +50,6 @@ struct ContractContentView: View {
             }
         }
         .navigationTitle("Contracts")
-        .navigationSplitViewColumnWidth(min: 300, ideal: 350)
         .toolbar {
             #if os(iOS)
                 ToolbarItem(placement: .navigationBarTrailing) {

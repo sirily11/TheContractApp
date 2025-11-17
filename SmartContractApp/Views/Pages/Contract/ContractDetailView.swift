@@ -172,7 +172,7 @@ struct ContractDetailView: View {
         }
         .navigationTitle("Contract")
         .formStyle(.grouped)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(minWidth: 400, maxWidth: .infinity, maxHeight: .infinity)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Menu {
@@ -257,19 +257,19 @@ struct ContractDetailView: View {
 
     let endpoint = Endpoint(name: "Mainnet", url: "https://eth.llamarpc.com", chainId: "1")
     let abi = EvmAbi(name: "ERC20", abiContent: """
-        [
-            {
-                "type": "function",
-                "name": "transfer",
-                "inputs": [
-                    {"name": "to", "type": "address"},
-                    {"name": "amount", "type": "uint256"}
-                ],
-                "outputs": [{"name": "success", "type": "bool"}],
-                "stateMutability": "nonpayable"
-            }
-        ]
-        """)
+    [
+        {
+            "type": "function",
+            "name": "transfer",
+            "inputs": [
+                {"name": "to", "type": "address"},
+                {"name": "amount", "type": "uint256"}
+            ],
+            "outputs": [{"name": "success", "type": "bool"}],
+            "stateMutability": "nonpayable"
+        }
+    ]
+    """)
     let contract = EVMContract(
         name: "USDC",
         address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",

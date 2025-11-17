@@ -38,7 +38,9 @@ public enum StateMutability: String, Codable {
 }
 
 /// Represents a function in a contract ABI with type-safe properties
-public struct AbiFunction: Codable, Equatable {
+public struct AbiFunction: Codable, Equatable, Identifiable {
+    public var id: String { signature() }
+
     public let name: String
     public let inputs: [AbiParameter]
     public let outputs: [AbiParameter]
