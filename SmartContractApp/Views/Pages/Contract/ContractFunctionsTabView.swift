@@ -40,7 +40,6 @@ struct ContractFunctionsTabView: View {
             // Functions Tab
             FunctionListView(
                 contract: contract,
-                viewModel: interactionViewModel
             )
             .tabItem {
                 Label(FunctionTab.functions.rawValue, systemImage: FunctionTab.functions.systemImage)
@@ -59,7 +58,7 @@ struct ContractFunctionsTabView: View {
         }
         .navigationTitle(contract.name)
         #if os(macOS)
-        .navigationSubtitle(contract.address)
+            .navigationSubtitle(contract.address)
         #endif
     }
 }
@@ -118,14 +117,12 @@ struct ContractFunctionsTabView: View {
     container.mainContext.insert(wallet)
 
     let walletSignerViewModel = WalletSignerViewModel(
-        modelContext: container.mainContext,
         currentWallet: wallet
     )
+    walletSignerViewModel.modelContext = container.mainContext
 
-    let contractInteractionViewModel = ContractInteractionViewModel(
-        modelContext: container.mainContext,
-        walletSigner: walletSignerViewModel
-    )
+    let contractInteractionViewModel = ContractInteractionViewModel()
+    contractInteractionViewModel.walletSigner = walletSignerViewModel
 
     return NavigationStack {
         ContractFunctionsTabView(contract: contract)

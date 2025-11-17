@@ -13,7 +13,6 @@ import SwiftUI
 /// Each function row shows the function signature and a Call button
 struct FunctionListView: View {
     let contract: EVMContract
-    let viewModel: ContractInteractionViewModel
 
     @State private var functions: [AbiFunction] = []
     @State private var selectedFunction: AbiFunction?
@@ -38,7 +37,6 @@ struct FunctionListView: View {
             FunctionCallSheet(
                 contract: contract,
                 function: function,
-                viewModel: viewModel
             )
         }
         .alert("Error", isPresented: $showingErrorAlert) {
@@ -59,7 +57,6 @@ struct FunctionListView: View {
                         FunctionRowView(
                             contract: contract,
                             function: function,
-                            viewModel: viewModel,
                             onCallTapped: {
                                 selectedFunction = function
                             }
@@ -80,7 +77,6 @@ struct FunctionListView: View {
                         FunctionRowView(
                             contract: contract,
                             function: function,
-                            viewModel: viewModel,
                             onCallTapped: {
                                 selectedFunction = function
                             }
@@ -225,19 +221,18 @@ struct FunctionListView: View {
     container.mainContext.insert(contract)
     container.mainContext.insert(wallet)
 
-    let walletSignerViewModel = WalletSignerViewModel(
-        modelContext: container.mainContext,
-        currentWallet: wallet
-    )
+    let walletSignerViewModel = WalletSignerViewModel(currentWallet: wallet)
+    walletSignerViewModel.modelContext = container.mainContext
 
-    let viewModel = ContractInteractionViewModel(
-        modelContext: container.mainContext,
-        walletSigner: walletSignerViewModel
-    )
+    let viewModel = ContractInteractionViewModel()
+    viewModel.modelContext = container.mainContext
+    viewModel.walletSigner = walletSignerViewModel
 
     return NavigationStack {
-        FunctionListView(contract: contract, viewModel: viewModel)
+        FunctionListView(contract: contract)
             .modelContainer(container)
+            .environment(walletSignerViewModel)
+            .environment(viewModel)
     }
 }
 
@@ -263,18 +258,17 @@ struct FunctionListView: View {
     container.mainContext.insert(contract)
     container.mainContext.insert(wallet)
 
-    let walletSignerViewModel = WalletSignerViewModel(
-        modelContext: container.mainContext,
-        currentWallet: wallet
-    )
+    let walletSignerViewModel = WalletSignerViewModel(currentWallet: wallet)
+    walletSignerViewModel.modelContext = container.mainContext
 
-    let viewModel = ContractInteractionViewModel(
-        modelContext: container.mainContext,
-        walletSigner: walletSignerViewModel
-    )
+    let viewModel = ContractInteractionViewModel()
+    viewModel.modelContext = container.mainContext
+    viewModel.walletSigner = walletSignerViewModel
 
     return NavigationStack {
-        FunctionListView(contract: contract, viewModel: viewModel)
+        FunctionListView(contract: contract)
             .modelContainer(container)
+            .environment(walletSignerViewModel)
+            .environment(viewModel)
     }
 }

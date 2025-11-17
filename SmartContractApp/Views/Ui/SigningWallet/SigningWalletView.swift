@@ -228,15 +228,6 @@ struct SigningWalletView: View {
         }
         .padding()
         .frame(minWidth: 250)
-        .onChange(of: selectedEndpointIdString) { _, newValue in
-            // Sync with first available endpoint if selection is invalid
-            if let uuid = UUID(uuidString: newValue),
-               endpoints.first(where: { $0.id == uuid }) == nil,
-               let firstEndpoint = endpoints.first
-            {
-                selectedEndpointIdString = firstEndpoint.id.uuidString
-            }
-        }
     }
 
     private var tabView: some View {
@@ -311,7 +302,8 @@ enum WalletTab: String, CaseIterable {
     )
     context.insert(endpoint)
 
-    let viewModel = WalletSignerViewModel(modelContext: context, currentWallet: wallet)
+    let viewModel = WalletSignerViewModel(currentWallet: wallet)
+    viewModel.modelContext = context
 
     // Queue sample transactions using the public API
     _ = try? viewModel.queueTransaction(
@@ -335,11 +327,11 @@ enum WalletTab: String, CaseIterable {
 }
 
 #Preview("Navigation Detail - Sign Transaction") {
-    SigningWalletView()
-        .modelContainer(TransactionMockDataGenerator.createPreviewContainer())
-        .environment(
-            WalletSignerViewModel(
-                modelContext: TransactionMockDataGenerator.createPreviewContainer().mainContext
-            )
-        )
+    let container = TransactionMockDataGenerator.createPreviewContainer()
+    let viewModel = WalletSignerViewModel()
+    viewModel.modelContext = container.mainContext
+
+    return SigningWalletView()
+        .modelContainer(container)
+        .environment(viewModel)
 }

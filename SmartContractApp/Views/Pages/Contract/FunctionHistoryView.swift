@@ -178,15 +178,12 @@ struct FunctionHistoryView: View {
     container.mainContext.insert(call2)
     container.mainContext.insert(call3)
 
-    let walletSignerViewModel = WalletSignerViewModel(
-        modelContext: container.mainContext,
-        currentWallet: wallet
-    )
+    let walletSignerViewModel = WalletSignerViewModel(currentWallet: wallet)
+    walletSignerViewModel.modelContext = container.mainContext
 
-    let viewModel = ContractInteractionViewModel(
-        modelContext: container.mainContext,
-        walletSigner: walletSignerViewModel
-    )
+    let viewModel = ContractInteractionViewModel()
+    viewModel.modelContext = container.mainContext
+    viewModel.walletSigner = walletSignerViewModel
 
     return NavigationStack {
         FunctionHistoryView(contract: contract, viewModel: viewModel)
@@ -216,15 +213,12 @@ struct FunctionHistoryView: View {
     container.mainContext.insert(contract)
     container.mainContext.insert(wallet)
 
-    let walletSignerViewModel = WalletSignerViewModel(
-        modelContext: container.mainContext,
-        currentWallet: wallet
-    )
+    let walletSignerViewModel = WalletSignerViewModel(currentWallet: wallet)
+    walletSignerViewModel.modelContext = container.mainContext
 
-    let viewModel = ContractInteractionViewModel(
-        modelContext: container.mainContext,
-        walletSigner: walletSignerViewModel
-    )
+    let viewModel = ContractInteractionViewModel()
+    viewModel.modelContext = container.mainContext
+    viewModel.walletSigner = walletSignerViewModel
 
     return NavigationStack {
         FunctionHistoryView(contract: contract, viewModel: viewModel)

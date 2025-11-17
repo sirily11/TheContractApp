@@ -14,10 +14,10 @@ import SwiftUI
 struct FunctionRowView: View {
     let contract: EVMContract
     let function: AbiFunction
-    let viewModel: ContractInteractionViewModel
     let onCallTapped: () -> Void
 
     @State private var lastCall: ContractFunctionCall?
+    @Environment(ContractInteractionViewModel.self) private var viewModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -201,15 +201,12 @@ struct FunctionRowView: View {
     container.mainContext.insert(wallet)
     container.mainContext.insert(functionCall)
 
-    let walletSignerViewModel = WalletSignerViewModel(
-        modelContext: container.mainContext,
-        currentWallet: wallet
-    )
+    let walletSignerViewModel = WalletSignerViewModel(currentWallet: wallet)
+    walletSignerViewModel.modelContext = container.mainContext
 
-    let viewModel = ContractInteractionViewModel(
-        modelContext: container.mainContext,
-        walletSigner: walletSignerViewModel
-    )
+    let viewModel = ContractInteractionViewModel()
+    viewModel.modelContext = container.mainContext
+    viewModel.walletSigner = walletSignerViewModel
 
     let function = AbiFunction(
         name: "balanceOf",
@@ -225,7 +222,6 @@ struct FunctionRowView: View {
     return FunctionRowView(
         contract: contract,
         function: function,
-        viewModel: viewModel,
         onCallTapped: {}
     )
     .modelContainer(container)
@@ -254,15 +250,12 @@ struct FunctionRowView: View {
     container.mainContext.insert(contract)
     container.mainContext.insert(wallet)
 
-    let walletSignerViewModel = WalletSignerViewModel(
-        modelContext: container.mainContext,
-        currentWallet: wallet
-    )
+    let walletSignerViewModel = WalletSignerViewModel(currentWallet: wallet)
+    walletSignerViewModel.modelContext = container.mainContext
 
-    let viewModel = ContractInteractionViewModel(
-        modelContext: container.mainContext,
-        walletSigner: walletSignerViewModel
-    )
+    let viewModel = ContractInteractionViewModel()
+    viewModel.modelContext = container.mainContext
+    viewModel.walletSigner = walletSignerViewModel
 
     let function = AbiFunction(
         name: "transfer",
@@ -279,7 +272,6 @@ struct FunctionRowView: View {
     return FunctionRowView(
         contract: contract,
         function: function,
-        viewModel: viewModel,
         onCallTapped: {}
     )
     .modelContainer(container)

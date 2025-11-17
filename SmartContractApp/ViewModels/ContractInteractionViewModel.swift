@@ -79,8 +79,8 @@ final class ContractInteractionViewModel {
 
     // MARK: - Dependencies
 
-    private let modelContext: ModelContext
-    private let walletSigner: WalletSignerViewModel
+    var modelContext: ModelContext!
+    var walletSigner: WalletSignerViewModel!
 
     // MARK: - Cancellables
 
@@ -88,10 +88,7 @@ final class ContractInteractionViewModel {
 
     // MARK: - Initialization
 
-    init(modelContext: ModelContext, walletSigner: WalletSignerViewModel) {
-        self.modelContext = modelContext
-        self.walletSigner = walletSigner
-    }
+    init() {}
 
     // MARK: - Function Execution
 
@@ -203,7 +200,8 @@ final class ContractInteractionViewModel {
         contract: EVMContract,
         functionName: String,
         parameters: [TransactionParameter],
-        value: TransactionValue = .ether(.init(bigInt: .zero))
+        value: TransactionValue = .ether(.init(bigInt: .zero)),
+        openTransactionWindow: () -> Void
     ) async throws -> QueuedTransaction {
         // Reset state
         lastError = nil
@@ -236,6 +234,7 @@ final class ContractInteractionViewModel {
 
             executionProgress = .waitingForSignature
             isExecuting = false
+            openTransactionWindow()
 
             return queuedTx
         } catch {
@@ -418,8 +417,8 @@ final class ContractInteractionViewModel {
         let descriptor = FetchDescriptor<ContractFunctionCall>(
             predicate: #Predicate {
                 $0.contractId == contractId &&
-                $0.functionName == targetFunctionName &&
-                $0.status == successStatus
+                    $0.functionName == targetFunctionName &&
+                    $0.status == successStatus
             },
             sortBy: [SortDescriptor(\ContractFunctionCall.timestamp, order: .reverse)]
         )

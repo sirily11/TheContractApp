@@ -65,6 +65,118 @@ The app uses a three-column `NavigationSplitView` pattern:
 - `Wallet`: Wallet management
 - `Config`: App configuration
 
+**ViewModels** (`@Observable`):
+- `WalletSignerViewModel`: Manages wallet signing and transaction queuing
+- `ContractInteractionViewModel`: Handles contract function execution
+- `ContractDeploymentViewModel`: Manages contract deployment
+
+### ViewModel Pattern
+
+The app uses `@Observable` view models (Swift's Observation framework) for managing app state and business logic. ViewModels are injected into the SwiftUI environment and require dependencies to be set via property injection.
+
+#### Creating a ViewModel
+
+ViewModels should:
+1. Be marked with `@Observable`
+2. Use simple `init()` with no parameters
+3. Expose dependencies as non-private properties for injection
+4. Be thread-safe for async operations
+
+Example:
+```swift
+import Observation
+import SwiftData
+
+@Observable
+final class MyViewModel {
+    // MARK: - Dependencies
+    var modelContext: ModelContext!
+    var someOtherDependency: SomeDependency!
+
+    // MARK: - State
+    var isLoading: Bool = false
+    var errorMessage: String?
+
+    // MARK: - Initialization
+    init() {}
+
+    // MARK: - Methods
+    func performAction() async throws {
+        isLoading = true
+        defer { isLoading = false }
+        // Use modelContext and dependencies here
+    }
+}
+```
+
+#### Using ViewModels in the App
+
+**1. Create and inject in App entry point** (`SmartContractAppApp.swift`):
+```swift
+@main
+struct SmartContractAppApp: App {
+    @State private var myViewModel = MyViewModel()
+
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+                .environment(myViewModel)
+        }
+        .modelContainer(sharedModelContainer)
+    }
+}
+```
+
+**2. Inject dependencies in wrapper views**:
+```swift
+private struct ContentViewWrapper: View {
+    @Environment(\.modelContext) var modelContext
+    @Environment(MyViewModel.self) var myViewModel
+
+    var body: some View {
+        ContentView()
+            .onAppear {
+                myViewModel.modelContext = modelContext
+            }
+    }
+}
+```
+
+**3. Access in child views**:
+```swift
+struct MyView: View {
+    @Environment(MyViewModel.self) var viewModel
+
+    var body: some View {
+        Button("Perform Action") {
+            Task {
+                try? await viewModel.performAction()
+            }
+        }
+    }
+}
+```
+
+**4. Setup in Previews**:
+```swift
+#Preview {
+    let container = try! ModelContainer(for: MyModel.self)
+    let viewModel = MyViewModel()
+    viewModel.modelContext = container.mainContext
+
+    return MyView()
+        .modelContainer(container)
+        .environment(viewModel)
+}
+```
+
+**Important Notes**:
+- Dependencies like `modelContext` must NOT be `private` if they need to be injected from outside the ViewModel
+- Always use `return` before the final View in previews when you have setup statements
+- ViewModels are shared across the app, so be mindful of state management
+- Use `@State` in the App struct to create the ViewModel instance
+- Inject the ViewModel into the environment using `.environment(viewModel)`
+
 ### EvmCore Package Structure
 
 Located in `packages/EvmCore/Sources/EvmCore/`:

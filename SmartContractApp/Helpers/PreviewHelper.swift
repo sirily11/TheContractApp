@@ -69,10 +69,9 @@ struct PreviewHelper {
             configuration.abis.forEach { container.mainContext.insert($0) }
 
             self.modelContainer = container
-            self.walletSigner = WalletSignerViewModel(
-                modelContext: container.mainContext,
-                currentWallet: configuration.currentWallet
-            )
+            let walletSigner = WalletSignerViewModel(currentWallet: configuration.currentWallet)
+            walletSigner.modelContext = container.mainContext
+            self.walletSigner = walletSigner
             self.windowStateManager = WindowStateManager()
         }
     }

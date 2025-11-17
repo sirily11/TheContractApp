@@ -16,7 +16,7 @@ import SwiftData
 final class WalletSignerViewModel {
     // MARK: - Properties
 
-    private let modelContext: ModelContext
+    var modelContext: ModelContext!
     private var continuation: AsyncStream<Data>.Continuation?
     private(set) var currentShowingTransactions: [QueuedTransaction] = []
 
@@ -39,6 +39,20 @@ final class WalletSignerViewModel {
     /// Number of pending transactions waiting for signature
     var pendingTransactionCount: Int {
         return currentShowingTransactions.count
+    }
+
+    // MARK: - Selection Management
+
+    /// Update the selected wallet (called from app-level wrapper)
+    /// - Parameter wallet: The wallet to select
+    func setSelectedWallet(_ wallet: EVMWallet?) {
+        currentWallet = wallet
+    }
+
+    /// Get the current selected wallet
+    /// - Returns: The currently selected wallet, if any
+    func getCurrentWallet() -> EVMWallet? {
+        return currentWallet
     }
 
     // MARK: - Transaction Processing State
@@ -101,8 +115,7 @@ final class WalletSignerViewModel {
 
     // MARK: - Initialization
 
-    init(modelContext: ModelContext, currentWallet: EVMWallet? = nil) {
-        self.modelContext = modelContext
+    init(currentWallet: EVMWallet? = nil) {
         self.currentWallet = currentWallet
     }
 

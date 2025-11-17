@@ -364,7 +364,9 @@ struct ContractFormView: View {
         guard let wallet = try? modelContext.fetch(descriptor).first else {
             return nil
         }
-        return WalletSignerViewModel(modelContext: modelContext, currentWallet: wallet)
+        let viewModel = WalletSignerViewModel(currentWallet: wallet)
+        viewModel.modelContext = modelContext
+        return viewModel
     }
 
     private func isValidAddress(_ address: String) -> Bool {

@@ -41,7 +41,7 @@ extension FunctionCallSheet {
 
         Task {
             do {
-                let resultValue = try await viewModel.executeReadFunction(
+                let resultValue = try await interactionViewModel.executeReadFunction(
                     contract: contract,
                     functionName: function.name,
                     parameters: parameters
@@ -82,12 +82,13 @@ extension FunctionCallSheet {
         Task {
             do {
                 // Queue the transaction
-                let queuedTx = try await viewModel.executeWriteFunction(
+                let queuedTx = try await interactionViewModel.executeWriteFunction(
                     contract: contract,
                     functionName: function.name,
                     parameters: parameters,
-                    value: .ether(.init(bigInt: .zero)) // TODO: Support payable functions with value
-                )
+                    value: .ether(.init(bigInt: .zero))) {
+                        openWindow(id: "signing-wallet")
+                    }
 
                 // Store queued transaction
                 await MainActor.run {
@@ -114,7 +115,7 @@ extension FunctionCallSheet {
 
     /// Subscribe to wallet signer transaction events
     private func subscribeToTransactionEvents(queuedTx: QueuedTransaction) {
-        viewModel.subscribeToTransactionEvents(
+        interactionViewModel.subscribeToTransactionEvents(
             contract: contract,
             functionName: function.name,
             parameters: parameters,

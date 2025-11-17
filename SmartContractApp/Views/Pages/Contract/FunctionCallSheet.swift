@@ -26,11 +26,12 @@ enum FunctionCallDestination: Hashable {
 struct FunctionCallSheet: View {
     let contract: EVMContract
     let function: AbiFunction
-    let viewModel: ContractInteractionViewModel
 
     @Environment(\.dismiss) var dismiss
     @Environment(\.modelContext) var modelContext
     @Environment(WalletSignerViewModel.self) var walletSigner
+    @Environment(ContractInteractionViewModel.self) var interactionViewModel
+    @Environment(\.openWindow) var openWindow
 
     // MARK: - Navigation
 
@@ -59,10 +60,9 @@ struct FunctionCallSheet: View {
 
     // MARK: - Initialization
 
-    init(contract: EVMContract, function: AbiFunction, viewModel: ContractInteractionViewModel) {
+    init(contract: EVMContract, function: AbiFunction) {
         self.contract = contract
         self.function = function
-        self.viewModel = viewModel
 
         // Initialize parameters from function inputs immediately
         self._parameters = State(initialValue: function.inputs.map { input in
@@ -198,15 +198,12 @@ struct FunctionCallSheet: View {
     container.mainContext.insert(contract)
     container.mainContext.insert(wallet)
 
-    let walletSignerViewModel = WalletSignerViewModel(
-        modelContext: container.mainContext,
-        currentWallet: wallet
-    )
+    let walletSignerViewModel = WalletSignerViewModel(currentWallet: wallet)
+    walletSignerViewModel.modelContext = container.mainContext
 
-    let viewModel = ContractInteractionViewModel(
-        modelContext: container.mainContext,
-        walletSigner: walletSignerViewModel
-    )
+    let contractInteractionViewModel = ContractInteractionViewModel()
+    contractInteractionViewModel.modelContext = container.mainContext
+    contractInteractionViewModel.walletSigner = walletSignerViewModel
 
     let function = AbiFunction(
         name: "balanceOf",
@@ -219,9 +216,10 @@ struct FunctionCallSheet: View {
         stateMutability: .view
     )
 
-    return FunctionCallSheet(contract: contract, function: function, viewModel: viewModel)
+    return FunctionCallSheet(contract: contract, function: function)
         .modelContainer(container)
         .environment(walletSignerViewModel)
+        .environment(contractInteractionViewModel)
 }
 
 #Preview("Write Function") {
@@ -246,15 +244,12 @@ struct FunctionCallSheet: View {
     container.mainContext.insert(contract)
     container.mainContext.insert(wallet)
 
-    let walletSignerViewModel = WalletSignerViewModel(
-        modelContext: container.mainContext,
-        currentWallet: wallet
-    )
+    let walletSignerViewModel = WalletSignerViewModel(currentWallet: wallet)
+    walletSignerViewModel.modelContext = container.mainContext
 
-    let viewModel = ContractInteractionViewModel(
-        modelContext: container.mainContext,
-        walletSigner: walletSignerViewModel
-    )
+    let contractInteractionViewModel = ContractInteractionViewModel()
+    contractInteractionViewModel.modelContext = container.mainContext
+    contractInteractionViewModel.walletSigner = walletSignerViewModel
 
     let function = AbiFunction(
         name: "transfer",
@@ -268,7 +263,8 @@ struct FunctionCallSheet: View {
         stateMutability: .nonpayable
     )
 
-    return FunctionCallSheet(contract: contract, function: function, viewModel: viewModel)
+    return FunctionCallSheet(contract: contract, function: function)
         .modelContainer(container)
         .environment(walletSignerViewModel)
+        .environment(contractInteractionViewModel)
 }
