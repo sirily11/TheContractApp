@@ -86,7 +86,7 @@ extension FunctionCallSheet {
                     contract: contract,
                     functionName: function.name,
                     parameters: parameters,
-                    value: .ether(.init(bigInt: .zero))) {
+                    value: transactionValue) {
                         openWindow(id: "signing-wallet")
                     }
 

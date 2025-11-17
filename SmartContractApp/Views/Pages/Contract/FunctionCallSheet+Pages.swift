@@ -38,23 +38,48 @@ extension FunctionCallSheet {
                 Divider()
             }
 
-            // Parameters form (or no parameters message)
-            if parameters.isEmpty {
-                VStack(spacing: 16) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.largeTitle)
-                        .foregroundColor(.green)
-                    Text("No Parameters Required")
-                        .font(.headline)
-                    Text("This function can be called without any parameters")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
+            ScrollView {
+                VStack(spacing: 0) {
+                    // Parameters form (or no parameters message)
+                    if parameters.isEmpty {
+                        VStack(spacing: 16) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.largeTitle)
+                                .foregroundColor(.green)
+                            Text("No Parameters Required")
+                                .font(.headline)
+                            Text("This function can be called without any parameters")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
+                        .padding()
+                    } else {
+                        TransactionParameterFormView(parameters: $parameters)
+                    }
+
+                    // Value input for payable functions
+                    if isPayableFunction {
+                        VStack(spacing: 0) {
+                            Divider()
+                                .padding(.vertical, 16)
+
+                            VStack(alignment: .leading, spacing: 16) {
+                                Text("Transaction Value")
+                                    .font(.headline)
+                                    .foregroundColor(.primary)
+
+                                EthereumValueField(
+                                    amount: $ethValue,
+                                    selectedUnit: $selectedValueUnit,
+                                    showLabel: false
+                                )
+                            }
+                            .padding(.horizontal)
+                            .padding(.bottom, 16)
+                        }
+                    }
                 }
-                .frame(maxHeight: .infinity)
-                .padding()
-            } else {
-                TransactionParameterFormView(parameters: $parameters)
             }
         }
         .navigationTitle("Call Function")
@@ -94,6 +119,15 @@ extension FunctionCallSheet {
                                 value: String(describing: param.value.value)
                             )
                         }
+                    }
+                }
+
+                if isPayableFunction {
+                    Section("Transaction Value") {
+                        LabeledContent(
+                            "Value",
+                            value: selectedValueUnit.format(transactionValue)
+                        )
                     }
                 }
 

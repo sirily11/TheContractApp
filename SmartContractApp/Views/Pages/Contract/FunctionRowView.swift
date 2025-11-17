@@ -16,8 +16,13 @@ struct FunctionRowView: View {
     let function: AbiFunction
     let onCallTapped: () -> Void
 
-    @State private var lastCall: ContractFunctionCall?
+    @Query private var successfulCalls: [ContractFunctionCall]
     @Environment(ContractInteractionViewModel.self) private var viewModel
+
+    /// Last successful call for this function (auto-updates via SwiftData)
+    private var lastCall: ContractFunctionCall? {
+        successfulCalls.first
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -76,9 +81,27 @@ struct FunctionRowView: View {
             }
         }
         .padding(.vertical, 4)
-        .onAppear {
-            loadLastCall()
-        }
+    }
+
+    // MARK: - Initialization
+
+    init(contract: EVMContract, function: AbiFunction, onCallTapped: @escaping () -> Void) {
+        self.contract = contract
+        self.function = function
+        self.onCallTapped = onCallTapped
+
+        // Configure query to auto-fetch last successful call for this function
+        let contractId = contract.id
+        let functionName = function.name
+        let successStatus = CallStatus.success
+        _successfulCalls = Query(
+            filter: #Predicate<ContractFunctionCall> { call in
+                call.contractId == contractId &&
+                call.functionName == functionName &&
+                call.status == successStatus
+            },
+            sort: [SortDescriptor(\.timestamp, order: .reverse)]
+        )
     }
 
     // MARK: - Computed Properties
@@ -139,21 +162,6 @@ struct FunctionRowView: View {
             }
         }
         return "(\(paramTypes.joined(separator: ", ")))"
-    }
-
-    // MARK: - Helper Methods
-
-    /// Load the last successful call for this function
-    private func loadLastCall() {
-        do {
-            lastCall = try viewModel.getLastSuccessfulCall(
-                for: contract,
-                functionName: function.name
-            )
-        } catch {
-            // Silently fail - no last call available
-            lastCall = nil
-        }
     }
 }
 

@@ -47,6 +47,10 @@ struct FunctionCallSheet: View {
     @State var transactionHash: String?
     @State var queuedTransaction: QueuedTransaction?
 
+    // Value for payable functions
+    @State var ethValue: String = "0"
+    @State var selectedValueUnit: EthereumValueUnit = .ether
+
     // Cancellables for event subscription
     @State var cancellables = Set<AnyCancellable>()
 
@@ -171,6 +175,14 @@ struct FunctionCallSheet: View {
 
     var isWriteFunction: Bool {
         function.stateMutability == .nonpayable || function.stateMutability == .payable
+    }
+
+    var isPayableFunction: Bool {
+        function.stateMutability == .payable
+    }
+
+    var transactionValue: TransactionValue {
+        (try? selectedValueUnit.toTransactionValue(from: ethValue)) ?? .ether(.init(bigInt: .zero))
     }
 }
 

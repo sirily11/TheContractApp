@@ -286,10 +286,6 @@ final class WalletSignerViewModel {
     }
 
     func makeFunctionCall(tx: QueuedTransaction, endpoint: Endpoint) async throws -> (String, String?) {
-        guard let bytecode = tx.bytecode else {
-            throw WalletSignerError.missingBytecode
-        }
-
         guard let abi = tx.abi else {
             throw WalletSignerError.missingAbi
         }
@@ -314,6 +310,9 @@ final class WalletSignerViewModel {
             let result = try await contract.callFunction(name: name, args: tx.contractParameters.map { $0.value }, value: tx.value)
             return (result.transactionHash ?? "", nil)
         case .constructor:
+            guard let bytecode = tx.bytecode else {
+                throw WalletSignerError.invalidTransactionData
+            }
             let contract = DeployableEvmContract(bytecode: bytecode, abi: abi, evmSigner: signerClient)
             let (result, addr) = try await contract.deploy(constructorArgs: tx.contractParameters.map { $0.value }, importCallback: nil, value: tx.value, gasLimit: nil, gasPrice: nil)
             return (addr ?? "", result.address.value)
