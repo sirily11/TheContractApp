@@ -30,6 +30,19 @@ extension FunctionCallSheet {
         executeWriteFunction()
     }
 
+    /// Handle retry after failed execution
+    func handleRetry() {
+        // Reset execution state
+        executionState = .idle
+        errorMessage = nil
+        result = nil
+        transactionHash = nil
+
+        // Clear navigation path to return to parameters page
+        navigationPath.removeLast(navigationPath.count)
+        currentDestination = nil
+    }
+
     // MARK: - Read Function Execution
 
     /// Execute a read function (view/pure)

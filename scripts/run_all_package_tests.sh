@@ -44,8 +44,8 @@ while IFS= read -r -d '' package_file; do
     echo -e "${GREEN}Package path: $package_dir${NC}"
     echo -e "${GREEN}========================================${NC}"
 
-    # Run all tests including E2E
-    if swift test --package-path "$package_dir"; then
+    # Run all tests including E2E (sequentially to avoid nonce conflicts)
+    if swift test --package-path "$package_dir" --no-parallel; then
         echo -e "${GREEN}✓ Tests passed for $package_name${NC}"
         SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
     else

@@ -34,6 +34,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		DF1B0D5D2ECCAEDD009E3D18 /* SmartContractAppTests.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = SmartContractAppTests.xctestplan; sourceTree = "<group>"; };
 		DF6933682EBF93C100940F80 /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = AppIcon.icon; sourceTree = "<group>"; };
 		DF72D0742EBB4A1F0007C5EB /* SmartContractApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SmartContractApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		DF72D0832EBB4A1F0007C5EB /* SmartContractAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SmartContractAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -92,6 +93,7 @@
 		DF72D06B2EBB4A1F0007C5EB = {
 			isa = PBXGroup;
 			children = (
+				DF1B0D5D2ECCAEDD009E3D18 /* SmartContractAppTests.xctestplan */,
 				DF72D0762EBB4A1F0007C5EB /* SmartContractApp */,
 				DF72D0862EBB4A1F0007C5EB /* SmartContractAppTests */,
 				DF72D0902EBB4A1F0007C5EB /* SmartContractAppUITests */,

@@ -8,6 +8,7 @@
 @testable import SmartContractApp
 import SwiftData
 import SwiftUI
+import ViewInspector
 
 // MARK: - Test Configuration
 
@@ -90,6 +91,9 @@ struct SwiftUITestWrapper<Content: View>: View {
     /// The wallet signer view model
     let walletSigner: WalletSignerViewModel
 
+    /// The contract interaction view model
+    let contractInteraction: ContractInteractionViewModel
+
     /// The window state manager
     let windowStateManager: WindowStateManager
 
@@ -129,6 +133,12 @@ struct SwiftUITestWrapper<Content: View>: View {
         walletSigner.modelContext = container.mainContext
         self.walletSigner = walletSigner
 
+        // Create contract interaction view model
+        let contractInteraction = ContractInteractionViewModel()
+        contractInteraction.modelContext = container.mainContext
+        contractInteraction.walletSigner = walletSigner
+        self.contractInteraction = contractInteraction
+
         // Create window state manager
         self.windowStateManager = WindowStateManager()
 
@@ -140,6 +150,7 @@ struct SwiftUITestWrapper<Content: View>: View {
         content
             .modelContainer(modelContainer)
             .environment(walletSigner)
+            .environment(contractInteraction)
             .environment(windowStateManager)
     }
 }

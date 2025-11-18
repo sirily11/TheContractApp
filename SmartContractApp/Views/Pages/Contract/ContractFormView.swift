@@ -22,6 +22,11 @@ struct ContractFormView: View {
     @State private var sourceCode: String = ""
     @State private var bytecode: String = ""
 
+    // Direct input for import mode
+    @State private var abiContent: String = ""
+    @State private var endpointUrl: String = ""
+    @State private var endpointChainId: String = ""
+
     // Validation states
     @State private var showingValidationAlert = false
     @State private var validationMessage = ""
@@ -105,61 +110,58 @@ struct ContractFormView: View {
 
             // Configuration section - show for import type or when editing deployed contracts
             if contractType == .import || (isEditing && contract?.status == .deployed) {
-                Section(header: Text("Configuration")) {
+                Section(header: Text("ABI Configuration")) {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("ABI")
+                        Text("ABI JSON")
                             .font(.caption)
                             .foregroundColor(.secondary)
 
-                        if abis.isEmpty {
-                            HStack {
-                                Text("No ABIs available")
-                                    .font(.callout)
-                                    .foregroundColor(.secondary)
-                                    .italic()
-                                Spacer()
-                            }
-                            .padding(.vertical, 4)
-                        } else {
-                            Picker("Select ABI", selection: $selectedAbiId) {
-                                Text("Select ABI...").tag(nil as UUID?)
-                                ForEach(abis, id: \.id) { abi in
-                                    Text(abi.name).tag(abi.id as UUID?)
-                                }
-                            }
-                            .pickerStyle(.menu)
-                        }
+                        #if os(macOS)
+                        TextEditor(text: $abiContent)
+                            .font(.system(.body, design: .monospaced))
+                            .frame(minHeight: 150, maxHeight: 300)
+                            .border(Color.gray.opacity(0.3), width: 1)
+                        #else
+                        TextEditor(text: $abiContent)
+                            .font(.system(.body, design: .monospaced))
+                            .frame(minHeight: 150, maxHeight: 300)
+                            .autocapitalization(.none)
+                            .disableAutocorrection(true)
+                        #endif
+
+                        Text("Paste the contract ABI JSON")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                Section(header: Text("Endpoint Configuration")) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("RPC URL")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        TextField("https://...", text: $endpointUrl)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                        #if os(iOS)
+                            .keyboardType(.URL)
+                            .autocapitalization(.none)
+                            .disableAutocorrection(true)
+                        #endif
                     }
 
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Endpoint")
+                        Text("Chain ID")
                             .font(.caption)
                             .foregroundColor(.secondary)
+                        TextField("1", text: $endpointChainId)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                        #if os(iOS)
+                            .keyboardType(.numberPad)
+                        #endif
 
-                        if endpoints.isEmpty {
-                            HStack {
-                                Text("No endpoints available")
-                                    .font(.callout)
-                                    .foregroundColor(.secondary)
-                                    .italic()
-                                Spacer()
-                            }
-                            .padding(.vertical, 4)
-                        } else {
-                            Picker("Select Endpoint", selection: $selectedEndpointId) {
-                                Text("Select Endpoint...").tag(nil as UUID?)
-                                ForEach(endpoints, id: \.id) { endpoint in
-                                    HStack {
-                                        Text(endpoint.name)
-                                        Text("(Chain \(endpoint.chainId))")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                    }
-                                    .tag(endpoint.id as UUID?)
-                                }
-                            }
-                            .pickerStyle(.menu)
-                        }
+                        Text("Network chain ID (e.g., 1 for Ethereum Mainnet)")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
                     }
                 }
             }
@@ -263,13 +265,15 @@ struct ContractFormView: View {
     
     private var isFormValid: Bool {
         let nameValid = !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        
+
         switch contractType {
         case .import:
             return nameValid &&
                 !address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
                 isValidAddress(address) &&
-                selectedEndpointId != nil
+                !abiContent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+                !endpointUrl.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+                !endpointChainId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         case .solidity:
             return nameValid && !sourceCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         case .bytecode:
@@ -399,6 +403,13 @@ struct ContractFormView: View {
         contractType = contract.type
         sourceCode = contract.sourceCode ?? ""
         bytecode = contract.bytecode ?? ""
+
+        // Load direct input fields for import type
+        if contract.type == .import {
+            abiContent = contract.abi?.abiContent ?? ""
+            endpointUrl = contract.endpoint?.url ?? ""
+            endpointChainId = contract.endpoint?.chainId ?? ""
+        }
     }
 
     private func saveContract() {
@@ -411,15 +422,42 @@ struct ContractFormView: View {
             // Update existing contract
             existingContract.name = trimmedName
             existingContract.updatedAt = Date()
-            
+
             // Update type-specific fields
             switch contractType {
             case .import:
                 existingContract.address = trimmedAddress
-                existingContract.abiId = selectedAbiId
-                existingContract.endpointId = selectedEndpointId!
-                existingContract.abi = abis.first { $0.id == selectedAbiId }
-                existingContract.endpoint = endpoints.first { $0.id == selectedEndpointId }
+
+                // Create or find ABI
+                let trimmedAbi = abiContent.trimmingCharacters(in: .whitespacesAndNewlines)
+                let abiName = "\(trimmedName)_ABI"
+
+                let abiDescriptor = FetchDescriptor<EvmAbi>()
+                let existingAbis = (try? modelContext.fetch(abiDescriptor)) ?? []
+                let abi = existingAbis.first { $0.abiContent == trimmedAbi } ?? {
+                    let newAbi = EvmAbi(name: abiName, abiContent: trimmedAbi)
+                    modelContext.insert(newAbi)
+                    return newAbi
+                }()
+
+                // Create or find Endpoint
+                let trimmedUrl = endpointUrl.trimmingCharacters(in: .whitespacesAndNewlines)
+                let trimmedChainId = endpointChainId.trimmingCharacters(in: .whitespacesAndNewlines)
+                let endpointName = "Chain \(trimmedChainId)"
+
+                let endpointDescriptor = FetchDescriptor<Endpoint>()
+                let existingEndpoints = (try? modelContext.fetch(endpointDescriptor)) ?? []
+                let endpoint = existingEndpoints.first { $0.url == trimmedUrl && $0.chainId == trimmedChainId } ?? {
+                    let newEndpoint = Endpoint(name: endpointName, url: trimmedUrl, chainId: trimmedChainId)
+                    modelContext.insert(newEndpoint)
+                    return newEndpoint
+                }()
+
+                existingContract.abiId = abi.id
+                existingContract.abi = abi
+                existingContract.endpointId = endpoint.id
+                existingContract.endpoint = endpoint
+
             case .solidity:
                 existingContract.sourceCode = sourceCode
                 // Preserve other fields when updating source code
@@ -438,19 +476,46 @@ struct ContractFormView: View {
                 showingValidationAlert = true
                 return
             }
-            
+
+            // Create or find ABI
+            let trimmedAbi = abiContent.trimmingCharacters(in: .whitespacesAndNewlines)
+            let abiName = "\(trimmedName)_ABI"
+
+            // Check if an ABI with the same content already exists
+            let abiDescriptor = FetchDescriptor<EvmAbi>()
+            let existingAbis = (try? modelContext.fetch(abiDescriptor)) ?? []
+            let abi = existingAbis.first { $0.abiContent == trimmedAbi } ?? {
+                let newAbi = EvmAbi(name: abiName, abiContent: trimmedAbi)
+                modelContext.insert(newAbi)
+                return newAbi
+            }()
+
+            // Create or find Endpoint
+            let trimmedUrl = endpointUrl.trimmingCharacters(in: .whitespacesAndNewlines)
+            let trimmedChainId = endpointChainId.trimmingCharacters(in: .whitespacesAndNewlines)
+            let endpointName = "Chain \(trimmedChainId)"
+
+            // Check if an endpoint with the same URL and chainId already exists
+            let endpointDescriptor = FetchDescriptor<Endpoint>()
+            let existingEndpoints = (try? modelContext.fetch(endpointDescriptor)) ?? []
+            let endpoint = existingEndpoints.first { $0.url == trimmedUrl && $0.chainId == trimmedChainId } ?? {
+                let newEndpoint = Endpoint(name: endpointName, url: trimmedUrl, chainId: trimmedChainId)
+                modelContext.insert(newEndpoint)
+                return newEndpoint
+            }()
+
             let newContract = EVMContract(
                 name: trimmedName,
                 address: trimmedAddress,
-                abiId: selectedAbiId,
+                abiId: abi.id,
                 status: .deployed,
                 type: .import,
-                endpointId: selectedEndpointId!
+                endpointId: endpoint.id
             )
 
             // Set relationships
-            newContract.abi = abis.first { $0.id == selectedAbiId }
-            newContract.endpoint = endpoints.first { $0.id == selectedEndpointId }
+            newContract.abi = abi
+            newContract.endpoint = endpoint
 
             modelContext.insert(newContract)
         }
@@ -476,7 +541,7 @@ struct ContractFormView: View {
         switch contractType {
         case .import:
             let trimmedAddress = address.trimmingCharacters(in: .whitespacesAndNewlines)
-            
+
             if trimmedAddress.isEmpty {
                 validationMessage = "Please enter a contract address."
                 showingValidationAlert = true
@@ -489,12 +554,52 @@ struct ContractFormView: View {
                 return false
             }
 
-            if selectedEndpointId == nil {
-                validationMessage = "Please select an endpoint."
+            let trimmedAbi = abiContent.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmedAbi.isEmpty {
+                validationMessage = "Please enter the contract ABI JSON."
                 showingValidationAlert = true
                 return false
             }
-            
+
+            // Validate ABI is valid JSON
+            if let data = trimmedAbi.data(using: .utf8) {
+                do {
+                    _ = try JSONSerialization.jsonObject(with: data)
+                } catch {
+                    validationMessage = "Invalid ABI JSON format: \(error.localizedDescription)"
+                    showingValidationAlert = true
+                    return false
+                }
+            }
+
+            let trimmedUrl = endpointUrl.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmedUrl.isEmpty {
+                validationMessage = "Please enter an endpoint URL."
+                showingValidationAlert = true
+                return false
+            }
+
+            // Validate URL format
+            guard let _ = URL(string: trimmedUrl), trimmedUrl.hasPrefix("http") else {
+                validationMessage = "Please enter a valid HTTP/HTTPS URL."
+                showingValidationAlert = true
+                return false
+            }
+
+            let trimmedChainId = endpointChainId.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmedChainId.isEmpty {
+                validationMessage = "Please enter a chain ID."
+                showingValidationAlert = true
+                return false
+            }
+
+            // Validate chain ID is a number
+            guard Int(trimmedChainId) != nil else {
+                validationMessage = "Chain ID must be a number."
+                showingValidationAlert = true
+                return false
+            }
+
         case .solidity:
             let trimmedSource = sourceCode.trimmingCharacters(in: .whitespacesAndNewlines)
             

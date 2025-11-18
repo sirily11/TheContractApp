@@ -75,7 +75,8 @@ struct ContractE2ETests {
         // MARK: - Setup
         print("Setting up transport and signer...")
         let transport = try HttpTransport(urlString: Self.anvilUrl)
-        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey0)
+        // Use account1 to avoid nonce conflicts with EvmClientE2ETests (which uses account0)
+        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey1)
         let client = EvmClient(transport: transport)
         let evmSigner = client.withSigner(signer: signer)
 
@@ -282,7 +283,7 @@ struct ContractE2ETests {
         // MARK: - Test Payable Function with Parameters (depositFor)
         print("\nTesting payable function with parameters: depositFor()")
 
-        let recipient = AnvilAccounts.account1
+        let recipient = AnvilAccounts.account2
         let depositForAmount = Wei(bigInt: BigInt(500_000_000_000_000_000))  // 0.5 ETH in wei
 
         // Call payable writable function with parameters using callFunction
@@ -411,7 +412,8 @@ struct ContractE2ETests {
 
         print("Setting up transport and signer...")
         let transport = try HttpTransport(urlString: Self.anvilUrl)
-        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey0)
+        // Use account1 to avoid nonce conflicts with EvmClientE2ETests (which uses account0)
+        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey1)
         let client = EvmClient(transport: transport)
         let evmSigner = client.withSigner(signer: signer)
 
@@ -469,7 +471,7 @@ struct ContractE2ETests {
         let tokenName = "TestToken"
         let isActive = true
         let initialBalances = [BigInt(100), BigInt(200), BigInt(300)]
-        let beneficiaryAddress = AnvilAccounts.account1
+        let beneficiaryAddress = AnvilAccounts.account2
 
         print("\nDeploying contract with constructor parameters:")
         print("  owner: \(ownerAddress)")
@@ -611,7 +613,8 @@ struct ContractE2ETests {
 
         print("Setting up transport and signer...")
         let transport = try HttpTransport(urlString: Self.anvilUrl)
-        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey0)
+        // Use account1 to avoid nonce conflicts with EvmClientE2ETests (which uses account0)
+        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey1)
         let client = EvmClient(transport: transport)
         let evmSigner = client.withSigner(signer: signer)
 
@@ -711,7 +714,8 @@ struct ContractE2ETests {
 
         print("Setting up transport and signer...")
         let transport = try HttpTransport(urlString: Self.anvilUrl)
-        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey0)
+        // Use account1 to avoid nonce conflicts with EvmClientE2ETests (which uses account0)
+        let signer = try PrivateKeySigner(hexPrivateKey: AnvilAccounts.privateKey1)
         let client = EvmClient(transport: transport)
         let evmSigner = client.withSigner(signer: signer)
 

@@ -95,6 +95,7 @@ struct FunctionCallSheet: View {
                             .onAppear { currentDestination = .processing }
                     case .result:
                         resultPage
+                            .navigationBarBackButtonHidden(executionState == .completed)
                             .onAppear { currentDestination = .result }
                     }
                 }
@@ -148,8 +149,18 @@ struct FunctionCallSheet: View {
                             Label("Sign & Send", systemImage: "signature")
                         }
                         .tint(.orange)
-                    case .processing, .result:
+                    case .processing:
                         EmptyView()
+                    case .result:
+                        // Show retry button only on failure
+                        if executionState == .failed {
+                            Button("Retry") {
+                                handleRetry()
+                            }
+                            .tint(.blue)
+                        } else {
+                            EmptyView()
+                        }
                     }
                 } else {
                     // First page - parameters
