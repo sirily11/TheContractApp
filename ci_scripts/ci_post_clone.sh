@@ -5,23 +5,30 @@ echo "========================================="
 echo "Post-clone: Updating app version"
 echo "========================================="
 
-# Get the latest git tag
-GIT_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+# Change to repository root
+cd "$CI_PRIMARY_REPOSITORY_PATH"
+echo "Working directory: $(pwd)"
 
-# Extract version from tag (remove 'v' prefix if present)
-if [ -n "$GIT_TAG" ]; then
-    VERSION="${GIT_TAG#v}"
-    echo "Found git tag: $GIT_TAG"
+# Get version from CI_TAG (set by Xcode Cloud when building from a tag)
+if [ -n "$CI_TAG" ]; then
+    # CI_TAG is set, use it
+    VERSION="${CI_TAG#v}"
+    echo "Building from tag: $CI_TAG"
     echo "Extracted version: $VERSION"
 else
-    # No tags found, use a default development version
-    VERSION="0.0.1-dev"
-    echo "No git tags found, using default version: $VERSION"
+    # No tag, use build number or default development version
+    if [ -n "$CI_BUILD_NUMBER" ]; then
+        VERSION="0.0.$CI_BUILD_NUMBER-dev"
+        echo "No tag found, using build number: $VERSION"
+    else
+        VERSION="0.0.1-dev"
+        echo "No tag found, using default version: $VERSION"
+    fi
 fi
 
-# Call the update-version script
+# Call the update-version script (from repository root)
 echo "Calling update-version script..."
-bash "$CI_PRIMARY_REPOSITORY_PATH/scripts/update-version.sh" "$VERSION"
+bash scripts/update-version.sh "$VERSION"
 
 echo "========================================="
 echo "Version update complete!"
