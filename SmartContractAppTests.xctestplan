@@ -1,0 +1,25 @@
+{
+  "configurations" : [
+    {
+      "id" : "D564AEEE-D8A1-4169-8517-61001667C802",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "performanceAntipatternCheckerEnabled" : true
+  },
+  "testTargets" : [
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:SmartContractApp.xcodeproj",
+        "identifier" : "DF72D0822EBB4A1F0007C5EB",
+        "name" : "SmartContractAppTests"
+      }
+    }
+  ],
+  "version" : 1
+}
