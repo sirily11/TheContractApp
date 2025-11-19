@@ -1,0 +1,1355 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "—" : {
+
+    },
+    ":" : {
+
+    },
+    "(Chain %@)" : {
+
+    },
+    "[%lld]" : {
+
+    },
+    "*" : {
+
+    },
+    "#%lld" : {
+
+    },
+    "%@ %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ %2$@"
+          }
+        }
+      }
+    },
+    "%@ ETH" : {
+
+    },
+    "%@ units" : {
+
+    },
+    "%@:" : {
+
+    },
+    "%@: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@: %2$@"
+          }
+        }
+      }
+    },
+    "%lld" : {
+
+    },
+    "%lld characters" : {
+
+    },
+    "%lld contract%@ found" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld contract%2$@ found"
+          }
+        }
+      }
+    },
+    "%lld fields" : {
+
+    },
+    "%lld items" : {
+
+    },
+    "%lld param%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld param%2$@"
+          }
+        }
+      }
+    },
+    "%lld." : {
+
+    },
+    "•" : {
+
+    },
+    "⚠️ Never share your mnemonic phrase with anyone. Both the mnemonic and derived private key will be stored securely in the keychain." : {
+
+    },
+    "⚠️ Never share your private key or mnemonic phrase with anyone." : {
+
+    },
+    "⚠️ Never share your private key with anyone. It will be stored securely in the keychain." : {
+
+    },
+    "💡 Tip: Make sure the Solidity contract name exactly matches a contract in your source code." : {
+
+    },
+    "0" : {
+
+    },
+    "0.0" : {
+
+    },
+    "0x..." : {
+
+    },
+    "0x0" : {
+
+    },
+    "1" : {
+
+    },
+    "1, 137, 56, etc." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1，137，56，或者其他"
+          }
+        }
+      }
+    },
+    "12 words" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "12个字"
+          }
+        }
+      }
+    },
+    "18" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "18"
+          }
+        }
+      }
+    },
+    "24 words" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "24 个字"
+          }
+        }
+      }
+    },
+    "A friendly name for this contract instance" : {
+
+    },
+    "A new wallet will be generated with a secure 12-word mnemonic phrase. Both the mnemonic and derived private key will be stored in your device's keychain." : {
+
+    },
+    "ABI" : {
+
+    },
+    "ABI (Optional)" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ABI（可选）"
+          }
+        }
+      }
+    },
+    "ABI Configuration" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ABI配置"
+          }
+        }
+      }
+    },
+    "ABI Content" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ABI内容"
+          }
+        }
+      }
+    },
+    "ABI Details" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ABI详情"
+          }
+        }
+      }
+    },
+    "ABI JSON" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ABI JSON格式"
+          }
+        }
+      }
+    },
+    "ABI Name" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ABI名称"
+          }
+        }
+      }
+    },
+    "ABI name is required" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ABI名称是必选项"
+          }
+        }
+      }
+    },
+    "ABI selected: %@" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择的ABI：%@"
+          }
+        }
+      }
+    },
+    "Add an ABI to interact with contract functions" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "添加一个ABI来与合约交互"
+          }
+        }
+      }
+    },
+    "Add Element" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "添加一个元素"
+          }
+        }
+      }
+    },
+    "Add New ABI" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "添加一个新的ABI"
+          }
+        }
+      }
+    },
+    "Address" : {
+
+    },
+    "Address:" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "地址："
+          }
+        }
+      }
+    },
+    "Addresses" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "地址"
+          }
+        }
+      }
+    },
+    "All Functions" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "全部函数"
+          }
+        }
+      }
+    },
+    "Amount" : {
+
+    },
+    "Anonymous" : {
+
+    },
+    "Approve with %@" : {
+
+    },
+    "Approved" : {
+
+    },
+    "Are you sure you want to delete '%@'? This action cannot be undone." : {
+
+    },
+    "Are you sure you want to delete '%@'? This will also remove all associated keys from the keychain. This action cannot be undone." : {
+
+    },
+    "Are you sure you want to reject this transaction?" : {
+
+    },
+    "Array Elements" : {
+
+    },
+    "Assets" : {
+
+    },
+    "Authenticating..." : {
+
+    },
+    "Auto-detect" : {
+
+    },
+    "Auto-detect (first contract)" : {
+
+    },
+    "Available Balance" : {
+
+    },
+    "Back" : {
+
+    },
+    "Balance: %@ %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Balance: %1$@ %2$@"
+          }
+        }
+      }
+    },
+    "Base" : {
+
+    },
+    "Block" : {
+
+    },
+    "Bytecode" : {
+
+    },
+    "Call" : {
+
+    },
+    "Call Function" : {
+
+    },
+    "Cancel" : {
+
+    },
+    "Chain ID" : {
+
+    },
+    "Chain ID: %@" : {
+
+    },
+    "Choose a configuration category from the sidebar." : {
+
+    },
+    "Close" : {
+
+    },
+    "Compilation Failed" : {
+
+    },
+    "Compiling Contract" : {
+
+    },
+    "Configurations" : {
+
+    },
+    "Confirm" : {
+
+    },
+    "Confirm Transaction" : {
+
+    },
+    "Connect a wallet to view assets" : {
+
+    },
+    "Connected Contracts" : {
+
+    },
+    "Connection Information" : {
+
+    },
+    "Connection Status" : {
+
+    },
+    "Constructor" : {
+
+    },
+    "Constructor Details" : {
+
+    },
+    "Constructor Parameters" : {
+
+    },
+    "Continue" : {
+
+    },
+    "Contract" : {
+
+    },
+    "Contract ABI" : {
+
+    },
+    "Contract Address" : {
+
+    },
+    "Contract Address:" : {
+
+    },
+    "Contract Alias" : {
+
+    },
+    "Contract alias is required" : {
+
+    },
+    "Contract Bytecode" : {
+
+    },
+    "Contract Call" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "合约调用"
+          }
+        }
+      }
+    },
+    "Contract Call Details" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "合约调用详情"
+          }
+        }
+      }
+    },
+    "Contract Details" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "合约详情"
+          }
+        }
+      }
+    },
+    "Contract Functions" : {
+
+    },
+    "Contract Information" : {
+
+    },
+    "Contract Name" : {
+
+    },
+    "Contract name is required" : {
+
+    },
+    "Contract Source Code" : {
+
+    },
+    "Contracts" : {
+
+    },
+    "Copied to clipboard" : {
+
+    },
+    "Copy address" : {
+
+    },
+    "Copy Address" : {
+
+    },
+    "Copy Hash" : {
+
+    },
+    "Copy to clipboard" : {
+
+    },
+    "Create" : {
+
+    },
+    "Create ABI" : {
+
+    },
+    "Create Random Wallet" : {
+
+    },
+    "Created" : {
+
+    },
+    "Created %@ ago" : {
+
+    },
+    "Created:" : {
+
+    },
+    "Created: %@" : {
+
+    },
+    "Data" : {
+
+    },
+    "Decimal" : {
+
+    },
+    "Decimals" : {
+
+    },
+    "Delete" : {
+
+    },
+    "Delete ABI" : {
+
+    },
+    "Delete Contract" : {
+
+    },
+    "Delete Endpoint" : {
+
+    },
+    "Delete Wallet" : {
+
+    },
+    "Deploy" : {
+
+    },
+    "Deploy from Bytecode" : {
+
+    },
+    "Deploy Solidity Contract" : {
+
+    },
+    "Deploying Contract" : {
+
+    },
+    "Deployment Configuration" : {
+
+    },
+    "Deployment Failed" : {
+
+    },
+    "Deployment Progress" : {
+
+    },
+    "Deployment Successful" : {
+
+    },
+    "Deployment Successful!" : {
+
+    },
+    "Derived Address" : {
+
+    },
+    "Detect Again" : {
+
+    },
+    "Detect Chain ID" : {
+
+    },
+    "Detected Chain ID:" : {
+
+    },
+    "Detecting chain ID..." : {
+
+    },
+    "Detection failed" : {
+
+    },
+    "Done" : {
+
+    },
+    "Download" : {
+
+    },
+    "Downloaded: %@" : {
+
+    },
+    "Edit" : {
+
+    },
+    "Edit ABI" : {
+
+    },
+    "Edit Contract" : {
+
+    },
+    "Encoded Data" : {
+
+    },
+    "Endpoint" : {
+
+    },
+    "Endpoint Configuration" : {
+
+    },
+    "Endpoint Details" : {
+
+    },
+    "Endpoint URL" : {
+
+    },
+    "Endpoints" : {
+
+    },
+    "Enter ABI name" : {
+
+    },
+    "Enter ABI name (e.g., ERC20 Token)" : {
+
+    },
+    "Enter contract alias" : {
+
+    },
+    "Enter contract name" : {
+
+    },
+    "Enter endpoint name" : {
+
+    },
+    "Enter string value" : {
+
+    },
+    "Enter the ABI as a JSON array" : {
+
+    },
+    "Enter the amount of %@ to send with this transaction" : {
+
+    },
+    "Enter the compiled bytecode (must start with 0x)" : {
+
+    },
+    "Enter the constructor parameters for your contract. These values will be used when deploying the contract to the network." : {
+
+    },
+    "Enter URL" : {
+
+    },
+    "Enter URL first to detect chain ID" : {
+
+    },
+    "Enter wallet name" : {
+
+    },
+    "Enter your Solidity source code. It will be compiled during deployment." : {
+
+    },
+    "Error" : {
+
+    },
+    "Error:" : {
+
+    },
+    "Errors" : {
+
+    },
+    "Estimated Gas" : {
+
+    },
+    "Estimating Gas" : {
+
+    },
+    "ETH Transfer" : {
+
+    },
+    "ETH, BNB, MATIC, etc." : {
+
+    },
+    "Ethereum, Binance Coin, Polygon, etc." : {
+
+    },
+    "Events" : {
+
+    },
+    "Failed" : {
+
+    },
+    "Failed to load versions: %@" : {
+
+    },
+    "Failed to parse ABI" : {
+
+    },
+    "Fixed size: %lld" : {
+
+    },
+    "From" : {
+
+    },
+    "Function" : {
+
+    },
+    "Function call history will appear here" : {
+
+    },
+    "Functions" : {
+
+    },
+    "Gas" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "燃料"
+          }
+        }
+      }
+    },
+    "Gas estimate not available" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "预估燃料暂不可用"
+          }
+        }
+      }
+    },
+    "Gas Estimation Failed" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "预估燃料费失败"
+          }
+        }
+      }
+    },
+    "Gas Price" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "燃料单价"
+          }
+        }
+      }
+    },
+    "Gas Used" : {
+
+    },
+    "Gas: %@" : {
+
+    },
+    "Go Back" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "返回"
+          }
+        }
+      }
+    },
+    "Hash" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "哈希值"
+          }
+        }
+      }
+    },
+    "Hexadecimal" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "十六进制"
+          }
+        }
+      }
+    },
+    "Hide" : {
+
+    },
+    "History" : {
+
+    },
+    "https://..." : {
+
+    },
+    "Import Existing Contract" : {
+
+    },
+    "Import from Mnemonic" : {
+
+    },
+    "Import from Private Key" : {
+
+    },
+    "indexed" : {
+
+    },
+    "Input Method" : {
+
+    },
+    "Inputs:" : {
+
+    },
+    "Insufficient balance" : {
+
+    },
+    "int%lld • range: %@ to %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "int%1$lld • range: %2$@ to %3$@"
+          }
+        }
+      }
+    },
+    "Invalid address format. Must be 0x followed by 40 hex characters." : {
+
+    },
+    "Invalid Ethereum address" : {
+
+    },
+    "Last Result:" : {
+
+    },
+    "Last Updated" : {
+
+    },
+    "Load More" : {
+
+    },
+    "Loading..." : {
+
+    },
+    "Max" : {
+
+    },
+    "Metadata" : {
+
+    },
+    "Mnemonic" : {
+
+    },
+    "Mnemonic Phrase" : {
+
+    },
+    "Mnemonic Words" : {
+
+    },
+    "Most chains use 18 decimals" : {
+
+    },
+    "Name" : {
+
+    },
+    "Native Token Configuration" : {
+
+    },
+    "Network" : {
+
+    },
+    "Network chain ID (e.g., 1 for Ethereum Mainnet)" : {
+
+    },
+    "Network Fee" : {
+
+    },
+    "New Contract" : {
+
+    },
+    "Next" : {
+
+    },
+    "No" : {
+
+    },
+    "No ABI associated" : {
+
+    },
+    "No ABI selected" : {
+
+    },
+    "No ABIs available" : {
+
+    },
+    "No additional data" : {
+
+    },
+    "No Assets" : {
+
+    },
+    "No components defined" : {
+
+    },
+    "No Constructor Parameters" : {
+
+    },
+    "No contract selected" : {
+
+    },
+    "No contracts found in source code" : {
+
+    },
+    "No contracts using this ABI" : {
+
+    },
+    "No data" : {
+
+    },
+    "No elements" : {
+
+    },
+    "No endpoint associated" : {
+
+    },
+    "No endpoint selected" : {
+
+    },
+    "No endpoints available" : {
+
+    },
+    "No Function Calls Yet" : {
+
+    },
+    "No inputs" : {
+
+    },
+    "No parameters" : {
+
+    },
+    "No Parameters" : {
+
+    },
+    "No Parameters Required" : {
+
+    },
+    "No Pending Transactions" : {
+
+    },
+    "No return values" : {
+
+    },
+    "No Selection" : {
+
+    },
+    "No Transactions" : {
+
+    },
+    "No wallet available for deployment" : {
+
+    },
+    "No wallet selected" : {
+
+    },
+    "OK" : {
+
+    },
+    "Parameters" : {
+
+    },
+    "Parameters (%lld)" : {
+
+    },
+    "Parameters:" : {
+
+    },
+    "Paste JSON ABI" : {
+
+    },
+    "Paste the contract ABI JSON" : {
+
+    },
+    "Pending" : {
+
+    },
+    "Pending Signature" : {
+
+    },
+    "Pending Transactions" : {
+
+    },
+    "Please review the transaction details carefully before signing." : {
+
+    },
+    "Please select an endpoint" : {
+
+    },
+    "Please wait while your transaction\nis confirmed on the network" : {
+
+    },
+    "Preview" : {
+
+    },
+    "Preview is not available." : {
+
+    },
+    "Private Key" : {
+
+    },
+    "Private Key (64 hex characters)" : {
+
+    },
+    "Processing" : {
+
+    },
+    "Processing Transaction" : {
+
+    },
+    "QR Code" : {
+
+    },
+    "Random Wallet" : {
+
+    },
+    "Raw Data" : {
+
+    },
+    "Read Functions" : {
+
+    },
+    "Receive" : {
+
+    },
+    "Recipient Address" : {
+
+    },
+    "Refresh" : {
+
+    },
+    "Refresh version list" : {
+
+    },
+    "Reject" : {
+
+    },
+    "Reject Transaction" : {
+
+    },
+    "Rejected" : {
+
+    },
+    "Remove element" : {
+
+    },
+    "Required: %lld bytes" : {
+
+    },
+    "Result" : {
+
+    },
+    "Result:" : {
+
+    },
+    "Retry" : {
+
+    },
+    "Retry Connection" : {
+
+    },
+    "Retry Deployment" : {
+
+    },
+    "Returns:" : {
+
+    },
+    "Review the transaction details before signing" : {
+
+    },
+    "Review Transaction" : {
+
+    },
+    "RPC URL" : {
+
+    },
+    "Save" : {
+
+    },
+    "Security" : {
+
+    },
+    "Select a configuration category from the sidebar" : {
+
+    },
+    "Select a contract to view and interact with its functions" : {
+
+    },
+    "Select a contract to view its details." : {
+
+    },
+    "Select ABI" : {
+
+    },
+    "Select an item to view its details." : {
+
+    },
+    "Select Asset to Send" : {
+
+    },
+    "Select Configuration" : {
+
+    },
+    "Select Contract" : {
+
+    },
+    "Select Endpoint" : {
+
+    },
+    "Select Endpoint..." : {
+
+    },
+    "Select Network" : {
+
+    },
+    "Select Version" : {
+
+    },
+    "Select which contract to deploy from your Solidity code" : {
+
+    },
+    "Send" : {
+
+    },
+    "Share" : {
+
+    },
+    "Show" : {
+
+    },
+    "Show ABI Detail" : {
+
+    },
+    "Sign & Send" : {
+
+    },
+    "Sign Transaction" : {
+
+    },
+    "Signature" : {
+
+    },
+    "Solidity" : {
+
+    },
+    "Solidity Contract Name" : {
+
+    },
+    "Solidity Source Code" : {
+
+    },
+    "Solidity Version" : {
+
+    },
+    "Source" : {
+
+    },
+    "State:" : {
+
+    },
+    "Status" : {
+
+    },
+    "Status:" : {
+
+    },
+    "Struct/Tuple" : {
+
+    },
+    "Success" : {
+
+    },
+    "Summary" : {
+
+    },
+    "Symbol" : {
+
+    },
+    "This contract has no constructor parameters. Click Next to proceed with deployment." : {
+
+    },
+    "This function can be called without any parameters" : {
+
+    },
+    "This function has no input parameters" : {
+
+    },
+    "Time" : {
+
+    },
+    "Timeline" : {
+
+    },
+    "Timing" : {
+
+    },
+    "To" : {
+
+    },
+    "To: %@" : {
+
+    },
+    "Total Gas Cost" : {
+
+    },
+    "Transaction" : {
+
+    },
+    "Transaction Details" : {
+
+    },
+    "Transaction Failed" : {
+
+    },
+    "Transaction Hash:" : {
+
+    },
+    "Transaction Sent!" : {
+
+    },
+    "Transaction Value" : {
+
+    },
+    "Try Again" : {
+
+    },
+    "Tx Hash" : {
+
+    },
+    "Tx: %@" : {
+
+    },
+    "Type" : {
+
+    },
+    "uint%lld • max: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "uint%1$lld • max: %2$@"
+          }
+        }
+      }
+    },
+    "Unit" : {
+
+    },
+    "Update" : {
+
+    },
+    "Updated:" : {
+
+    },
+    "Upload" : {
+
+    },
+    "URL" : {
+
+    },
+    "Valid ABI" : {
+
+    },
+    "Validating..." : {
+
+    },
+    "Validation Error" : {
+
+    },
+    "Value" : {
+
+    },
+    "Value & Gas" : {
+
+    },
+    "Verifying endpoint connectivity..." : {
+
+    },
+    "Version (e.g., 0.8.21)" : {
+
+    },
+    "Waiting for transaction confirmation..." : {
+
+    },
+    "Wallet Details" : {
+
+    },
+    "Wallet Information" : {
+
+    },
+    "Wallet Name" : {
+
+    },
+    "Wallets" : {
+
+    },
+    "word" : {
+
+    },
+    "Word Count" : {
+
+    },
+    "Write Functions" : {
+
+    },
+    "Yes" : {
+
+    },
+    "You can deploy without an ABI, but you won't be able to interact with the contract" : {
+
+    },
+    "You don't have any transactions waiting for signature" : {
+
+    },
+    "Your Address" : {
+
+    },
+    "Your contract is now deployed" : {
+
+    },
+    "Your transaction has been successfully signed and broadcast to the network." : {
+
+    }
+  },
+  "version" : "1.1"
+}

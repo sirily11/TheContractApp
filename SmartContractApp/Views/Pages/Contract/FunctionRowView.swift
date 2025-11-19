@@ -15,13 +15,18 @@ struct FunctionRowView: View {
     let contract: EVMContract
     let function: AbiFunction
     let onCallTapped: () -> Void
+    var isExecuting: Bool = false
 
-    @Query private var successfulCalls: [ContractFunctionCall]
+    @Query(sort: \ContractFunctionCall.timestamp, order: .reverse) private var allCalls: [ContractFunctionCall]
     @Environment(ContractInteractionViewModel.self) private var viewModel
 
     /// Last successful call for this function (auto-updates via SwiftData)
     private var lastCall: ContractFunctionCall? {
-        successfulCalls.first
+        allCalls.first { call in
+            call.contractId == contract.id &&
+            call.functionName == function.name &&
+            call.status == .success
+        }
     }
 
     var body: some View {
@@ -50,9 +55,18 @@ struct FunctionRowView: View {
                 Spacer()
 
                 // Call button
-                Button("Call", action: onCallTapped)
-                    .buttonStyle(.bordered)
-                    .tint(buttonColor)
+                Button(action: onCallTapped) {
+                    HStack(spacing: 4) {
+                        if isExecuting {
+                            ProgressView()
+                                .controlSize(.small)
+                        }
+                        Text("Call")
+                    }
+                }
+                .buttonStyle(.bordered)
+                .tint(buttonColor)
+                .disabled(isExecuting)
             }
 
             // Last result (if available)
@@ -70,9 +84,7 @@ struct FunctionRowView: View {
 
                         Spacer()
 
-                        Text(lastCall.timestamp, style: .relative)
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
+                        RelativeTimeView(date: lastCall.timestamp)
                     }
                     .padding(8)
                     .background(Color.secondary.opacity(0.1))
@@ -81,27 +93,6 @@ struct FunctionRowView: View {
             }
         }
         .padding(.vertical, 4)
-    }
-
-    // MARK: - Initialization
-
-    init(contract: EVMContract, function: AbiFunction, onCallTapped: @escaping () -> Void) {
-        self.contract = contract
-        self.function = function
-        self.onCallTapped = onCallTapped
-
-        // Configure query to auto-fetch last successful call for this function
-        let contractId = contract.id
-        let functionName = function.name
-        let successStatus = CallStatus.success
-        _successfulCalls = Query(
-            filter: #Predicate<ContractFunctionCall> { call in
-                call.contractId == contractId &&
-                call.functionName == functionName &&
-                call.status == successStatus
-            },
-            sort: [SortDescriptor(\.timestamp, order: .reverse)]
-        )
     }
 
     // MARK: - Computed Properties
