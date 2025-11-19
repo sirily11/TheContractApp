@@ -19,6 +19,8 @@ struct FunctionListView: View {
     @State private var errorMessage: String?
     @State private var showingErrorAlert = false
 
+    @Environment(FunctionListViewModel.self) private var viewModel
+
     var body: some View {
         Group {
             if contract.abi == nil {
@@ -58,8 +60,9 @@ struct FunctionListView: View {
                             contract: contract,
                             function: function,
                             onCallTapped: {
-                                selectedFunction = function
-                            }
+                                handleFunctionCall(function)
+                            },
+                            isExecuting: viewModel.isExecuting(function.name)
                         )
                     }
                 } header: {
@@ -78,7 +81,7 @@ struct FunctionListView: View {
                             contract: contract,
                             function: function,
                             onCallTapped: {
-                                selectedFunction = function
+                                handleFunctionCall(function)
                             }
                         )
                     }
@@ -128,6 +131,19 @@ struct FunctionListView: View {
     }
 
     // MARK: - Helper Methods
+
+    /// Handle function call - auto-execute if read-only with no params, otherwise show sheet
+    private func handleFunctionCall(_ function: AbiFunction) {
+        if viewModel.shouldAutoExecute(function) {
+            // Auto-execute read-only functions with no parameters
+            Task { @MainActor in
+                await viewModel.executeReadFunction(contract: contract, function: function)
+            }
+        } else {
+            // Show sheet for functions with parameters or write functions
+            selectedFunction = function
+        }
+    }
 
     /// Load functions from contract ABI
     private func loadFunctions() {
