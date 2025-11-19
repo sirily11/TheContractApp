@@ -17,6 +17,18 @@ jobs:
         with:
           xcode-version: latest-stable
 
+      - name: Setup Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Start Anvil
+        run: |
+          anvil &
+          echo "ANVIL_PID=$!" >> $GITHUB_ENV
+          # Wait for Anvil to start
+          sleep 5
+
       - name: Swift version
         run: swift --version
 
