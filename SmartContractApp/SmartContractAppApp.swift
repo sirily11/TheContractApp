@@ -24,9 +24,17 @@ struct SmartContractAppApp: App {
             ContractFunctionCall.self,
         ])
 
+        // Detect if running in test mode
+        var inMemory = false
+        #if DEBUG
+        if CommandLine.arguments.contains("enable-testing") {
+            inMemory = true
+        }
+        #endif
+
         let modelConfiguration = ModelConfiguration(
             schema: schema,
-            isStoredInMemoryOnly: false,
+            isStoredInMemoryOnly: inMemory,
             allowsSave: true
         )
 

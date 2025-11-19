@@ -60,6 +60,7 @@ struct EndpointFormView: View {
                         .foregroundColor(.secondary)
                     TextField("Enter endpoint name", text: $name)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .accessibilityIdentifier(.endpoint.nameTextField)
                 }
                     
                 VStack(alignment: .leading, spacing: 8) {
@@ -68,6 +69,7 @@ struct EndpointFormView: View {
                         .foregroundColor(.secondary)
                     TextField("Endpoint URL", text: $url)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .accessibilityIdentifier(.endpoint.urlTextField)
                     #if os(iOS)
                         .keyboardType(.URL)
                         .autocapitalization(.none)
@@ -97,6 +99,7 @@ struct EndpointFormView: View {
             Section("Chain ID") {
                 HStack {
                     Toggle("Auto-detect", isOn: $isAutoDetectingChainId)
+                        .accessibilityIdentifier(.endpoint.autoDetectToggle)
                     Spacer()
                 }
                 .onChange(of: isAutoDetectingChainId) { _, newValue in
@@ -117,6 +120,7 @@ struct EndpointFormView: View {
                             .foregroundColor(.secondary)
                         TextField("1, 137, 56, etc.", text: $chainId)
                             .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .accessibilityIdentifier(.endpoint.chainIdTextField)
                         #if os(iOS)
                             .keyboardType(.numberPad)
                         #endif
@@ -150,6 +154,7 @@ struct EndpointFormView: View {
                             }
                             .font(.caption)
                             .foregroundColor(.blue)
+                            .accessibilityIdentifier(.endpoint.detectAgainButton)
                         }
                     } else if !detectionError.isEmpty {
                         VStack(alignment: .leading, spacing: 4) {
@@ -199,6 +204,7 @@ struct EndpointFormView: View {
                         .foregroundColor(.secondary)
                     TextField("ETH, BNB, MATIC, etc.", text: $nativeTokenSymbol)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .accessibilityIdentifier(.endpoint.tokenSymbolTextField)
                     #if os(iOS)
                         .autocapitalization(.allCharacters)
                     #endif
@@ -210,6 +216,7 @@ struct EndpointFormView: View {
                         .foregroundColor(.secondary)
                     TextField("Ethereum, Binance Coin, Polygon, etc.", text: $nativeTokenName)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .accessibilityIdentifier(.endpoint.tokenNameTextField)
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
@@ -218,6 +225,7 @@ struct EndpointFormView: View {
                         .foregroundColor(.secondary)
                     TextField("18", text: $nativeTokenDecimals)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .accessibilityIdentifier(.endpoint.tokenDecimalsTextField)
                     #if os(iOS)
                         .keyboardType(.numberPad)
                     #endif
@@ -258,26 +266,30 @@ struct EndpointFormView: View {
                         Button("Cancel") {
                             dismiss()
                         }
+                        .accessibilityIdentifier(.endpoint.cancelButton)
                     }
-                
+
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Button(isEditing ? "Update" : "Create") {
                             saveEndpoint()
                         }
                         .disabled(!isFormValid)
+                        .accessibilityIdentifier(isEditing ? .endpoint.updateButton : .endpoint.createButton)
                     }
                 #else
                     ToolbarItem(placement: .cancellationAction) {
                         Button("Cancel") {
                             dismiss()
                         }
+                        .accessibilityIdentifier(.endpoint.cancelButton)
                     }
-                
+
                     ToolbarItem(placement: .primaryAction) {
                         Button(isEditing ? "Update" : "Create") {
                             saveEndpoint()
                         }
                         .disabled(!isFormValid)
+                        .accessibilityIdentifier(isEditing ? .endpoint.updateButton : .endpoint.createButton)
                     }
                 #endif
             }

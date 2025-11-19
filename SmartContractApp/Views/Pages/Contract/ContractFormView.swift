@@ -51,21 +51,6 @@ struct ContractFormView: View {
 
     var body: some View {
         Form {
-            Section(header: Text("Contract Type")) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Type")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    Picker("Contract Type", selection: $contractType) {
-                        Text("Import Existing").tag(ContractType.import)
-                        Text("Solidity Source").tag(ContractType.solidity)
-                        Text("Bytecode").tag(ContractType.bytecode)
-                    }
-                    .pickerStyle(.segmented)
-                    .disabled(isEditing) // Don't allow changing type when editing
-                }
-            }
-            
             Section(header: Text("Contract Details")) {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Name")

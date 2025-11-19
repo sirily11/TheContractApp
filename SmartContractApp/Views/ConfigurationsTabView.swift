@@ -38,6 +38,8 @@ struct ConfigurationsTabView: View {
     @State private var selectedAbi: EvmAbi?
     @State private var selectedWallet: EVMWallet?
 
+    // MARK: - Body
+
     var body: some View {
         NavigationSplitView {
             // Sidebar
@@ -45,6 +47,7 @@ struct ConfigurationsTabView: View {
                 NavigationLink(value: category) {
                     Label(category.title, systemImage: category.systemImage)
                 }
+                .accessibilityIdentifier(sidebarIdentifier(for: category))
             }
             .navigationTitle("Configurations")
             .navigationSplitViewColumnWidth(min: 180, ideal: 200)
@@ -130,6 +133,16 @@ struct ConfigurationsTabView: View {
                 selectedEndpoint = nil
                 selectedAbi = nil
             }
+        }
+    }
+
+    // MARK: - Helper Methods
+
+    private func sidebarIdentifier(for category: ConfigurationCategory) -> A11yID {
+        switch category {
+        case .endpoints: return .sidebar.endpoints
+        case .abi: return .sidebar.abi
+        case .wallet: return .sidebar.wallet
         }
     }
 }
