@@ -46,6 +46,7 @@ struct EndpointContentView: View {
                 }) {
                     Image(systemName: "plus")
                 }
+                .accessibilityIdentifier(.endpoint.addButton)
             }
             #else
             ToolbarItem(placement: .primaryAction) {
@@ -54,6 +55,7 @@ struct EndpointContentView: View {
                 }) {
                     Image(systemName: "plus")
                 }
+                .accessibilityIdentifier(.endpoint.addButton)
             }
             #endif
         }
@@ -73,6 +75,8 @@ struct EndpointContentView: View {
                     deleteEndpoint(endpoint)
                 }
             }
+            .accessibilityIdentifier(.endpoint.deleteConfirmButton)
+
             Button("Cancel", role: .cancel) {
                 endpointToDelete = nil
             }

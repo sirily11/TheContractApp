@@ -282,6 +282,132 @@ Unit tests mock transport/dependencies and don't require external services:
 swift test --package-path packages/EvmCore --skip E2E
 ```
 
+### UI Tests
+
+UI tests use XCTest's XCUITest framework with type-safe accessibility identifiers.
+
+#### Running UI Tests
+```bash
+# Run all UI tests
+xcodebuild test -scheme SmartContractApp -destination 'platform=macOS' -only-testing:SmartContractAppUITests
+
+# Run specific UI test
+xcodebuild test -scheme SmartContractApp -destination 'platform=macOS' -only-testing:SmartContractAppUITests/SmartContractAppUITests/testSetupEndpoint
+```
+
+#### Type-Safe Accessibility Identifiers
+
+The app uses a centralized accessibility identifier system located in [Types/AccessibilityIdentifier.swift](SmartContractApp/Types/AccessibilityIdentifier.swift).
+
+**Key Features:**
+- **Type-safe**: Compile-time checking prevents typos
+- **Clean dot syntax**: `.accessibilityIdentifier(.endpoint.cancelButton)`
+- **Autocomplete-friendly**: IDE suggests available identifiers
+- **Organized by feature**: Separate namespaces for Sidebar, Endpoint, ABI, Wallet, Contract
+- **Shared**: Same identifiers used in app code and test code
+
+**Adding Identifiers to Views:**
+```swift
+import SwiftUI
+
+struct MyFormView: View {
+    var body: some View {
+        Form {
+            TextField("Name", text: $name)
+                .accessibilityIdentifier(.endpoint.nameTextField)
+
+            Button("Create") { }
+                .accessibilityIdentifier(.endpoint.createButton)
+
+            Toggle("Auto-detect", isOn: $autoDetect)
+                .accessibilityIdentifier(.endpoint.autoDetectToggle)
+        }
+    }
+}
+```
+
+**Using Identifiers in UI Tests:**
+```swift
+func testCreateEndpoint() {
+    let app = XCUIApplication()
+    app.launch()
+
+    // Navigate using sidebar
+    app.buttons["sidebar-endpoints"].firstMatch.click()
+
+    // Click add button
+    app.buttons["endpoint-add-button"].click()
+
+    // Fill form fields
+    app.textFields["endpoint-name-textfield"].typeText("Test")
+    app.textFields["endpoint-url-textfield"].typeText("http://localhost:8545")
+    app.switches["endpoint-auto-detect-toggle"].click()
+
+    // Submit
+    app.buttons["endpoint-create-button"].click()
+}
+```
+
+**Extending the Identifier System:**
+
+To add identifiers for a new feature:
+
+1. Open [Types/AccessibilityIdentifier.swift](SmartContractApp/Types/AccessibilityIdentifier.swift)
+2. Add a new namespace struct within `A11yID`:
+
+```swift
+// MARK: - MyFeature Namespace
+struct MyFeature {
+    static let addButton = A11yID(rawValue: "myfeature-add-button")
+    static let nameTextField = A11yID(rawValue: "myfeature-name-textfield")
+    static let submitButton = A11yID(rawValue: "myfeature-submit-button")
+}
+```
+
+3. Add a namespace accessor:
+
+```swift
+// MARK: - Namespace Accessors
+/// Access MyFeature identifiers with dot syntax: .myFeature.addButton
+static let myFeature = MyFeature.self
+```
+
+4. Use in views: `.accessibilityIdentifier(.myFeature.addButton)`
+
+**Identifier Naming Convention:**
+- Format: `{feature}-{element-type}-{purpose}`
+- Examples:
+  - `endpoint-add-button`
+  - `wallet-name-textfield`
+  - `contract-auto-detect-toggle`
+  - `sidebar-endpoints`
+
+**Known Limitations:**
+
+1. **Context Menus**: macOS UI tests have unreliable support for context menu accessibility identifiers. Use text-based selectors or skip context menu testing:
+   ```swift
+   // Instead of .accessibilityIdentifier on menu items, use text:
+   app.menuItems["Edit"].click()
+   app.menuItems["Delete"].click()
+   ```
+
+2. **Row Identifiers**: Don't add unique IDs to each list row. Use position-based selection instead:
+   ```swift
+   // Good: Position-based selection
+   app.outlines.cells.firstMatch.click()
+   app.outlines.cells.element(boundBy: 1).click()
+
+   // Avoid: UUID-based identifiers for rows
+   // .accessibilityIdentifier(.endpoint.row(endpoint.id.uuidString))
+   ```
+
+**Best Practices:**
+- Add accessibility identifiers to all interactive elements (buttons, text fields, toggles, etc.)
+- Use descriptive names that indicate the element's purpose
+- Keep identifiers consistent across similar views
+- Document complex test flows with `// MARK:` comments
+- Group related test actions together
+
 ## File Organization Conventions
 
 ### App Code
