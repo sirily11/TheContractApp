@@ -15,7 +15,7 @@ enum ConfigurationCategory: String, CaseIterable, Hashable, Identifiable {
 
     var id: String { rawValue }
 
-    var title: String {
+    var title: LocalizedStringKey {
         switch self {
         case .endpoints: return "Endpoints"
         case .abi: return "ABI"

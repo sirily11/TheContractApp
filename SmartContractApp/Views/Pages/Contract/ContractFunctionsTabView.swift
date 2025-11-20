@@ -21,20 +21,6 @@ struct ContractFunctionsTabView: View {
 
     @State private var selectedTab: FunctionTab = .functions
 
-    enum FunctionTab: String, CaseIterable {
-        case functions = "Functions"
-        case history = "History"
-
-        var systemImage: String {
-            switch self {
-            case .functions:
-                return "function"
-            case .history:
-                return "clock"
-            }
-        }
-    }
-
     var body: some View {
         TabView(selection: $selectedTab) {
             // Functions Tab
@@ -56,6 +42,8 @@ struct ContractFunctionsTabView: View {
             }
             .tag(FunctionTab.history)
         }
+        .padding()
+        .tabViewStyle(.grouped)
         .navigationTitle(contract.name)
         #if os(macOS)
             .navigationSubtitle(contract.address)
