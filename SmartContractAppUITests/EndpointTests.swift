@@ -7,7 +7,7 @@
 
 import XCTest
 
-final class SmartContractAppUITests: XCTestCase {
+final class EndpointTests: XCTestCase {
     var app: XCUIApplication!
 
     override func setUpWithError() throws {
