@@ -113,6 +113,10 @@ struct AIProviderFormView: View {
     @State private var type: ProviderType = .openAI
     @State private var apiKey: String = ""
     @State private var endpoint: String = ""
+    @State private var autoFetchModels: Bool = true
+    @State private var availableModels: [String] = []
+    @State private var isFetchingModels: Bool = false
+    @State private var fetchError: String?
 
     private var isEditing: Bool {
         if case .edit = mode { return true }
@@ -136,15 +140,23 @@ struct AIProviderFormView: View {
                     }
                 }
                 .accessibilityIdentifier(.settings.typePicker)
-                .onChange(of: type) { _, newType in
-                    if endpoint.isEmpty || endpoint == ProviderType.openAI.defaultEndpoint {
+                .onChange(of: type) { oldType, newType in
+                    // Update endpoint when type changes
+                    if endpoint.isEmpty || endpoint == oldType.defaultEndpoint {
                         endpoint = newType.defaultEndpoint
                     }
+                    // Clear models when type changes
+                    availableModels = []
+                    fetchError = nil
                 }
             }
 
             Section("Configuration") {
                 providerConfigurationFields
+            }
+
+            Section("Models") {
+                modelsSection
             }
 
             HStack {
@@ -164,6 +176,8 @@ struct AIProviderFormView: View {
                 type = provider.type
                 apiKey = provider.apiKey
                 endpoint = provider.endpoint
+                autoFetchModels = provider.autoFetchModels
+                availableModels = provider.availableModels
             } else {
                 endpoint = type.defaultEndpoint
             }
@@ -174,37 +188,133 @@ struct AIProviderFormView: View {
 
     @ViewBuilder
     private var providerConfigurationFields: some View {
-        switch type {
-        case .openAI:
-            SecureField("API Key", text: $apiKey)
-                .accessibilityIdentifier(.settings.apiKeyField)
+        SecureField("API Key", text: $apiKey)
+            .accessibilityIdentifier(.settings.apiKeyField)
 
+        if type.supportsCustomEndpoint {
             TextField("Endpoint", text: $endpoint)
                 .accessibilityIdentifier(.settings.endpointTextField)
 
-            Text("Default: \(ProviderType.openAI.defaultEndpoint)")
+            Text("Default: \(type.defaultEndpoint)")
                 .font(.caption)
                 .foregroundColor(.secondary)
+        } else {
+            LabeledContent("Endpoint") {
+                Text(type.defaultEndpoint)
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
+
+    // MARK: - Models Section
+
+    @ViewBuilder
+    private var modelsSection: some View {
+        if type.supportsAutoFetchModels {
+            Toggle("Auto-fetch models", isOn: $autoFetchModels)
+                .accessibilityIdentifier(.settings.autoFetchToggle)
+
+            HStack {
+                Button {
+                    Task {
+                        await fetchModels()
+                    }
+                } label: {
+                    if isFetchingModels {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                    } else {
+                        Text("Fetch Models")
+                    }
+                }
+                .disabled(apiKey.isEmpty || isFetchingModels)
+                .accessibilityIdentifier(.settings.fetchModelsButton)
+
+                if !availableModels.isEmpty {
+                    Spacer()
+                    Text("\(availableModels.count) models")
+                        .foregroundColor(.secondary)
+                        .font(.caption)
+                }
+            }
+
+            if let error = fetchError {
+                Text(error)
+                    .foregroundColor(.red)
+                    .font(.caption)
+            }
+
+            if !availableModels.isEmpty {
+                DisclosureGroup("Available Models (\(availableModels.count))") {
+                    ForEach(availableModels, id: \.self) { model in
+                        Text(model)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+        } else {
+            Text("Models will be configured manually")
+                .foregroundColor(.secondary)
+                .font(.caption)
+        }
+    }
+
+    // MARK: - Fetch Models
+
+    private func fetchModels() async {
+        isFetchingModels = true
+        fetchError = nil
+
+        do {
+            let effectiveEndpoint = type.supportsCustomEndpoint ? endpoint : type.defaultEndpoint
+            let models = try await ModelFetchService.shared.fetchModels(
+                providerType: type,
+                endpoint: effectiveEndpoint,
+                apiKey: apiKey
+            )
+            await MainActor.run {
+                availableModels = models
+                isFetchingModels = false
+            }
+        } catch {
+            await MainActor.run {
+                fetchError = error.localizedDescription
+                isFetchingModels = false
+            }
         }
     }
 
     // MARK: - Validation
 
     private var isFormValid: Bool {
-        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-            !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-            !endpoint.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let hasName = !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let hasApiKey = !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+
+        if type.supportsCustomEndpoint {
+            return hasName && hasApiKey
+                && !endpoint.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        } else {
+            return hasName && hasApiKey
+        }
     }
 
     // MARK: - Actions
 
     private func saveProvider() {
+        let effectiveEndpoint =
+            type.supportsCustomEndpoint
+            ? endpoint.trimmingCharacters(in: .whitespacesAndNewlines)
+            : type.defaultEndpoint
+
         if let provider = editingProvider {
             // Update existing
             provider.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
             provider.type = type
             provider.apiKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
-            provider.endpoint = endpoint.trimmingCharacters(in: .whitespacesAndNewlines)
+            provider.endpoint = effectiveEndpoint
+            provider.autoFetchModels = autoFetchModels
+            provider.availableModels = availableModels
             provider.updatedAt = Date()
         } else {
             // Create new
@@ -212,7 +322,9 @@ struct AIProviderFormView: View {
                 name: name.trimmingCharacters(in: .whitespacesAndNewlines),
                 type: type,
                 apiKey: apiKey.trimmingCharacters(in: .whitespacesAndNewlines),
-                endpoint: endpoint.trimmingCharacters(in: .whitespacesAndNewlines)
+                endpoint: effectiveEndpoint,
+                availableModels: availableModels,
+                autoFetchModels: autoFetchModels
             )
             modelContext.insert(newProvider)
             onSave?(newProvider)

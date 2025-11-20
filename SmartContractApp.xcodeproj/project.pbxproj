@@ -13,6 +13,7 @@
 		DF6933692EBF93C100940F80 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = DF6933682EBF93C100940F80 /* AppIcon.icon */; };
 		DF72D0F12EBDA3F30007C5EB /* EvmCore in Frameworks */ = {isa = PBXBuildFile; productRef = DF72D0F02EBDA3F30007C5EB /* EvmCore */; };
 		DF72D0F32EBDA3F30007C5EB /* Solidity in Frameworks */ = {isa = PBXBuildFile; productRef = DF72D0F22EBDA3F30007C5EB /* Solidity */; };
+		DF9A67D12ECF0CC800C95097 /* AgentKit in Frameworks */ = {isa = PBXBuildFile; productRef = DF9A67D02ECF0CC800C95097 /* AgentKit */; };
 		DFBEF2CC2EC62696004A1BCF /* ViewInspector in Frameworks */ = {isa = PBXBuildFile; productRef = DFBEF2CB2EC62696004A1BCF /* ViewInspector */; };
 /* End PBXBuildFile section */
 
@@ -69,6 +70,7 @@
 				DF69334B2EBDF63000940F80 /* KeychainSwift in Frameworks */,
 				DF72D0F12EBDA3F30007C5EB /* EvmCore in Frameworks */,
 				DF72D0F32EBDA3F30007C5EB /* Solidity in Frameworks */,
+				DF9A67D12ECF0CC800C95097 /* AgentKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -137,6 +139,7 @@
 				DF6933412EBDE82C00940F80 /* CodeEditorView */,
 				DF6933432EBDE82C00940F80 /* LanguageSupport */,
 				DF69334A2EBDF63000940F80 /* KeychainSwift */,
+				DF9A67D02ECF0CC800C95097 /* AgentKit */,
 			);
 			productName = SmartContractApp;
 			productReference = DF72D0742EBB4A1F0007C5EB /* SmartContractApp.app */;
@@ -227,6 +230,7 @@
 				DF6933402EBDE82C00940F80 /* XCRemoteSwiftPackageReference "CodeEditorView" */,
 				DF6933492EBDF63000940F80 /* XCRemoteSwiftPackageReference "keychain-swift" */,
 				DFBEF2CA2EC62696004A1BCF /* XCRemoteSwiftPackageReference "ViewInspector" */,
+				DF9A67CF2ECF0CC800C95097 /* XCRemoteSwiftPackageReference "AgentKit" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = DF72D0752EBB4A1F0007C5EB /* Products */;
@@ -656,6 +660,14 @@
 				minimumVersion = 24.0.0;
 			};
 		};
+		DF9A67CF2ECF0CC800C95097 /* XCRemoteSwiftPackageReference "AgentKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/rxtech-lab/AgentKit";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
 		DFBEF2CA2EC62696004A1BCF /* XCRemoteSwiftPackageReference "ViewInspector" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/nalexn/ViewInspector";
@@ -689,6 +701,11 @@
 		DF72D0F22EBDA3F30007C5EB /* Solidity */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Solidity;
+		};
+		DF9A67D02ECF0CC800C95097 /* AgentKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DF9A67CF2ECF0CC800C95097 /* XCRemoteSwiftPackageReference "AgentKit" */;
+			productName = AgentKit;
 		};
 		DFBEF2CB2EC62696004A1BCF /* ViewInspector */ = {
 			isa = XCSwiftPackageProductDependency;

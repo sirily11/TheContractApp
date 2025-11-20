@@ -98,6 +98,11 @@ struct A11yID {
         static let addButton = A11yID(rawValue: "chat-add-button")
         static let deleteButton = A11yID(rawValue: "chat-delete-button")
         static let renameButton = A11yID(rawValue: "chat-rename-button")
+        static let openSettingsButton = A11yID(rawValue: "chat-open-settings-button")
+        static let providerPicker = A11yID(rawValue: "chat-provider-picker")
+        static let modelPicker = A11yID(rawValue: "chat-model-picker")
+        static let messageInput = A11yID(rawValue: "chat-message-input")
+        static let sendButton = A11yID(rawValue: "chat-send-button")
 
         static func row(_ id: String) -> A11yID {
             A11yID(rawValue: "chat-row-\(id)")
@@ -111,6 +116,7 @@ struct A11yID {
         static let createButton = A11yID(rawValue: "settings-create-button")
         static let updateButton = A11yID(rawValue: "settings-update-button")
         static let cancelButton = A11yID(rawValue: "settings-cancel-button")
+        static let fetchModelsButton = A11yID(rawValue: "settings-fetch-models-button")
 
         // Text Fields
         static let nameTextField = A11yID(rawValue: "settings-name-textfield")
@@ -119,6 +125,9 @@ struct A11yID {
 
         // Pickers
         static let typePicker = A11yID(rawValue: "settings-type-picker")
+
+        // Toggles
+        static let autoFetchToggle = A11yID(rawValue: "settings-auto-fetch-toggle")
 
         static func providerRow(_ id: String) -> A11yID {
             A11yID(rawValue: "settings-provider-row-\(id)")

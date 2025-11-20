@@ -10,6 +10,7 @@ import SwiftData
 
 enum ProviderType: String, Codable, CaseIterable, Identifiable {
     case openAI
+    case openRouter
 
     var id: String { rawValue }
 
@@ -17,6 +18,8 @@ enum ProviderType: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .openAI:
             return "OpenAI"
+        case .openRouter:
+            return "OpenRouter"
         }
     }
 
@@ -24,6 +27,28 @@ enum ProviderType: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .openAI:
             return "https://api.openai.com/v1"
+        case .openRouter:
+            return "https://openrouter.ai/api/v1"
+        }
+    }
+
+    /// Whether the user can customize the endpoint URL
+    var supportsCustomEndpoint: Bool {
+        switch self {
+        case .openAI:
+            return true
+        case .openRouter:
+            return false
+        }
+    }
+
+    /// Whether the provider supports auto-fetching models
+    var supportsAutoFetchModels: Bool {
+        switch self {
+        case .openAI:
+            return true
+        case .openRouter:
+            return true
         }
     }
 }
@@ -35,6 +60,8 @@ final class AIProvider {
     var type: ProviderType
     var apiKey: String
     var endpoint: String
+    var availableModels: [String]
+    var autoFetchModels: Bool
     var createdAt: Date
     var updatedAt: Date
 
@@ -44,6 +71,8 @@ final class AIProvider {
         type: ProviderType = .openAI,
         apiKey: String = "",
         endpoint: String = "",
+        availableModels: [String] = [],
+        autoFetchModels: Bool = true,
         createdAt: Date = Date(),
         updatedAt: Date = Date()
     ) {
@@ -52,6 +81,8 @@ final class AIProvider {
         self.type = type
         self.apiKey = apiKey
         self.endpoint = endpoint.isEmpty ? type.defaultEndpoint : endpoint
+        self.availableModels = availableModels
+        self.autoFetchModels = autoFetchModels
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
