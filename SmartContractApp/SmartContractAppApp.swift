@@ -23,6 +23,8 @@ struct SmartContractAppApp: App {
             EVMWallet.self,
             Transaction.self,
             ContractFunctionCall.self,
+            ChatHistory.self,
+            AIProvider.self,
         ])
 
         // Detect if running in test mode
@@ -90,6 +92,11 @@ struct SmartContractAppApp: App {
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
         .defaultSize(width: 400, height: 700)
+
+        Settings {
+            SettingsPage()
+        }
+        .modelContainer(sharedModelContainer)
         #endif
     }
 }

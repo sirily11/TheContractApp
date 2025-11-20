@@ -8,27 +8,6 @@
 import SwiftData
 import SwiftUI
 
-enum AppTab: String, CaseIterable, Hashable, Identifiable {
-    case configurations
-    case run
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .configurations: return "Configurations"
-        case .run: return "Run"
-        }
-    }
-
-    var systemImage: String {
-        switch self {
-        case .configurations: return "gearshape.2"
-        case .run: return "doc.text.fill"
-        }
-    }
-}
-
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(WalletSignerViewModel.self) private var walletSigner
@@ -50,9 +29,15 @@ struct ContentView: View {
 
             ContractTabView()
                 .tabItem {
-                    Label(AppTab.run.title, systemImage: AppTab.run.systemImage)
+                    Label(AppTab.execute.title, systemImage: AppTab.execute.systemImage)
                 }
-                .tag(AppTab.run)
+                .tag(AppTab.execute)
+
+            ChatTabView()
+                .tabItem {
+                    Label(AppTab.chat.title, systemImage: AppTab.chat.systemImage)
+                }
+                .tag(AppTab.chat)
         }
         .toolbar {
             ToolbarItem(placement: .automatic) {

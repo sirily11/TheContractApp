@@ -93,6 +93,38 @@ struct A11yID {
         }
     }
 
+    // MARK: - Chat Namespace
+    struct Chat {
+        static let addButton = A11yID(rawValue: "chat-add-button")
+        static let deleteButton = A11yID(rawValue: "chat-delete-button")
+        static let renameButton = A11yID(rawValue: "chat-rename-button")
+
+        static func row(_ id: String) -> A11yID {
+            A11yID(rawValue: "chat-row-\(id)")
+        }
+    }
+
+    // MARK: - Settings Namespace
+    struct Settings {
+        // Buttons
+        static let addButton = A11yID(rawValue: "settings-add-button")
+        static let createButton = A11yID(rawValue: "settings-create-button")
+        static let updateButton = A11yID(rawValue: "settings-update-button")
+        static let cancelButton = A11yID(rawValue: "settings-cancel-button")
+
+        // Text Fields
+        static let nameTextField = A11yID(rawValue: "settings-name-textfield")
+        static let endpointTextField = A11yID(rawValue: "settings-endpoint-textfield")
+        static let apiKeyField = A11yID(rawValue: "settings-apikey-field")
+
+        // Pickers
+        static let typePicker = A11yID(rawValue: "settings-type-picker")
+
+        static func providerRow(_ id: String) -> A11yID {
+            A11yID(rawValue: "settings-provider-row-\(id)")
+        }
+    }
+
     // MARK: - Namespace Accessors (Enable dot syntax)
 
     /// Access Sidebar identifiers with dot syntax: .sidebar.endpoints
@@ -109,6 +141,12 @@ struct A11yID {
 
     /// Access Contract identifiers with dot syntax: .contract.addButton
     static let contract = Contract.self
+
+    /// Access Chat identifiers with dot syntax: .chat.addButton
+    static let chat = Chat.self
+
+    /// Access Settings identifiers with dot syntax: .settings.addButton
+    static let settings = Settings.self
 }
 
 // MARK: - View Extension
