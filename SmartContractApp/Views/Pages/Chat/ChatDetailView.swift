@@ -17,8 +17,7 @@ struct ChatDetailView: View {
     @Query(sort: \AIProvider.name) private var providers: [AIProvider]
 
     @State private var agentChat: Chat?
-    @State private var selectedProviderId: UUID?
-    @State private var selectedModelId: String?
+    @State private var currentChatId: UUID? // Track which chat is initialized to prevent unnecessary re-initialization
 
     var body: some View {
         Group {
@@ -65,123 +64,87 @@ struct ChatDetailView: View {
 
     @ViewBuilder
     private func chatContentView(for chat: ChatHistory) -> some View {
-        VStack(spacing: 0) {
-            // Provider/Model selector toolbar
-            providerModelSelector(for: chat)
-                .padding(.horizontal)
-                .padding(.vertical, 8)
-                .background(Color(nsColor: .windowBackgroundColor))
+        if let agentChat = agentChat,
+           let currentModel = chatViewModel.currentModel,
+           let currentSource = chatViewModel.currentSource
+        {
+            AgentLayout(
+                chat: agentChat,
+                currentModel: Binding(
+                    get: { currentModel },
+                    set: { newModel in
+                        if case .openAI(let model) = newModel {
+                            chatViewModel.selectModel(model.id)
+                            chat.model = model.id
+                            chat.updatedAt = Date()
+                        }
+                    }
+                ),
+                currentSource: Binding(
+                    get: { currentSource },
+                    set: { newSource in
+                        // Find the provider matching this source
+                        if let provider = providers.first(where: { $0.name == newSource.displayName }) {
+                            chatViewModel.selectProvider(provider)
+                            chat.providerId = provider.id
+                            chat.updatedAt = Date()
 
-            Divider()
-
-            // AgentLayout chat interface
-            if let agentChat = agentChat,
-                let currentModel = chatViewModel.currentModel,
-                let currentSource = chatViewModel.currentSource
-            {
-                AgentLayout(
-                    chat: agentChat,
-                    currentModel: Binding(
-                        get: { currentModel },
-                        set: { newModel in
-                            if case .openAI(let model) = newModel {
-                                chatViewModel.selectModel(model.id)
-                                chat.model = model.id
-                                chat.updatedAt = Date()
+                            // Fetch models if needed
+                            Task {
+                                await chatViewModel.fetchModelsIfNeeded(for: provider)
                             }
                         }
-                    ),
-                    currentSource: Binding(
-                        get: { currentSource },
-                        set: { _ in }
-                    ),
-                    sources: chatViewModel.sources,
-                    onSend: { message in
-                        handleSendMessage(message, chat: chat)
                     }
-                )
-            } else {
-                ContentUnavailableView {
-                    Label("Select Provider & Model", systemImage: "cpu")
-                } description: {
-                    Text("Choose a provider and model to start chatting")
+                ),
+                sources: chatViewModel.sources,
+                onSend: { message in
+                    handleSendMessage(message, chat: chat)
+                },
+                onMessage: { message in
+                    // Save assistant messages and tool results to persistent storage
+                    chatViewModel.saveMessage(message, to: chat)
+                }
+            )
+            .frame(maxWidth: 960)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .onChange(of: chat.id) { _, _ in
+                setupChat(chat)
+            }
+            .onAppear {
+                setupChat(chat)
+            }
+        } else {
+            ContentUnavailableView {
+                Label("Loading...", systemImage: "ellipsis")
+            } description: {
+                Text("Setting up chat...")
+            }
+            .onAppear {
+                // Only call setupChat if agentChat is nil
+                // This prevents re-initialization when the view switches to loading state
+                // due to currentModel/currentSource being temporarily nil
+                if agentChat == nil {
+                    setupChat(chat)
                 }
             }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .onChange(of: chat.id) { _, _ in
-            setupChat(chat)
-        }
-        .onAppear {
-            setupChat(chat)
-        }
-    }
-
-    // MARK: - Provider/Model Selector
-
-    @ViewBuilder
-    private func providerModelSelector(for chat: ChatHistory) -> some View {
-        HStack {
-            // Provider Picker
-            Picker("Provider", selection: $selectedProviderId) {
-                Text("Select Provider").tag(nil as UUID?)
-                ForEach(providers) { provider in
-                    Text(provider.name).tag(provider.id as UUID?)
-                }
-            }
-            .labelsHidden()
-            .frame(maxWidth: 200)
-            .accessibilityIdentifier(.chat.providerPicker)
-            .onChange(of: selectedProviderId) { _, newValue in
-                if let providerId = newValue,
-                    let provider = providers.first(where: { $0.id == providerId })
-                {
-                    chatViewModel.selectProvider(provider)
-                    chat.providerId = providerId
-                    chat.updatedAt = Date()
-
-                    // Fetch models if needed
-                    Task {
-                        await chatViewModel.fetchModelsIfNeeded(for: provider)
-                    }
-                }
-            }
-
-            // Model Picker
-            if let provider = providers.first(where: { $0.id == selectedProviderId }) {
-                Picker("Model", selection: $selectedModelId) {
-                    Text("Select Model").tag(nil as String?)
-                    ForEach(provider.availableModels, id: \.self) { modelId in
-                        Text(modelId).tag(modelId as String?)
-                    }
-                }
-                .labelsHidden()
-                .frame(maxWidth: 300)
-                .accessibilityIdentifier(.chat.modelPicker)
-                .onChange(of: selectedModelId) { _, newValue in
-                    if let modelId = newValue {
-                        chatViewModel.selectModel(modelId)
-                        chat.model = modelId
-                        chat.updatedAt = Date()
-                    }
-                }
-            }
-
-            Spacer()
         }
     }
 
     // MARK: - Setup
 
     private func setupChat(_ chat: ChatHistory) {
-        // Convert ChatHistory to AgentKit Chat
-        agentChat = chatViewModel.convertToChat(chat)
+        // Only reinitialize agentChat if it's a different chat to prevent losing in-flight messages
+        // This fixes the issue where switching to loading view (due to currentModel/currentSource being nil)
+        // would cause setupChat to be called again and reinitialize agentChat from persistent storage
+        if currentChatId != chat.id {
+            agentChat = chatViewModel.convertToChat(chat)
+            currentChatId = chat.id
+        }
 
         // Restore provider selection
         if let providerId = chat.providerId,
-            let provider = providers.first(where: { $0.id == providerId })
+           let provider = providers.first(where: { $0.id == providerId })
         {
-            selectedProviderId = providerId
             chatViewModel.selectProvider(provider)
 
             // Fetch models if needed
@@ -190,7 +153,6 @@ struct ChatDetailView: View {
             }
         } else if let first = providers.first {
             // Default to first provider
-            selectedProviderId = first.id
             chatViewModel.selectProvider(first)
 
             Task {
@@ -200,7 +162,6 @@ struct ChatDetailView: View {
 
         // Restore model selection
         if let modelId = chat.model {
-            selectedModelId = modelId
             chatViewModel.selectModel(modelId)
         }
     }
@@ -214,12 +175,9 @@ struct ChatDetailView: View {
         // Save to chat history
         chatViewModel.saveMessage(userMessage, to: chat)
 
-        // Update agent chat
-        agentChat?.messages.append(userMessage)
-
         // Update provider/model info on chat
         if let provider = chatViewModel.currentProvider,
-            let model = chatViewModel.currentModel
+           let model = chatViewModel.currentModel
         {
             if case .openAI(let openAIModel) = model {
                 chatViewModel.updateChatProvider(chat, provider: provider, modelId: openAIModel.id)

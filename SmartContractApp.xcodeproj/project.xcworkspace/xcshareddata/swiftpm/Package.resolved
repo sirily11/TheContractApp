@@ -1,15 +1,6 @@
 {
-  "originHash" : "29db8c4c228e95685760e452e17816b0dceb5742dc773eee94f2b49622eb93fc",
+  "originHash" : "feecd50f3420ffe2d5147655ef7ad95dd60556926047b5e6337b0550ed862752",
   "pins" : [
-    {
-      "identity" : "agentkit",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/rxtech-lab/AgentKit",
-      "state" : {
-        "branch" : "main",
-        "revision" : "256ff39edc16c6bd98ef100445c6a08ea0b5b3f1"
-      }
-    },
     {
       "identity" : "bigint",
       "kind" : "remoteSourceControl",

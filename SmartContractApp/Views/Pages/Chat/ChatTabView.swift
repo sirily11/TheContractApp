@@ -20,7 +20,12 @@ struct ChatTabView: View {
                 .navigationSplitViewColumnWidth(min: 200, ideal: 250)
         } content: {
             ChatDetailView(chat: selectedChat)
-        } detail: {}
+        } detail: {
+            VStack {}
+                .navigationSplitViewColumnWidth(
+                    min: 0, ideal: 0, max: 0
+                )
+        }
     }
 }
 
