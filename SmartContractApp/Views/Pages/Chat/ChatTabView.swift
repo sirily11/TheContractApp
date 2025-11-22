@@ -12,11 +12,19 @@ struct ChatTabView: View {
     @State private var selectedChat: ChatHistory?
 
     var body: some View {
-        NavigationSplitView {
+        // Warning: this is a bug that if we do not include the detail in the
+        // navigation split view, will trigger swiftui runtime error
+        // FAULT: NSInternalInconsistencyException: Cannot unregister separator item because it was not previously successfully registered
+        NavigationSplitView(columnVisibility: .constant(.detailOnly)) {
             ChatHistorySidebarView(selectedChat: $selectedChat)
                 .navigationSplitViewColumnWidth(min: 200, ideal: 250)
-        } detail: {
+        } content: {
             ChatDetailView(chat: selectedChat)
+        } detail: {
+            VStack {}
+                .navigationSplitViewColumnWidth(
+                    min: 0, ideal: 0, max: 0
+                )
         }
     }
 }
