@@ -17,6 +17,8 @@ struct ChatDetailView: View {
     @Environment(ToolRegistry.self) private var toolRegistry
     @Environment(ChatProvider.self) private var chatProvider
     @Query(sort: \AIProvider.name) private var providers: [AIProvider]
+    @Environment(\.openSettings) private var openSettingsWindow
+    @Environment(\.modelContext) private var modelContext
 
     @State private var agentChat: Chat?
     @State private var currentChatId: UUID? // Track which chat is initialized to prevent unnecessary re-initialization
@@ -109,26 +111,11 @@ struct ChatDetailView: View {
                     }
                 ),
                 sources: chatViewModel.sources,
-                tools: toolRegistry.createTools(), onSend: { message in
-                    handleSendMessage(message, chat: chat)
-                }, onMessage: { message in
-                    // Save or update assistant messages and tool results to persistent storage
-                    // Uses saveOrUpdateMessage to handle streaming updates where the same message ID
-                    // is updated multiple times (e.g., during streaming responses)
-                    chatViewModel.saveOrUpdateMessage(message, to: chat)
-                }, onDelete: { index in
-                    // Remove message from chat history
-                    chatViewModel.removeMessage(at: index, from: chat)
-
-                    // Trigger a re-render by updating the chat
-                    setupChat(chat)
-                }, onEdit: { index, newMessage in
-                    // Edit message in chat history
-                    chatViewModel.editMessage(at: index, with: newMessage, in: chat)
-
-                    // Trigger a re-render by updating the chat
-                    setupChat(chat)
-                }, renderMessage: toolRegistry.createMessageRenderer()
+                tools: toolRegistry.createTools(),
+                onMessageChange: { messages in
+                    chatViewModel.saveMessages(messages, to: chat)
+                },
+                renderMessage: toolRegistry.createMessageRenderer()
             )
             .frame(maxWidth: 960)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -194,9 +181,6 @@ struct ChatDetailView: View {
     // MARK: - Message Handling
 
     private func handleSendMessage(_ message: Message, chat: ChatHistory) {
-        // Save the message to chat history
-        chatViewModel.saveMessage(message, to: chat)
-
         // Update provider/model info on chat
         if let provider = chatViewModel.currentProvider,
            let model = chatViewModel.currentModel
@@ -217,9 +201,7 @@ struct ChatDetailView: View {
     // MARK: - Actions
 
     private func openSettings() {
-        #if os(macOS)
-            NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
-        #endif
+        openSettingsWindow()
     }
 }
 

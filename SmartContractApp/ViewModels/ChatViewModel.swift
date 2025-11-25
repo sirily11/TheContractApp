@@ -105,73 +105,19 @@ final class ChatViewModel {
         )
     }
 
-    /// Save a message to chat history
-    func saveMessage(_ message: Message, to chat: ChatHistory) {
-        guard let data = try? JSONEncoder().encode(message),
-              let json = String(data: data, encoding: .utf8)
-        else {
-            errorMessage = "Failed to encode message"
-            return
-        }
-
-        chat.messages.append(json)
-        chat.updatedAt = Date()
-    }
-
     /// Save or update a message in chat history (handles streaming updates)
-    func saveOrUpdateMessage(_ message: Message, to chat: ChatHistory) {
-        // Check if message with this ID already exists
-        if let existingIndex = chat.messages.firstIndex(where: { jsonString in
-            guard let data = jsonString.data(using: .utf8),
-                  let existing = try? JSONDecoder().decode(Message.self, from: data)
-            else { return false }
-            return existing.id == message.id
-        }) {
-            // Update existing message
-            if let data = try? JSONEncoder().encode(message),
-               let json = String(data: data, encoding: .utf8) {
-                chat.messages[existingIndex] = json
+    func saveMessages(_ messages: [Message], to chat: ChatHistory) {
+        let messages = messages.map {
+            if let data = try? JSONEncoder().encode($0),
+               let json = String(data: data, encoding: .utf8)
+            {
+                return json
             }
-        } else {
-            // Append new message
-            saveMessage(message, to: chat)
-        }
-
+            return nil
+        }.compactMap { $0 }
+        chat.messages = messages
         chat.updatedAt = Date()
-    }
-
-    /// Remove a message from chat history by index
-    func removeMessage(at index: Int, from chat: ChatHistory) {
-        // Validate index
-        guard index >= 0 && index < chat.messages.count else {
-            errorMessage = "Invalid message index"
-            return
-        }
-
-        // Remove the message at the specified index
-        chat.messages.remove(at: index)
-        chat.updatedAt = Date()
-    }
-
-    /// Edit a message in chat history by index
-    func editMessage(at index: Int, with newMessage: Message, in chat: ChatHistory) {
-        // Validate index
-        guard index >= 0 && index < chat.messages.count else {
-            errorMessage = "Invalid message index"
-            return
-        }
-
-        // Encode the new message
-        guard let data = try? JSONEncoder().encode(newMessage),
-              let json = String(data: data, encoding: .utf8)
-        else {
-            errorMessage = "Failed to encode edited message"
-            return
-        }
-
-        // Replace the message at the specified index
-        chat.messages[index] = json
-        chat.updatedAt = Date()
+        try? modelContext.save()
     }
 
     /// Update chat with provider and model info
@@ -184,8 +130,8 @@ final class ChatViewModel {
     /// Fetch models for a provider if auto-fetch is enabled
     func fetchModelsIfNeeded(for provider: AIProvider) async {
         guard provider.autoFetchModels,
-            provider.availableModels.isEmpty,
-            provider.type.supportsAutoFetchModels
+              provider.availableModels.isEmpty,
+              provider.type.supportsAutoFetchModels
         else {
             return
         }
@@ -250,4 +196,3 @@ final class ChatViewModel {
         }
     }
 }
-
