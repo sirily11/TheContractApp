@@ -11,29 +11,6 @@ import Observation
 import SwiftData
 
 // MARK: - Stored Message Type
-
-/// Simple struct for persisting messages to JSON
-struct StoredMessage: Codable {
-    enum Role: String, Codable {
-        case user
-        case assistant
-        case system
-        case tool
-    }
-
-    let id: String
-    let role: Role
-    let content: String
-    let timestamp: Date
-
-    init(id: String = UUID().uuidString, role: Role, content: String, timestamp: Date = Date()) {
-        self.id = id
-        self.role = role
-        self.content = content
-        self.timestamp = timestamp
-    }
-}
-
 // MARK: - Chat View Model
 
 @Observable
@@ -97,8 +74,10 @@ final class ChatViewModel {
         // Create Model based on provider type
         let model: Model
         switch provider.type {
-        case .openAI, .openRouter:
-            model = .openAI(OpenAICompatibleModel(id: modelId, name: modelId))
+        case .openAI:
+            model = .openAI(OpenAICompatibleModel(id: modelId))
+        case .openRouter:
+            model = .openRouter(OpenAICompatibleModel(id: modelId, reasoningConfig: .default))
         }
 
         currentModel = model
@@ -231,25 +210,34 @@ final class ChatViewModel {
 
     /// Convert AIProvider to AgentKit Source
     private func convertToSource(_ provider: AIProvider) -> Source {
-        let models: [Model] = provider.availableModels.map { modelId in
-            switch provider.type {
-            case .openAI, .openRouter:
-                return .openAI(OpenAICompatibleModel(id: modelId, name: modelId))
-            }
-        }
-
-        let apiType: ApiType
         switch provider.type {
-        case .openAI, .openRouter:
-            apiType = .openAI
-        }
+        case .openAI:
+            let models: [Model] = provider.availableModels.map { modelId in
+                .openAI(OpenAICompatibleModel(id: modelId))
+            }
 
-        return Source(
-            displayName: provider.name,
-            endpoint: provider.endpoint,
-            apiKey: provider.apiKey,
-            apiType: apiType,
-            models: models
-        )
+            // Create OpenAI client with custom endpoint if provided
+            let client: OpenAIClient
+            if let baseURL = URL(string: provider.endpoint) {
+                client = OpenAIClient(apiKey: provider.apiKey, baseURL: baseURL)
+            } else {
+                client = OpenAIClient(apiKey: provider.apiKey)
+            }
+
+            return Source.openAI(client: client, models: models)
+
+        case .openRouter:
+            let models: [Model] = provider.availableModels.map { modelId in
+                .openRouter(OpenAICompatibleModel(id: modelId))
+            }
+
+            let client = OpenRouterClient(
+                apiKey: provider.apiKey,
+                appName: "SmartContractApp"
+            )
+
+            return Source.openRouter(client: client, models: models)
+        }
     }
 }
+

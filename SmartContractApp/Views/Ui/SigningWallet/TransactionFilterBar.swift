@@ -8,7 +8,7 @@
 import SwiftUI
 
 /// Filter options for transaction list
-enum TransactionFilter: String, CaseIterable {
+enum TransactionFilter: LocalizedStringKey, CaseIterable {
     case all = "All"
     case sent = "Sent"
     case received = "Received"

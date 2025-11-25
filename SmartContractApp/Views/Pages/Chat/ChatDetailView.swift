@@ -14,6 +14,7 @@ struct ChatDetailView: View {
     let chat: ChatHistory?
 
     @Environment(ChatViewModel.self) private var chatViewModel
+    @Environment(ToolRegistry.self) private var toolRegistry
     @Query(sort: \AIProvider.name) private var providers: [AIProvider]
 
     @State private var agentChat: Chat?
@@ -24,6 +25,7 @@ struct ChatDetailView: View {
             if providers.isEmpty {
                 noProvidersView
             } else if let chat = chat {
+                Text("Chat message count: \(chat.messages.count)")
                 chatContentView(for: chat)
             } else {
                 noChatSelectedView
@@ -73,11 +75,20 @@ struct ChatDetailView: View {
                 currentModel: Binding(
                     get: { currentModel },
                     set: { newModel in
-                        if case .openAI(let model) = newModel {
-                            chatViewModel.selectModel(model.id)
-                            chat.model = model.id
-                            chat.updatedAt = Date()
+                        let modelId: String
+                        switch newModel {
+                        case .openAI(let model):
+                            modelId = model.id
+
+                        case .openRouter(let model):
+                            modelId = model.id
+
+                        case .custom(let model):
+                            modelId = model.id
                         }
+                        chatViewModel.selectModel(modelId)
+                        chat.model = modelId
+                        chat.updatedAt = Date()
                     }
                 ),
                 currentSource: Binding(
@@ -97,13 +108,15 @@ struct ChatDetailView: View {
                     }
                 ),
                 sources: chatViewModel.sources,
+                renderMessage: toolRegistry.createMessageRenderer(),
                 onSend: { message in
                     handleSendMessage(message, chat: chat)
                 },
                 onMessage: { message in
                     // Save assistant messages and tool results to persistent storage
                     chatViewModel.saveMessage(message, to: chat)
-                }
+                },
+                tools: toolRegistry.createTools()
             )
             .frame(maxWidth: 960)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -138,6 +151,7 @@ struct ChatDetailView: View {
         // would cause setupChat to be called again and reinitialize agentChat from persistent storage
         if currentChatId != chat.id {
             agentChat = chatViewModel.convertToChat(chat)
+            print("Chat Detail: \(agentChat!)")
             currentChatId = chat.id
         }
 
@@ -179,9 +193,16 @@ struct ChatDetailView: View {
         if let provider = chatViewModel.currentProvider,
            let model = chatViewModel.currentModel
         {
-            if case .openAI(let openAIModel) = model {
-                chatViewModel.updateChatProvider(chat, provider: provider, modelId: openAIModel.id)
+            let modelId: String
+            switch model {
+            case .openAI(let openAIModel):
+                modelId = openAIModel.id
+            case .openRouter(let openRouterModel):
+                modelId = openRouterModel.id
+            case .custom(let customModel):
+                modelId = customModel.id
             }
+            chatViewModel.updateChatProvider(chat, provider: provider, modelId: modelId)
         }
     }
 
@@ -196,7 +217,7 @@ struct ChatDetailView: View {
 
 #Preview("With Chat") {
     let container = try! ModelContainer(
-        for: ChatHistory.self, AIProvider.self,
+        for: ChatHistory.self, AIProvider.self, Endpoint.self, EVMContract.self, EvmAbi.self, EVMWallet.self,
         configurations: ModelConfiguration(isStoredInMemoryOnly: true)
     )
 
@@ -214,14 +235,22 @@ struct ChatDetailView: View {
     let viewModel = ChatViewModel()
     viewModel.modelContext = container.mainContext
 
+    let walletSigner = WalletSignerViewModel()
+    walletSigner.modelContext = container.mainContext
+
+    let toolRegistry = ToolRegistry()
+    toolRegistry.modelContext = container.mainContext
+    toolRegistry.walletSigner = walletSigner
+
     return ChatDetailView(chat: chat)
         .modelContainer(container)
         .environment(viewModel)
+        .environment(toolRegistry)
 }
 
 #Preview("No Chat") {
     let container = try! ModelContainer(
-        for: ChatHistory.self, AIProvider.self,
+        for: ChatHistory.self, AIProvider.self, Endpoint.self, EVMContract.self, EvmAbi.self, EVMWallet.self,
         configurations: ModelConfiguration(isStoredInMemoryOnly: true)
     )
 
@@ -236,21 +265,37 @@ struct ChatDetailView: View {
     let viewModel = ChatViewModel()
     viewModel.modelContext = container.mainContext
 
+    let walletSigner = WalletSignerViewModel()
+    walletSigner.modelContext = container.mainContext
+
+    let toolRegistry = ToolRegistry()
+    toolRegistry.modelContext = container.mainContext
+    toolRegistry.walletSigner = walletSigner
+
     return ChatDetailView(chat: nil)
         .modelContainer(container)
         .environment(viewModel)
+        .environment(toolRegistry)
 }
 
 #Preview("No Providers") {
     let container = try! ModelContainer(
-        for: ChatHistory.self, AIProvider.self,
+        for: ChatHistory.self, AIProvider.self, Endpoint.self, EVMContract.self, EvmAbi.self, EVMWallet.self,
         configurations: ModelConfiguration(isStoredInMemoryOnly: true)
     )
 
     let viewModel = ChatViewModel()
     viewModel.modelContext = container.mainContext
 
+    let walletSigner = WalletSignerViewModel()
+    walletSigner.modelContext = container.mainContext
+
+    let toolRegistry = ToolRegistry()
+    toolRegistry.modelContext = container.mainContext
+    toolRegistry.walletSigner = walletSigner
+
     return ChatDetailView(chat: nil)
         .modelContainer(container)
         .environment(viewModel)
+        .environment(toolRegistry)
 }

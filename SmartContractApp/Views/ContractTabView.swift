@@ -11,6 +11,31 @@ import SwiftUI
 struct ContractTabView: View {
     @State private var selectedContract: EVMContract?
 
+    @ViewBuilder
+    var detailView: some View {
+        // Detail - Contract functions with tabs
+        if let selectedContract = selectedContract {
+            ContractFunctionsTabView(contract: selectedContract)
+                .padding(.top, 1)
+        } else {
+            VStack(spacing: 20) {
+                Image(systemName: "function")
+                    .font(.system(size: 64))
+                    .foregroundColor(.secondary)
+
+                Text("Contract Functions")
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
+
+                Text("Select a contract to view and interact with its functions")
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            .padding()
+        }
+    }
+
     var body: some View {
         NavigationSplitView {
             // Sidebar - Contract list
@@ -27,27 +52,8 @@ struct ContractTabView: View {
                 )
             }
         } detail: {
-            // Detail - Contract functions with tabs
-            if let selectedContract = selectedContract {
-                ContractFunctionsTabView(contract: selectedContract)
-                    .padding(.top, 1)
-            } else {
-                VStack(spacing: 20) {
-                    Image(systemName: "function")
-                        .font(.system(size: 64))
-                        .foregroundColor(.secondary)
-
-                    Text("Contract Functions")
-                        .font(.largeTitle)
-                        .fontWeight(.bold)
-
-                    Text("Select a contract to view and interact with its functions")
-                        .font(.body)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-                .padding()
-            }
+            detailView
+                .navigationSplitViewColumnWidth(min: 200, ideal: 500)
         }
     }
 }

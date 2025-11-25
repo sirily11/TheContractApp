@@ -103,7 +103,7 @@ struct TransactionHistoryView: View {
         paginatedTransactions.count < filteredTransactions.count
     }
 
-    private var emptyStateDescription: String {
+    private var emptyStateDescription: LocalizedStringKey {
         switch selectedFilter {
         case .all:
             return "You haven't made any transactions yet"
