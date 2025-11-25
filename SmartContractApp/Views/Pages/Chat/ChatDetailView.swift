@@ -15,6 +15,7 @@ struct ChatDetailView: View {
 
     @Environment(ChatViewModel.self) private var chatViewModel
     @Environment(ToolRegistry.self) private var toolRegistry
+    @Environment(ChatProvider.self) private var chatProvider
     @Query(sort: \AIProvider.name) private var providers: [AIProvider]
 
     @State private var agentChat: Chat?
@@ -70,6 +71,7 @@ struct ChatDetailView: View {
            let currentSource = chatViewModel.currentSource
         {
             AgentLayout(
+                chatProvider: chatProvider,
                 chat: agentChat,
                 currentModel: Binding(
                     get: { currentModel },
@@ -107,31 +109,26 @@ struct ChatDetailView: View {
                     }
                 ),
                 sources: chatViewModel.sources,
-                renderMessage: toolRegistry.createMessageRenderer(),
-                onSend: { message in
+                tools: toolRegistry.createTools(), onSend: { message in
                     handleSendMessage(message, chat: chat)
-                },
-                onMessage: { message in
+                }, onMessage: { message in
                     // Save or update assistant messages and tool results to persistent storage
                     // Uses saveOrUpdateMessage to handle streaming updates where the same message ID
                     // is updated multiple times (e.g., during streaming responses)
                     chatViewModel.saveOrUpdateMessage(message, to: chat)
-                },
-                onDelete: { index in
+                }, onDelete: { index in
                     // Remove message from chat history
                     chatViewModel.removeMessage(at: index, from: chat)
 
                     // Trigger a re-render by updating the chat
                     setupChat(chat)
-                },
-                onEdit: { index, newMessage in
+                }, onEdit: { index, newMessage in
                     // Edit message in chat history
                     chatViewModel.editMessage(at: index, with: newMessage, in: chat)
 
                     // Trigger a re-render by updating the chat
                     setupChat(chat)
-                },
-                tools: toolRegistry.createTools()
+                }, renderMessage: toolRegistry.createMessageRenderer()
             )
             .frame(maxWidth: 960)
             .frame(maxWidth: .infinity, maxHeight: .infinity)

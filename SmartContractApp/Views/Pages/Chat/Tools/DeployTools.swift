@@ -6,12 +6,8 @@
 //
 
 @preconcurrency import Agent
-import BigInt
-import Combine
-import EvmCore
 import Foundation
 import JSONSchema
-import Solidity
 import SwiftData
 
 // MARK: - Deploy Tools
@@ -68,12 +64,15 @@ enum DeployTools {
         walletSigner: WalletSignerViewModel,
         registry: ToolRegistry
     ) async throws -> DeployOutput {
-        // Validate input
-        guard let sourceCode = input.sourceCode else {
+        // Basic validation - actual deployment is handled by ToolRegistry.handleDeploy
+        // when user clicks "Sign & Deploy" in the UI
+
+        // Validate source code is provided
+        guard input.sourceCode != nil else {
             throw SmartContractToolError.missingRequiredField("sourceCode")
         }
 
-        // Get endpoint
+        // Validate endpoint exists if provided
         if let endpointIdStr = input.endpointId {
             guard let endpointId = UUID(uuidString: endpointIdStr) else {
                 throw SmartContractToolError.invalidId(endpointIdStr)
@@ -82,105 +81,20 @@ enum DeployTools {
                 predicate: #Predicate { $0.id == endpointId }
             )
             let endpoints = try context.fetch(descriptor)
-            guard let _ = endpoints.first else {
+            guard endpoints.first != nil else {
                 throw SmartContractToolError.notFound(entity: "Endpoint", id: endpointIdStr)
             }
         }
 
-        // Compile source code
-        let compileResult = try await compileSolidity(sourceCode: sourceCode)
-        return DeployOutput(success: false, contractAddress: nil, txHash: nil, message: "", pendingConfirmation: false)
-    }
-
-    private static func compileSolidity(sourceCode: String) async throws -> CompileOutput {
-        let compiler = try await Solc.create(version: "0.8.21")
-        defer {
-            Task {
-                try? await compiler.close()
-            }
-        }
-
-        let input = Input(
-            sources: [
-                "Contract.sol": SourceIn(content: sourceCode)
-            ],
-            settings: Settings(
-                optimizer: Optimizer(enabled: true, runs: 200),
-                outputSelection: [
-                    "*": [
-                        "*": ["abi", "evm.bytecode"]
-                    ]
-                ]
-            )
-        )
-
-        let output = try await compiler.compile(input, options: nil)
-
-        // Check for errors
-        var errors: [String] = []
-        if let outputErrors = output.errors {
-            errors = outputErrors
-                .filter { $0.severity == "error" }
-                .compactMap { $0.formattedMessage ?? $0.message }
-        }
-
-        if !errors.isEmpty {
-            return CompileOutput(
-                success: false,
-                errors: errors,
-                warnings: nil
-            )
-        }
-
-        // Extract bytecode and ABI
-        guard let contracts = output.contracts,
-              let firstFile = contracts.first?.value,
-              let firstContract = firstFile.first?.value
-        else {
-            return CompileOutput(
-                success: false,
-                errors: ["No contracts found"],
-                warnings: nil
-            )
-        }
-
-        guard let bytecodeObj = firstContract.evm?.bytecode?.object else {
-            return CompileOutput(
-                success: false,
-                errors: ["No bytecode generated"],
-                warnings: nil
-            )
-        }
-
-        let bytecode = bytecodeObj.hasPrefix("0x") ? bytecodeObj : "0x\(bytecodeObj)"
-
-        guard let abiArray = firstContract.abi else {
-            return CompileOutput(
-                success: false,
-                errors: ["No ABI generated"],
-                warnings: nil
-            )
-        }
-
-        let abiData = try JSONEncoder().encode(abiArray)
-        let abiString = String(data: abiData, encoding: .utf8)
-
-        return CompileOutput(
+        // Return immediately with pending confirmation
+        // The actual compilation and deployment is handled by ToolRegistry.handleDeploy
+        // when user clicks "Sign & Deploy" button in DeployInputView
+        return DeployOutput(
             success: true,
-            errors: nil,
-            warnings: nil
+            contractAddress: nil,
+            txHash: nil,
+            message: "Transaction queued. Please approve in the UI.",
+            pendingConfirmation: true
         )
     }
-}
-
-// MARK: - Pending Deployment
-
-struct PendingDeployment: Sendable {
-    let id: UUID
-    let input: DeployInput
-    let bytecode: String
-    let abi: String
-    let endpoint: Endpoint
-    let queuedTransaction: QueuedTransaction
-    let contractName: String
 }

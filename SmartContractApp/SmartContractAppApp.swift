@@ -7,6 +7,7 @@
 
 import SwiftData
 import SwiftUI
+import AgentLayout
 
 @main
 struct SmartContractAppApp: App {
@@ -16,6 +17,7 @@ struct SmartContractAppApp: App {
     @State private var functionListViewModel = FunctionListViewModel()
     @State private var chatViewModel = ChatViewModel()
     @State private var toolRegistry = ToolRegistry()
+    @State private var chatProvider = ChatProvider()
 
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
@@ -81,6 +83,7 @@ struct SmartContractAppApp: App {
                 .environment(functionListViewModel)
                 .environment(chatViewModel)
                 .environment(toolRegistry)
+                .environment(chatProvider)
         }
         .modelContainer(sharedModelContainer)
 
@@ -113,6 +116,7 @@ private struct ContentViewWrapper: View {
     @Environment(FunctionListViewModel.self) var functionListViewModel
     @Environment(ChatViewModel.self) var chatViewModel
     @Environment(ToolRegistry.self) var toolRegistry
+    @Environment(ChatProvider.self) var chatProvider
 
     // MARK: - AppStorage for Centralized Selection
 
@@ -129,6 +133,7 @@ private struct ContentViewWrapper: View {
                 chatViewModel.modelContext = modelContext
                 toolRegistry.modelContext = modelContext
                 toolRegistry.walletSigner = walletSignerViewModel
+                toolRegistry.setChatProvider(chatProvider)
 
                 // Initialize wallet selection from AppStorage
                 initializeWalletSelection()

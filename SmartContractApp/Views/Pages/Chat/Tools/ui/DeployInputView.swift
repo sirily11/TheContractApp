@@ -14,6 +14,8 @@ struct DeployInputView: View {
 
     let deployInput: DeployInput
     let status: ToolStatus
+    let toolCallId: String?
+    let toolRegistry: ToolRegistry?
 
     // MARK: - SwiftData
 
@@ -26,8 +28,41 @@ struct DeployInputView: View {
 
     // MARK: - State
 
-    @State private var isDeploying: Bool = false
+    @State private var deploymentState: LocalDeploymentState = .idle
     @State private var showingSourceCode: Bool = false
+
+    /// Local deployment state for UI display
+    enum LocalDeploymentState: Equatable {
+        case idle
+        case compiling
+        case deploying
+        case failed(String)
+    }
+
+    /// Check if there's a failure from the registry (e.g., user rejection)
+    private var registryFailure: String? {
+        guard let toolCallId, let registry = toolRegistry else { return nil }
+        return registry.deploymentFailures[toolCallId]
+    }
+
+    /// Check if deployment succeeded from the registry
+    private var registrySuccess: String? {
+        guard let toolCallId, let registry = toolRegistry else { return nil }
+        return registry.deploymentSuccesses[toolCallId]
+    }
+
+    /// Combined deployment state - local state OR registry failure/success
+    private var effectiveDeploymentState: LocalDeploymentState {
+        if let failure = registryFailure {
+            return .failed(failure)
+        }
+        return deploymentState
+    }
+
+    /// Whether deployment has completed successfully (from registry)
+    private var isDeploymentSuccessful: Bool {
+        registrySuccess != nil
+    }
 
     // MARK: - Computed Properties
 
@@ -41,10 +76,14 @@ struct DeployInputView: View {
     init(
         deployInput: DeployInput,
         status: ToolStatus = .waitingForResult,
+        toolCallId: String? = nil,
+        toolRegistry: ToolRegistry? = nil,
         onDeploy: @escaping () async -> Void
     ) {
         self.deployInput = deployInput
         self.status = status
+        self.toolCallId = toolCallId
+        self.toolRegistry = toolRegistry
         self.onDeploy = onDeploy
     }
 
@@ -158,24 +197,80 @@ struct DeployInputView: View {
                         Spacer()
                     }
 
-                    if status == .waitingForResult {
-                        HStack {
-                            Spacer()
-                            Button(action: handleDeploy) {
-                                HStack(spacing: 6) {
-                                    if isDeploying {
-                                        ProgressView()
-                                            .controlSize(.small)
-                                            .tint(.primary)
-                                    } else {
+                    if status == .waitingForResult && !isDeploymentSuccessful {
+                        switch effectiveDeploymentState {
+                        case .idle:
+                            // Show Sign & Deploy button
+                            HStack {
+                                Spacer()
+                                Button(action: handleDeploy) {
+                                    HStack(spacing: 6) {
                                         Image(systemName: "checkmark.shield.fill")
+                                        Text("Sign & Deploy")
+                                            .fontWeight(.medium)
                                     }
-                                    Text(isDeploying ? "Deploying..." : "Sign & Deploy")
-                                        .fontWeight(.medium)
                                 }
                             }
-                            .disabled(isDeploying)
+
+                        case .compiling:
+                            // Show compiling progress
+                            HStack(spacing: 8) {
+                                ProgressView()
+                                    .controlSize(.small)
+                                Text("Compiling...")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .frame(maxWidth: .infinity)
+
+                        case .deploying:
+                            // Show deploying progress
+                            HStack(spacing: 8) {
+                                ProgressView()
+                                    .controlSize(.small)
+                                Text("Deploying... Please approve in wallet")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .frame(maxWidth: .infinity)
+
+                        case .failed(let message):
+                            // Show error with retry
+                            VStack(spacing: 8) {
+                                Text(message)
+                                    .font(.caption)
+                                    .foregroundStyle(.red)
+                                    .multilineTextAlignment(.center)
+                                Button("Retry") {
+                                    handleRetry()
+                                }
+                            }
+                            .frame(maxWidth: .infinity)
                         }
+                    } else if isDeploymentSuccessful {
+                        // Show success from registry
+                        VStack(spacing: 8) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "checkmark.circle.fill")
+                                Text("Deployed")
+                                    .fontWeight(.medium)
+                            }
+                            .font(.subheadline)
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+                            .background(Color.green)
+                            .clipShape(Capsule())
+
+                            if let contractAddress = registrySuccess {
+                                Text(contractAddress)
+                                    .font(.system(.caption, design: .monospaced))
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
                     } else {
                         HStack(spacing: 6) {
                             Image(systemName: status == .completed ? "checkmark.circle.fill" : "xmark.circle.fill")
@@ -202,7 +297,6 @@ struct DeployInputView: View {
             .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
         }
         .animation(.snappy, value: status)
-        .animation(.snappy, value: isDeploying)
         .sheet(isPresented: $showingSourceCode) {
             if let sourceCode = deployInput.sourceCode {
                 SourceCodeSheet(sourceCode: sourceCode)
@@ -213,10 +307,22 @@ struct DeployInputView: View {
     // MARK: - Actions
 
     private func handleDeploy() {
-        isDeploying = true
         Task {
+            deploymentState = .compiling
             await onDeploy()
-            isDeploying = false
+            // After onDeploy completes, transaction is queued
+            // Only update to deploying if not already failed
+            if case .compiling = deploymentState {
+                deploymentState = .deploying
+            }
+        }
+    }
+
+    private func handleRetry() {
+        // Clear both local state and registry failure
+        deploymentState = .idle
+        if let toolCallId {
+            toolRegistry?.clearDeploymentFailure(toolCallId: toolCallId)
         }
     }
 }
