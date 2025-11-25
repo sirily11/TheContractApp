@@ -19,9 +19,9 @@ enum CompileTools {
         AgentTool(
             name: CompileTools.name,
             description: """
-                Compile Solidity source code to bytecode and ABI. \
-                Returns the compiled bytecode and ABI JSON that can be used for deployment.
-                """,
+            Compile Solidity source code to bytecode and ABI. \
+            Returns the compiled bytecode and ABI JSON that can be used for deployment.
+            """,
             parameters: .object(
                 properties: [
                     "sourceCode": .string(description: "The Solidity source code to compile"),
@@ -31,7 +31,7 @@ enum CompileTools {
                 required: ["sourceCode"]
             ),
             execute: { input in
-                return try await compileSolidity(input: input)
+                try await compileSolidity(input: input)
             }
         )
     }
@@ -44,8 +44,6 @@ enum CompileTools {
         guard !sourceCode.isEmpty else {
             return CompileOutput(
                 success: false,
-                bytecode: nil,
-                abi: nil,
                 errors: ["Source code cannot be empty"],
                 warnings: nil
             )
@@ -99,8 +97,6 @@ enum CompileTools {
             if !errors.isEmpty {
                 return CompileOutput(
                     success: false,
-                    bytecode: nil,
-                    abi: nil,
                     errors: errors,
                     warnings: warnings.isEmpty ? nil : warnings
                 )
@@ -112,8 +108,6 @@ enum CompileTools {
             else {
                 return CompileOutput(
                     success: false,
-                    bytecode: nil,
-                    abi: nil,
                     errors: ["No contracts found in compilation output"],
                     warnings: warnings.isEmpty ? nil : warnings
                 )
@@ -126,8 +120,6 @@ enum CompileTools {
                     let availableContracts = firstFile.keys.joined(separator: ", ")
                     return CompileOutput(
                         success: false,
-                        bytecode: nil,
-                        abi: nil,
                         errors: ["Contract '\(contractName)' not found. Available: \(availableContracts)"],
                         warnings: warnings.isEmpty ? nil : warnings
                     )
@@ -137,8 +129,6 @@ enum CompileTools {
                 guard let firstContract = firstFile.first?.value else {
                     return CompileOutput(
                         success: false,
-                        bytecode: nil,
-                        abi: nil,
                         errors: ["No contracts found in compilation output"],
                         warnings: warnings.isEmpty ? nil : warnings
                     )
@@ -152,8 +142,6 @@ enum CompileTools {
             else {
                 return CompileOutput(
                     success: false,
-                    bytecode: nil,
-                    abi: nil,
                     errors: ["No bytecode generated"],
                     warnings: warnings.isEmpty ? nil : warnings
                 )
@@ -165,8 +153,6 @@ enum CompileTools {
             guard let abiArray = targetContract.abi else {
                 return CompileOutput(
                     success: false,
-                    bytecode: bytecode,
-                    abi: nil,
                     errors: ["No ABI generated"],
                     warnings: warnings.isEmpty ? nil : warnings
                 )
@@ -176,8 +162,6 @@ enum CompileTools {
             guard let abiString = String(data: abiData, encoding: .utf8) else {
                 return CompileOutput(
                     success: false,
-                    bytecode: bytecode,
-                    abi: nil,
                     errors: ["Failed to encode ABI as JSON"],
                     warnings: warnings.isEmpty ? nil : warnings
                 )
@@ -185,8 +169,6 @@ enum CompileTools {
 
             return CompileOutput(
                 success: true,
-                bytecode: bytecode,
-                abi: abiString,
                 errors: nil,
                 warnings: warnings.isEmpty ? nil : warnings
             )
@@ -194,8 +176,6 @@ enum CompileTools {
         } catch {
             return CompileOutput(
                 success: false,
-                bytecode: nil,
-                abi: nil,
                 errors: [error.localizedDescription],
                 warnings: nil
             )

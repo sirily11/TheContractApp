@@ -51,123 +51,156 @@ struct DeployInputView: View {
     // MARK: - Body
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            // Top Header: Endpoint & View Source
-            HStack {
-                if let endpoint = endpoint {
-                    HStack(spacing: 6) {
-                        Circle()
-                            .fill(Color.green)
-                            .frame(width: 6, height: 6)
-                        Text(endpoint.name)
+        ToolCallCard(toolName: DeployTools.name) {
+            // Contract deployment details
+            VStack(alignment: .leading, spacing: 20) {
+                // Top Header: Endpoint & View Source
+                HStack {
+                    if let endpoint = endpoint {
+                        HStack(spacing: 6) {
+                            Circle()
+                                .fill(Color.green)
+                                .frame(width: 6, height: 6)
+                            Text(endpoint.name)
+                                .font(.caption)
+                                .fontWeight(.medium)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.primary.opacity(0.1))
+                        .clipShape(Capsule())
+                        .overlay(
+                            Capsule()
+                                .stroke(Color.primary.opacity(0.2), lineWidth: 1)
+                        )
+                    }
+
+                    Spacer()
+
+                    if deployInput.sourceCode != nil {
+                        Button(action: { showingSourceCode = true }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "chevron.left.forwardslash.chevron.right")
+                                    .font(.caption2)
+                                Text("View Source")
+                                    .font(.caption)
+                                    .fontWeight(.medium)
+                            }
+                            .foregroundColor(.primary.opacity(0.8))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(Color.primary.opacity(0.1))
+                            .clipShape(Capsule())
+                            .overlay(
+                                Capsule()
+                                    .stroke(Color.primary.opacity(0.2), lineWidth: 1)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+
+                // Title Section
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Contract Name")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Text(deployInput.name ?? "Unknown Contract")
+                        .font(.system(size: 36, weight: .regular))
+                        .foregroundStyle(.primary)
+                }
+
+                // Constructor Arguments
+                if let args = deployInput.constructorArgs, !args.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Constructor Arguments")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            ForEach(Array(args.keys.sorted()), id: \.self) { key in
+                                HStack(alignment: .top, spacing: 0) {
+                                    Text(key)
+                                        .foregroundStyle(.secondary)
+                                        .font(.system(.caption, design: .monospaced))
+                                    Text(": ")
+                                        .foregroundStyle(.secondary)
+                                        .font(.system(.caption, design: .monospaced))
+                                    Text(args[key] ?? "")
+                                        .foregroundStyle(.primary)
+                                        .font(.system(.caption, design: .monospaced))
+                                }
+                            }
+                        }
+                        .padding(12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.primary.opacity(0.05))
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(Color.primary.opacity(0.1), lineWidth: 1)
+                        )
+                    }
+                }
+
+                // Footer: Cost & Deploy Button
+                VStack(spacing: 16) {
+                    HStack {
+                        Text("Value: \(deployInput.value ?? "0") ETH")
                             .font(.caption)
                             .fontWeight(.medium)
-                    }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .glassEffect()
-                }
-
-                Spacer()
-
-                if deployInput.sourceCode != nil {
-                    Button(action: { showingSourceCode = true }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "chevron.left.forwardslash.chevron.right")
-                                .font(.caption2)
-                            Text("View Source")
-                                .font(.caption)
-                        }
-                        .foregroundColor(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-
-            // Title Section
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Contract Name")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                Text(deployInput.name ?? "Unknown Contract")
-                    .font(.system(size: 36, weight: .regular))
-                    .foregroundStyle(.primary)
-            }
-
-            // Constructor Arguments
-            if let args = deployInput.constructorArgs, !args.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Constructor Arguments")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        ForEach(Array(args.keys.sorted()), id: \.self) { key in
-                            HStack(alignment: .top, spacing: 0) {
-                                Text(key)
-                                    .foregroundStyle(.secondary)
-                                    .font(.system(.caption, design: .monospaced))
-                                Text(": ")
-                                    .foregroundStyle(.secondary)
-                                    .font(.system(.caption, design: .monospaced))
-                                Text(args[key] ?? "")
-                                    .foregroundStyle(.primary)
-                                    .font(.system(.caption, design: .monospaced))
-                            }
-                        }
-                    }
-                    .padding(12)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.black.opacity(0.3))
-                    .cornerRadius(8)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color.white.opacity(0.1), lineWidth: 1)
-                    )
-                }
-            }
-
-            // Footer: Cost & Deploy Button
-            VStack(spacing: 16) {
-                HStack {
-                    Text("Value: \(deployInput.value ?? "0") ETH")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-
-                if status == .waitingForResult {
-                    HStack {
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(Color.primary.opacity(0.05))
+                            .clipShape(Capsule())
                         Spacer()
-                        Button(action: handleDeploy) {
-                            HStack {
-                                if isDeploying {
-                                    ProgressView()
-                                        .controlSize(.small)
-                                        .tint(.black)
-                                } else {
-                                    Image(systemName: "checkmark.shield.fill")
+                    }
+
+                    if status == .waitingForResult {
+                        HStack {
+                            Spacer()
+                            Button(action: handleDeploy) {
+                                HStack(spacing: 6) {
+                                    if isDeploying {
+                                        ProgressView()
+                                            .controlSize(.small)
+                                            .tint(.primary)
+                                    } else {
+                                        Image(systemName: "checkmark.shield.fill")
+                                    }
+                                    Text(isDeploying ? "Deploying..." : "Sign & Deploy")
+                                        .fontWeight(.medium)
                                 }
-                                Text(isDeploying ? "Deploying..." : "Sign & Deploy")
                             }
+                            .disabled(isDeploying)
                         }
-                        .disabled(isDeploying)
+                    } else {
+                        HStack(spacing: 6) {
+                            Image(systemName: status == .completed ? "checkmark.circle.fill" : "xmark.circle.fill")
+                            Text(status == .completed ? "Deployed" : "Rejected")
+                                .fontWeight(.medium)
+                        }
+                        .font(.subheadline)
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(status == .completed ? Color.green : Color.red)
+                        .clipShape(Capsule())
+                        .frame(maxWidth: .infinity)
                     }
-                } else {
-                    HStack {
-                        Image(systemName: status == .completed ? "checkmark.circle.fill" : "xmark.circle.fill")
-                        Text(status == .completed ? "Deployed" : "Rejected")
-                    }
-                    .font(.subheadline)
-                    .foregroundStyle(status == .completed ? .green : .red)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.vertical, 12)
                 }
             }
+            .padding(20)
+            .background(.ultraThinMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
         }
-        .padding(24)
-        .glassEffect(in: .rect(cornerRadius: 20))
         .animation(.snappy, value: status)
         .animation(.snappy, value: isDeploying)
         .sheet(isPresented: $showingSourceCode) {

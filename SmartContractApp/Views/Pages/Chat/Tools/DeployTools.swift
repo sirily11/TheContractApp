@@ -89,74 +89,7 @@ enum DeployTools {
 
         // Compile source code
         let compileResult = try await compileSolidity(sourceCode: sourceCode)
-        guard let bytecode = compileResult.bytecode,
-              let abiString = compileResult.abi
-        else {
-            let errorMsg = compileResult.errors?.joined(separator: "\n") ?? "Unknown compilation error"
-            throw SmartContractToolError.compilationFailed(errorMsg)
-        }
-
-        // Parse ABI
-        let parser = try AbiParser(fromJsonString: abiString)
-
-        // Convert constructor args to TransactionParameters
-        var constructorParams: [TransactionParameter] = []
-        if let args = input.constructorArgs {
-            // Find constructor in ABI
-            if let constructor = parser.items.first(where: { $0.type == .constructor }) {
-                for abiInput in constructor.inputs ?? [] {
-                    if let value = args[abiInput.name] {
-                        let param = try TransactionParameter(
-                            name: abiInput.name,
-                            typeString: abiInput.type,
-                            value: AnyCodable(value)
-                        )
-                        constructorParams.append(param)
-                    }
-                }
-            }
-        }
-
-        // Parse value
-        let txValue: TransactionValue
-        if let valueStr = input.value {
-            // Parse value string (e.g., "1.5", "1000000000000000000")
-            if let weiValue = BigInt(valueStr) {
-                txValue = .wei(.init(bigInt: weiValue))
-            } else if let etherValue = Double(valueStr) {
-                // Convert ETH to wei
-                let weiAmount = BigInt(etherValue * 1e18)
-                txValue = .wei(.init(bigInt: weiAmount))
-            } else {
-                txValue = .ether(.init(bigInt: .zero))
-            }
-        } else {
-            txValue = .ether(.init(bigInt: .zero))
-        }
-
-        // Create queued transaction
-        let queuedTx = QueuedTransaction(
-            to: "", // Empty for contract creation
-            value: txValue,
-            data: nil,
-            gasEstimate: nil,
-            contractFunctionName: .constructor,
-            contractParameters: constructorParams,
-            status: .pending,
-            bytecode: bytecode,
-            abi: parser.items
-        )
-
-        // Queue the transaction
-        walletSigner.queueTransaction(tx: queuedTx)
-
-        return DeployOutput(
-            success: true,
-            contractAddress: nil,
-            txHash: nil,
-            message: "Deployment queued. Please approve the transaction in the wallet.",
-            pendingConfirmation: true
-        )
+        return DeployOutput(success: false, contractAddress: nil, txHash: nil, message: "", pendingConfirmation: false)
     }
 
     private static func compileSolidity(sourceCode: String) async throws -> CompileOutput {
@@ -194,8 +127,6 @@ enum DeployTools {
         if !errors.isEmpty {
             return CompileOutput(
                 success: false,
-                bytecode: nil,
-                abi: nil,
                 errors: errors,
                 warnings: nil
             )
@@ -208,8 +139,6 @@ enum DeployTools {
         else {
             return CompileOutput(
                 success: false,
-                bytecode: nil,
-                abi: nil,
                 errors: ["No contracts found"],
                 warnings: nil
             )
@@ -218,8 +147,6 @@ enum DeployTools {
         guard let bytecodeObj = firstContract.evm?.bytecode?.object else {
             return CompileOutput(
                 success: false,
-                bytecode: nil,
-                abi: nil,
                 errors: ["No bytecode generated"],
                 warnings: nil
             )
@@ -230,8 +157,6 @@ enum DeployTools {
         guard let abiArray = firstContract.abi else {
             return CompileOutput(
                 success: false,
-                bytecode: bytecode,
-                abi: nil,
                 errors: ["No ABI generated"],
                 warnings: nil
             )
@@ -242,8 +167,6 @@ enum DeployTools {
 
         return CompileOutput(
             success: true,
-            bytecode: bytecode,
-            abi: abiString,
             errors: nil,
             warnings: nil
         )

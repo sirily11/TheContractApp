@@ -110,7 +110,7 @@ final class ToolRegistry {
                 return (AnyView(Text("JSON is invalid or missing required fields.")), .replace)
             }
             let view = DeployInputView(deployInput: deployInput, status: status) {}
-            return (AnyView(view), .replace)
+            return (AnyView(view), .append)
         default:
             break
         }

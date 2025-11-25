@@ -103,7 +103,7 @@ struct EndpointListOutput: Codable, Sendable {
 // MARK: - ABI Tool Types
 
 struct ABIManagerInput: Codable, Sendable {
-    let action: String  // list, get, create, update, delete, parse
+    let action: String // list, get, create, update, delete, parse
     let id: String?
     let data: ABIData?
 
@@ -152,7 +152,7 @@ struct ABIListOutput: Codable, Sendable {
 
 struct ABIFunctionInfo: Codable, Sendable {
     let name: String
-    let type: String  // function, event, constructor
+    let type: String // function, event, constructor
     let stateMutability: String?
     let inputs: [ABIParameterInfo]
     let outputs: [ABIParameterInfo]
@@ -193,7 +193,7 @@ struct ContractData: Codable, Sendable {
     let endpointId: String?
     let sourceCode: String?
     let bytecode: String?
-    let type: String?  // import, solidity, bytecode
+    let type: String? // import, solidity, bytecode
 
     nonisolated init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -247,22 +247,18 @@ struct CompileInput: Codable, Sendable {
 
 struct CompileOutput: Codable, Sendable {
     let success: Bool
-    let bytecode: String?
-    let abi: String?
     let errors: [String]?
     let warnings: [String]?
 
     nonisolated func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(success, forKey: .success)
-        try container.encodeIfPresent(bytecode, forKey: .bytecode)
-        try container.encodeIfPresent(abi, forKey: .abi)
         try container.encodeIfPresent(errors, forKey: .errors)
         try container.encodeIfPresent(warnings, forKey: .warnings)
     }
 
     private enum CodingKeys: String, CodingKey {
-        case success, bytecode, abi, errors, warnings
+        case success, errors, warnings
     }
 }
 
