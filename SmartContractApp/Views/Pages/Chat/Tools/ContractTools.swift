@@ -14,14 +14,15 @@ import SwiftData
 // MARK: - Contract Manager Tool
 
 enum ContractTools {
+    static let name = "contract_manager"
     /// Creates the contract_manager tool for CRUD operations on contracts
     static func contractManagerTool(context: ModelContext) -> AgentTool<ContractManagerInput, ContractManagerOutput> {
         AgentTool(
-            name: "contract_manager",
+            name: name,
             description: """
-                Manage smart contracts. Actions: list (get all contracts), get (get contract by id), \
-                create (create new contract), update (update contract), delete (delete contract).
-                """,
+            Manage smart contracts. Actions: list (get all contracts), get (get contract by id), \
+            create (create new contract), update (update contract), delete (delete contract).
+            """,
             parameters: .object(
                 description: "Contract manager parameters",
                 properties: [
@@ -38,10 +39,9 @@ enum ContractTools {
                             "abiId": .string(description: "ABI ID to attach"),
                             "endpointId": .string(description: "Endpoint ID"),
                             "sourceCode": .string(description: "Solidity source code"),
-                            "bytecode": .string(description: "Compiled bytecode"),
                             "type": .enum(
                                 description: "Contract type",
-                                values: [.string("import"), .string("solidity"), .string("bytecode")]
+                                values: [.string("import"), .string("solidity")]
                             )
                         ],
                         required: []
@@ -198,8 +198,6 @@ enum ContractTools {
             contractType = type
         } else if data.sourceCode != nil {
             contractType = .solidity
-        } else if data.bytecode != nil {
-            contractType = .bytecode
         } else {
             contractType = .import
         }
@@ -212,7 +210,6 @@ enum ContractTools {
             type: contractType,
             contractCode: nil,
             sourceCode: data.sourceCode,
-            bytecode: data.bytecode,
             endpointId: endpointId
         )
 
@@ -295,9 +292,6 @@ enum ContractTools {
         }
         if let sourceCode = data.sourceCode {
             contract.sourceCode = sourceCode
-        }
-        if let bytecode = data.bytecode {
-            contract.bytecode = bytecode
         }
 
         contract.updatedAt = Date()

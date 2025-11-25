@@ -25,7 +25,6 @@ struct ChatDetailView: View {
             if providers.isEmpty {
                 noProvidersView
             } else if let chat = chat {
-                Text("Chat message count: \(chat.messages.count)")
                 chatContentView(for: chat)
             } else {
                 noChatSelectedView
@@ -113,8 +112,24 @@ struct ChatDetailView: View {
                     handleSendMessage(message, chat: chat)
                 },
                 onMessage: { message in
-                    // Save assistant messages and tool results to persistent storage
-                    chatViewModel.saveMessage(message, to: chat)
+                    // Save or update assistant messages and tool results to persistent storage
+                    // Uses saveOrUpdateMessage to handle streaming updates where the same message ID
+                    // is updated multiple times (e.g., during streaming responses)
+                    chatViewModel.saveOrUpdateMessage(message, to: chat)
+                },
+                onDelete: { index in
+                    // Remove message from chat history
+                    chatViewModel.removeMessage(at: index, from: chat)
+
+                    // Trigger a re-render by updating the chat
+                    setupChat(chat)
+                },
+                onEdit: { index, newMessage in
+                    // Edit message in chat history
+                    chatViewModel.editMessage(at: index, with: newMessage, in: chat)
+
+                    // Trigger a re-render by updating the chat
+                    setupChat(chat)
                 },
                 tools: toolRegistry.createTools()
             )
@@ -151,7 +166,6 @@ struct ChatDetailView: View {
         // would cause setupChat to be called again and reinitialize agentChat from persistent storage
         if currentChatId != chat.id {
             agentChat = chatViewModel.convertToChat(chat)
-            print("Chat Detail: \(agentChat!)")
             currentChatId = chat.id
         }
 
@@ -182,12 +196,9 @@ struct ChatDetailView: View {
 
     // MARK: - Message Handling
 
-    private func handleSendMessage(_ message: String, chat: ChatHistory) {
-        // Create user message
-        let userMessage = Message.openai(.user(.init(content: message)))
-
-        // Save to chat history
-        chatViewModel.saveMessage(userMessage, to: chat)
+    private func handleSendMessage(_ message: Message, chat: ChatHistory) {
+        // Save the message to chat history
+        chatViewModel.saveMessage(message, to: chat)
 
         // Update provider/model info on chat
         if let provider = chatViewModel.currentProvider,

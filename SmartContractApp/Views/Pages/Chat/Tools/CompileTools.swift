@@ -13,10 +13,11 @@ import Solidity
 // MARK: - Compile Tools
 
 enum CompileTools {
+    static let name = "compile_solidity"
     /// Creates the compile_solidity tool for compiling Solidity source code
     static func compileSolidityTool() -> AgentTool<CompileInput, CompileOutput> {
         AgentTool(
-            name: "compile_solidity",
+            name: CompileTools.name,
             description: """
                 Compile Solidity source code to bytecode and ABI. \
                 Returns the compiled bytecode and ABI JSON that can be used for deployment.

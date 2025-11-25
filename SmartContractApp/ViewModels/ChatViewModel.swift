@@ -10,7 +10,6 @@ import Foundation
 import Observation
 import SwiftData
 
-// MARK: - Stored Message Type
 // MARK: - Chat View Model
 
 @Observable
@@ -92,13 +91,11 @@ final class ChatViewModel {
     /// Convert ChatHistory messages to AgentKit Chat
     func convertToChat(_ chatHistory: ChatHistory) -> Chat {
         let messages = chatHistory.messages.compactMap { jsonString -> Message? in
-            guard let data = jsonString.data(using: .utf8),
-                let stored = try? JSONDecoder().decode(StoredMessage.self, from: data)
-            else {
+            guard let data = jsonString.data(using: .utf8) else {
                 return nil
             }
-
-            return storedMessageToAgentMessage(stored)
+            // Decode Message directly from JSON (preserves all fields including tool calls)
+            return try? JSONDecoder().decode(Message.self, from: data)
         }
 
         return Chat(
@@ -108,59 +105,72 @@ final class ChatViewModel {
         )
     }
 
-    /// Convert AgentKit Message to stored format
-    func agentMessageToStored(_ message: Message) -> StoredMessage? {
-        switch message {
-        case .openai(let openAIMessage):
-            switch openAIMessage {
-            case .user(let userMessage):
-                return StoredMessage(
-                    role: .user,
-                    content: userMessage.content
-                )
-            case .assistant(let assistantMessage):
-                return StoredMessage(
-                    role: .assistant,
-                    content: assistantMessage.content ?? ""
-                )
-            case .system(let systemMessage):
-                return StoredMessage(
-                    role: .system,
-                    content: systemMessage.content
-                )
-            case .tool(let toolMessage):
-                return StoredMessage(
-                    role: .tool,
-                    content: toolMessage.content
-                )
-            }
-        }
-    }
-
-    /// Convert stored message to AgentKit Message
-    func storedMessageToAgentMessage(_ stored: StoredMessage) -> Message {
-        switch stored.role {
-        case .user:
-            return .openai(.user(.init(content: stored.content)))
-        case .assistant:
-            return .openai(.assistant(.init(content: stored.content, audio: nil)))
-        case .system:
-            return .openai(.system(.init(content: stored.content)))
-        case .tool:
-            return .openai(.tool(.init(content: stored.content, toolCallId: stored.id)))
-        }
-    }
-
     /// Save a message to chat history
     func saveMessage(_ message: Message, to chat: ChatHistory) {
-        guard let stored = agentMessageToStored(message),
-            let data = try? JSONEncoder().encode(stored),
-            let json = String(data: data, encoding: .utf8)
+        guard let data = try? JSONEncoder().encode(message),
+              let json = String(data: data, encoding: .utf8)
         else {
+            errorMessage = "Failed to encode message"
             return
         }
 
         chat.messages.append(json)
+        chat.updatedAt = Date()
+    }
+
+    /// Save or update a message in chat history (handles streaming updates)
+    func saveOrUpdateMessage(_ message: Message, to chat: ChatHistory) {
+        // Check if message with this ID already exists
+        if let existingIndex = chat.messages.firstIndex(where: { jsonString in
+            guard let data = jsonString.data(using: .utf8),
+                  let existing = try? JSONDecoder().decode(Message.self, from: data)
+            else { return false }
+            return existing.id == message.id
+        }) {
+            // Update existing message
+            if let data = try? JSONEncoder().encode(message),
+               let json = String(data: data, encoding: .utf8) {
+                chat.messages[existingIndex] = json
+            }
+        } else {
+            // Append new message
+            saveMessage(message, to: chat)
+        }
+
+        chat.updatedAt = Date()
+    }
+
+    /// Remove a message from chat history by index
+    func removeMessage(at index: Int, from chat: ChatHistory) {
+        // Validate index
+        guard index >= 0 && index < chat.messages.count else {
+            errorMessage = "Invalid message index"
+            return
+        }
+
+        // Remove the message at the specified index
+        chat.messages.remove(at: index)
+        chat.updatedAt = Date()
+    }
+
+    /// Edit a message in chat history by index
+    func editMessage(at index: Int, with newMessage: Message, in chat: ChatHistory) {
+        // Validate index
+        guard index >= 0 && index < chat.messages.count else {
+            errorMessage = "Invalid message index"
+            return
+        }
+
+        // Encode the new message
+        guard let data = try? JSONEncoder().encode(newMessage),
+              let json = String(data: data, encoding: .utf8)
+        else {
+            errorMessage = "Failed to encode edited message"
+            return
+        }
+
+        // Replace the message at the specified index
+        chat.messages[index] = json
         chat.updatedAt = Date()
     }
 

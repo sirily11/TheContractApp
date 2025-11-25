@@ -25,16 +25,6 @@ final class ToolRegistry {
     var modelContext: ModelContext!
     var walletSigner: WalletSignerViewModel!
 
-    // MARK: - Pending Operations
-
-    /// Pending deployment waiting for user confirmation
-    private(set) var pendingDeployment: PendingDeployment?
-
-    /// Pending write call waiting for user confirmation
-    private(set) var pendingWriteCall: PendingWriteCall?
-
-    // MARK: - Initialization
-
     init() {}
 
     // MARK: - Tool Creation
@@ -50,252 +40,94 @@ final class ToolRegistry {
             EndpointTools.endpointManagerTool(context: context),
             ABITools.abiManagerTool(context: context),
             ContractTools.contractManagerTool(context: context),
-
             // Compilation Tool
             CompileTools.compileSolidityTool(),
-
             // Interactive Tools
             DeployTools.deployContractTool(
                 context: context,
                 walletSigner: signer,
                 registry: self
             ),
-            CallTools.callReadTool(
-                context: context,
-                walletSigner: signer
-            ),
-            CallTools.callWriteTool(
-                context: context,
-                walletSigner: signer,
-                registry: self
-            ),
+            CallTools.callReadTool(context: context, walletSigner: signer),
+            CallTools.callWriteTool(context: context, walletSigner: signer, registry: self)
         ]
-    }
-
-    // MARK: - Pending Operation Management
-
-    /// Set pending deployment
-    func setPendingDeployment(_ deployment: PendingDeployment?) async {
-        pendingDeployment = deployment
-    }
-
-    /// Set pending write call
-    func setPendingWriteCall(_ call: PendingWriteCall?) async {
-        pendingWriteCall = call
-    }
-
-    /// Clear pending deployment
-    func clearPendingDeployment() {
-        pendingDeployment = nil
-    }
-
-    /// Clear pending write call
-    func clearPendingWriteCall() {
-        pendingWriteCall = nil
     }
 
     // MARK: - Message Renderer
 
     /// Creates a combined message renderer for tool results that need custom UI
     func createMessageRenderer() -> MessageRenderer {
-        return { [weak self] message, allMessages, provider, status in
+        return { [weak self] message, messages, provider, status in
             guard let self = self else {
                 return (AnyView(EmptyView()), .skip)
             }
 
-            // Check if this message is a deployment result
-            if let pending = self.pendingDeployment {
-                let view = DeploymentConfirmationView(
-                    deployment: pending,
-                    status: status,
-                    provider: provider,
-                    onComplete: {
-                        self.clearPendingDeployment()
-                    }
-                )
-                return (AnyView(view), .append)
+            print(message, messages)
+
+            // if the message is tool message
+            if case .openai(let openAiMessage) = message {
+                if case .tool(let openAiToolMessage) = openAiMessage {
+                    return createToolMessageRenderer(message: openAiToolMessage, messages: messages, provider: provider, status: status)
+                }
             }
 
-            // Check if this message is a write call result
-            if let pending = self.pendingWriteCall {
-                let view = WriteCallConfirmationView(
-                    writeCall: pending,
-                    status: status,
-                    provider: provider,
-                    onComplete: {
-                        self.clearPendingWriteCall()
-                    }
-                )
-                return (AnyView(view), .append)
-            }
+//            // Check if this message is a deployment result
+//            if let pending = self.pendingDeployment {
+//                let view = DeploymentConfirmationView(
+//                    deployment: pending,
+//                    status: status,
+//                    provider: provider,
+//                    onComplete: {
+//                        self.clearPendingDeployment()
+//                    }
+//                )
+//                return (AnyView(view), .append)
+//            }
+//
+//            // Check if this message is a write call result
+//            if let pending = self.pendingWriteCall {
+//                let view = WriteCallConfirmationView(
+//                    writeCall: pending,
+//                    status: status,
+//                    provider: provider,
+//                    onComplete: {
+//                        self.clearPendingWriteCall()
+//                    }
+//                )
+//                return (AnyView(view), .append)
+//            }
 
             return (AnyView(EmptyView()), .skip)
         }
     }
-}
 
-// MARK: - Confirmation Views
-
-/// View for confirming deployment transactions
-struct DeploymentConfirmationView: View {
-    let deployment: PendingDeployment
-    let status: ToolStatus
-    let provider: (any ChatProvider)?
-    let onComplete: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Image(systemName: "doc.badge.plus")
-                    .foregroundStyle(.blue)
-                Text("Contract Deployment")
-                    .font(.headline)
-            }
-
-            VStack(alignment: .leading, spacing: 8) {
-                // Prefilled from input parameters
-                LabeledContent("Name", value: deployment.contractName)
-                LabeledContent("Endpoint", value: deployment.endpoint.name)
-
-                // Show value if provided
-                if let valueStr = deployment.input.value, !valueStr.isEmpty {
-                    LabeledContent("Value", value: "\(valueStr) ETH")
-                }
-
-                if !deployment.queuedTransaction.contractParameters.isEmpty {
-                    Text("Constructor Parameters:")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-
-                    ForEach(deployment.queuedTransaction.contractParameters) { param in
-                        LabeledContent(param.name, value: param.value.toString())
-                            .font(.caption)
-                    }
+    func createToolMessageRenderer(message: OpenAIToolMessage, messages: [Message], provider: (any ChatProvider)?, status: ToolStatus) -> (AnyView, RenderAction) {
+        let uiToolNames = [DeployTools.name]
+        // find message in messages that matches message.tool_call_id
+        let foundMessage = messages.first { msg in
+            if case .openai(let openAiMessage) = msg {
+                if case .assistant(let assistantMessage) = openAiMessage {
+                    return assistantMessage.toolCalls?.first?.id == message.toolCallId
                 }
             }
-
-            // Status indicator based on ToolStatus
-            statusView
+            return false
         }
-        .padding()
-        .background(Color.secondary.opacity(0.1))
-        .cornerRadius(12)
-    }
 
-    @ViewBuilder
-    private var statusView: some View {
-        switch status {
-        case .waitingForResult:
-            HStack {
-                Image(systemName: "clock.badge.questionmark")
-                    .foregroundStyle(.orange)
-                Text("Waiting for wallet approval...")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        case .rejected:
-            HStack {
-                Image(systemName: "xmark.circle.fill")
-                    .foregroundStyle(.red)
-                Text("Deployment rejected")
-                    .font(.caption)
-                    .foregroundStyle(.red)
-            }
-        case .completed:
-            HStack {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
-                Text("Deployment confirmed")
-                    .font(.caption)
-                    .foregroundStyle(.green)
-            }
-        }
-    }
-}
-
-/// View for confirming write call transactions
-struct WriteCallConfirmationView: View {
-    let writeCall: PendingWriteCall
-    let status: ToolStatus
-    let provider: (any ChatProvider)?
-    let onComplete: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Image(systemName: "function")
-                    .foregroundStyle(.purple)
-                Text("Contract Call")
-                    .font(.headline)
-            }
-
-            VStack(alignment: .leading, spacing: 8) {
-                LabeledContent("Contract", value: writeCall.contract.name)
-                LabeledContent("Function", value: writeCall.input.functionName)
-
-                // Prefilled parameters from input.args
-                if !writeCall.queuedTransaction.contractParameters.isEmpty {
-                    Text("Parameters:")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-
-                    ForEach(writeCall.queuedTransaction.contractParameters) { param in
-                        LabeledContent(param.name, value: param.value.toString())
-                            .font(.caption)
-                    }
-                }
-
-                // Prefilled value from input
-                if let valueStr = writeCall.input.value, !valueStr.isEmpty {
-                    LabeledContent("Value", value: "\(valueStr) ETH")
+        // check tool name
+        if let foundMessage = foundMessage,
+           case .openai(let openAiMessage) = foundMessage,
+           case .assistant(let assistantMessage) = openAiMessage
+        {
+            if let functionName = assistantMessage.toolCalls?.first?.function?.name {
+                // check function name in the list
+                if uiToolNames.contains(functionName) {
+                    // don't render anything. Replace with empty view
+                    return (AnyView(EmptyView()), .replace)
                 }
             }
-
-            // Status indicator based on ToolStatus
-            statusView
         }
-        .padding()
-        .background(Color.secondary.opacity(0.1))
-        .cornerRadius(12)
-    }
 
-    @ViewBuilder
-    private var statusView: some View {
-        switch status {
-        case .waitingForResult:
-            HStack {
-                Image(systemName: "clock.badge.questionmark")
-                    .foregroundStyle(.orange)
-                Text("Waiting for wallet approval...")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        case .rejected:
-            HStack {
-                Image(systemName: "xmark.circle.fill")
-                    .foregroundStyle(.red)
-                Text("Call rejected")
-                    .font(.caption)
-                    .foregroundStyle(.red)
-            }
-        case .completed:
-            HStack {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
-                Text("Call confirmed")
-                    .font(.caption)
-                    .foregroundStyle(.green)
-            }
-        }
+        // other view stays the same
+        return (AnyView(EmptyView()), .skip)
     }
-}
-
-// MARK: - Preview
-
-#Preview {
-    VStack(spacing: 20) {
-        // Preview would need mock data
-        Text("Tool Registry Preview")
-    }
-    .padding()
 }

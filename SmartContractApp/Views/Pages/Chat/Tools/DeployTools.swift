@@ -17,6 +17,7 @@ import SwiftData
 // MARK: - Deploy Tools
 
 enum DeployTools {
+    static let name = "deploy_contract"
     /// Creates the deploy_contract tool for deploying smart contracts
     /// This tool returns immediately with pending confirmation, and the UI will handle user interaction
     static func deployContractTool(
@@ -25,11 +26,11 @@ enum DeployTools {
         registry: ToolRegistry
     ) -> AgentTool<DeployInput, DeployOutput> {
         AgentTool(
-            name: "deploy_contract",
+            name: DeployTools.name,
             description: """
-                Deploy a smart contract to the blockchain. Provide either sourceCode (Solidity) or bytecode. \
-                Returns pending confirmation - user must approve the transaction in the UI.
-                """,
+            Deploy a smart contract to the blockchain. Provide either sourceCode (Solidity) or bytecode. \
+            Returns pending confirmation - user must approve the transaction in the UI.
+            """,
             parameters: .object(
                 description: "Deploy contract parameters",
                 properties: [
@@ -49,7 +50,7 @@ enum DeployTools {
             ),
             toolType: .ui,
             execute: { input in
-                return try await deployContract(
+                try await deployContract(
                     input: input,
                     context: context,
                     walletSigner: walletSigner,
@@ -73,7 +74,6 @@ enum DeployTools {
         }
 
         // Get endpoint
-        let endpoint: Endpoint
         if let endpointIdStr = input.endpointId {
             guard let endpointId = UUID(uuidString: endpointIdStr) else {
                 throw SmartContractToolError.invalidId(endpointIdStr)
@@ -82,20 +82,9 @@ enum DeployTools {
                 predicate: #Predicate { $0.id == endpointId }
             )
             let endpoints = try context.fetch(descriptor)
-            guard let found = endpoints.first else {
+            guard let _ = endpoints.first else {
                 throw SmartContractToolError.notFound(entity: "Endpoint", id: endpointIdStr)
             }
-            endpoint = found
-        } else {
-            // Get default endpoint
-            let descriptor = FetchDescriptor<Endpoint>(
-                sortBy: [SortDescriptor(\Endpoint.createdAt, order: .reverse)]
-            )
-            let endpoints = try context.fetch(descriptor)
-            guard let first = endpoints.first else {
-                throw SmartContractToolError.notFound(entity: "Endpoint", id: "default")
-            }
-            endpoint = first
         }
 
         // Compile if source code provided
@@ -105,7 +94,8 @@ enum DeployTools {
         if let sourceCode = input.sourceCode {
             let compileResult = try await compileSolidity(sourceCode: sourceCode)
             guard let compiledBytecode = compileResult.bytecode,
-                  let compiledAbi = compileResult.abi else {
+                  let compiledAbi = compileResult.abi
+            else {
                 let errorMsg = compileResult.errors?.joined(separator: "\n") ?? "Unknown compilation error"
                 throw SmartContractToolError.compilationFailed(errorMsg)
             }
@@ -130,9 +120,9 @@ enum DeployTools {
             // Find constructor in ABI
             if let constructor = parser.items.first(where: { $0.type == .constructor }) {
                 for abiInput in constructor.inputs ?? [] {
-                    if let value = args[abiInput.name ?? ""] {
+                    if let value = args[abiInput.name] {
                         let param = try TransactionParameter(
-                            name: abiInput.name ?? "",
+                            name: abiInput.name,
                             typeString: abiInput.type,
                             value: AnyCodable(value)
                         )
@@ -171,21 +161,6 @@ enum DeployTools {
             bytecode: bytecode,
             abi: parser.items
         )
-
-        // Store pending deployment for UI to handle
-        let actionId = UUID()
-        let pendingDeployment = PendingDeployment(
-            id: actionId,
-            input: input,
-            bytecode: bytecode,
-            abi: abiString,
-            endpoint: endpoint,
-            queuedTransaction: queuedTx,
-            contractName: input.name ?? "Deployed Contract"
-        )
-
-        // Store in registry for UI to pick up
-        await registry.setPendingDeployment(pendingDeployment)
 
         // Queue the transaction
         walletSigner.queueTransaction(tx: queuedTx)

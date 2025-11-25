@@ -15,17 +15,19 @@ import SwiftData
 // MARK: - Call Tools
 
 enum CallTools {
+    static let nameReadTool = "call_contract_read"
+    static let nameWriteTool = "call_contract_write"
     /// Creates the call_contract_read tool for calling view/pure functions
     static func callReadTool(
         context: ModelContext,
         walletSigner: WalletSignerViewModel
     ) -> AgentTool<CallReadInput, CallReadOutput> {
         AgentTool(
-            name: "call_contract_read",
+            name: CallTools.nameReadTool,
             description: """
-                Call a read-only (view/pure) function on a smart contract. \
-                Returns the result immediately without requiring a transaction.
-                """,
+            Call a read-only (view/pure) function on a smart contract. \
+            Returns the result immediately without requiring a transaction.
+            """,
             parameters: .object(
                 description: "Call read function parameters",
                 properties: [
@@ -40,7 +42,7 @@ enum CallTools {
                 required: ["contractId", "functionName"]
             ),
             execute: { input in
-                return try await callReadFunction(
+                try await callReadFunction(
                     input: input,
                     context: context,
                     walletSigner: walletSigner
@@ -56,11 +58,11 @@ enum CallTools {
         registry: ToolRegistry
     ) -> AgentTool<CallWriteInput, CallWriteOutput> {
         AgentTool(
-            name: "call_contract_write",
+            name: CallTools.nameWriteTool,
             description: """
-                Call a state-changing function on a smart contract. \
-                Requires user approval to sign and send the transaction.
-                """,
+            Call a state-changing function on a smart contract. \
+            Requires user approval to sign and send the transaction.
+            """,
             parameters: .object(
                 description: "Call write function parameters",
                 properties: [
@@ -77,7 +79,7 @@ enum CallTools {
             ),
             toolType: .ui,
             execute: { input in
-                return try await callWriteFunction(
+                try await callWriteFunction(
                     input: input,
                     context: context,
                     walletSigner: walletSigner,
@@ -262,16 +264,6 @@ enum CallTools {
             bytecode: nil,
             abi: parser.items
         )
-
-        // Store pending call for UI
-        let pendingCall = PendingWriteCall(
-            id: UUID(),
-            input: input,
-            contract: contract,
-            queuedTransaction: queuedTx
-        )
-
-        await registry.setPendingWriteCall(pendingCall)
 
         // Queue the transaction
         walletSigner.queueTransaction(tx: queuedTx)

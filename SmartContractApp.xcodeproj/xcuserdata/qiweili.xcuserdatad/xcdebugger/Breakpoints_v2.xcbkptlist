@@ -247,22 +247,6 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
-            uuid = "85DE56C7-5001-4D8C-9555-1C24C3D95D9D"
-            shouldBeEnabled = "No"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            filePath = "SmartContractApp/Views/Pages/Chat/Tools/ToolRegistry.swift"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "102"
-            endingLineNumber = "102"
-            landmarkName = "createMessageRenderer()"
-            landmarkType = "7">
-         </BreakpointContent>
-      </BreakpointProxy>
-      <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
-         <BreakpointContent
             uuid = "BEB0B999-25AD-4AF3-9F91-947ECEA982E9"
             shouldBeEnabled = "No"
             ignoreCount = "0"
@@ -288,52 +272,24 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "154"
             endingLineNumber = "154"
-            landmarkName = "setupChat(_:)"
+            landmarkName = "chatContentView(for:)"
             landmarkType = "7">
-            <Locations>
-               <Location
-                  uuid = "6BC9A827-1EC4-41C5-AFB6-8A5D3820838F - bf33fbf5089ae249"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "SmartContractApp.ChatDetailView.setupChat(SmartContractApp.ChatHistory) -&gt; ()"
-                  moduleName = "SmartContractApp.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/qiweili/Desktop/rxlab/SmartContractApp/SmartContractApp/Views/Pages/Chat/ChatDetailView.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "154"
-                  endingLineNumber = "154">
-               </Location>
-               <Location
-                  uuid = "6BC9A827-1EC4-41C5-AFB6-8A5D3820838F - bf33fbf5089ae249"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "SmartContractApp.ChatDetailView.setupChat(SmartContractApp.ChatHistory) -&gt; ()"
-                  moduleName = "SmartContractApp.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/qiweili/Desktop/rxlab/SmartContractApp/SmartContractApp/Views/Pages/Chat/ChatDetailView.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "154"
-                  endingLineNumber = "154">
-               </Location>
-               <Location
-                  uuid = "6BC9A827-1EC4-41C5-AFB6-8A5D3820838F - bf33fbf5089ae249"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "SmartContractApp.ChatDetailView.setupChat(SmartContractApp.ChatHistory) -&gt; ()"
-                  moduleName = "SmartContractApp.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/qiweili/Desktop/rxlab/SmartContractApp/SmartContractApp/Views/Pages/Chat/ChatDetailView.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "154"
-                  endingLineNumber = "154">
-               </Location>
-            </Locations>
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "7BAE85F1-4712-4D9F-93CC-109DF614F082"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../AgentLayout/Sources/AgentLayout/AgentLayout.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "257"
+            endingLineNumber = "257"
+            landmarkName = "sendMessage(_:)"
+            landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
    </Breakpoints>
