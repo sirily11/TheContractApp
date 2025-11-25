@@ -270,18 +270,28 @@ struct CompileOutput: Codable, Sendable {
 
 struct DeployInput: Codable, Sendable {
     let sourceCode: String?
-    let bytecode: String?
-    let abi: String?
     let constructorArgs: [String: String]?
     let endpointId: String?
     let name: String?
     let value: String?
 
+    init(
+        sourceCode: String? = nil,
+        constructorArgs: [String: String]? = nil,
+        endpointId: String? = nil,
+        name: String? = nil,
+        value: String? = nil
+    ) {
+        self.sourceCode = sourceCode
+        self.constructorArgs = constructorArgs
+        self.endpointId = endpointId
+        self.name = name
+        self.value = value
+    }
+
     nonisolated init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         sourceCode = try container.decodeIfPresent(String.self, forKey: .sourceCode)
-        bytecode = try container.decodeIfPresent(String.self, forKey: .bytecode)
-        abi = try container.decodeIfPresent(String.self, forKey: .abi)
         constructorArgs = try container.decodeIfPresent([String: String].self, forKey: .constructorArgs)
         endpointId = try container.decodeIfPresent(String.self, forKey: .endpointId)
         name = try container.decodeIfPresent(String.self, forKey: .name)
@@ -289,7 +299,7 @@ struct DeployInput: Codable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case sourceCode, bytecode, abi, constructorArgs, endpointId, name, value
+        case sourceCode, constructorArgs, endpointId, name, value
     }
 }
 

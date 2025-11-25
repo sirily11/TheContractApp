@@ -69,8 +69,8 @@ enum DeployTools {
         registry: ToolRegistry
     ) async throws -> DeployOutput {
         // Validate input
-        guard input.sourceCode != nil || input.bytecode != nil else {
-            throw SmartContractToolError.missingRequiredField("sourceCode or bytecode")
+        guard let sourceCode = input.sourceCode else {
+            throw SmartContractToolError.missingRequiredField("sourceCode")
         }
 
         // Get endpoint
@@ -87,28 +87,13 @@ enum DeployTools {
             }
         }
 
-        // Compile if source code provided
-        var bytecode: String
-        var abiString: String
-
-        if let sourceCode = input.sourceCode {
-            let compileResult = try await compileSolidity(sourceCode: sourceCode)
-            guard let compiledBytecode = compileResult.bytecode,
-                  let compiledAbi = compileResult.abi
-            else {
-                let errorMsg = compileResult.errors?.joined(separator: "\n") ?? "Unknown compilation error"
-                throw SmartContractToolError.compilationFailed(errorMsg)
-            }
-            bytecode = compiledBytecode
-            abiString = compiledAbi
-        } else if let inputBytecode = input.bytecode {
-            bytecode = inputBytecode
-            guard let inputAbi = input.abi else {
-                throw SmartContractToolError.missingRequiredField("abi (required when using bytecode)")
-            }
-            abiString = inputAbi
-        } else {
-            throw SmartContractToolError.missingRequiredField("sourceCode or bytecode")
+        // Compile source code
+        let compileResult = try await compileSolidity(sourceCode: sourceCode)
+        guard let bytecode = compileResult.bytecode,
+              let abiString = compileResult.abi
+        else {
+            let errorMsg = compileResult.errors?.joined(separator: "\n") ?? "Unknown compilation error"
+            throw SmartContractToolError.compilationFailed(errorMsg)
         }
 
         // Parse ABI
