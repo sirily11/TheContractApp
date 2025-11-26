@@ -94,7 +94,9 @@ enum DeployTools {
             contractAddress: nil,
             txHash: nil,
             message: "Transaction queued. Please approve in the UI.",
-            pendingConfirmation: true
+            pendingConfirmation: true,
+            contractId: nil,
+            abiId: nil
         )
     }
 }

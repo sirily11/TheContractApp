@@ -190,7 +190,10 @@ enum CallTools {
         walletSigner: WalletSignerViewModel,
         registry: ToolRegistry
     ) async throws -> CallWriteOutput {
-        // Get contract
+        // Basic validation - actual execution is handled by ToolRegistry.handleWriteCall
+        // when user clicks "Sign & Send" in the UI
+
+        // Validate contract exists and is deployed
         guard let contractId = UUID(uuidString: input.contractId) else {
             throw SmartContractToolError.invalidId(input.contractId)
         }
@@ -208,70 +211,13 @@ enum CallTools {
             throw SmartContractToolError.contractNotDeployed(contract.name)
         }
 
-        guard let abi = contract.abi else {
-            throw SmartContractToolError.noAbiAttached(contract.name)
-        }
-
-        // Parse ABI
-        let parser = try AbiParser(fromJsonString: abi.abiContent)
-
-        // Find function in ABI
-        guard let abiFunction = parser.items.first(where: {
-            $0.type == .function && $0.name == input.functionName
-        }) else {
-            throw SmartContractToolError.functionNotFound(input.functionName)
-        }
-
-        // Convert args to TransactionParameters
-        var params: [TransactionParameter] = []
-        if let args = input.args {
-            for abiInput in abiFunction.inputs ?? [] {
-                if let value = args[abiInput.name ?? ""] {
-                    let param = try TransactionParameter(
-                        name: abiInput.name ?? "",
-                        typeString: abiInput.type,
-                        value: AnyCodable(value)
-                    )
-                    params.append(param)
-                }
-            }
-        }
-
-        // Parse value
-        let txValue: TransactionValue
-        if let valueStr = input.value {
-            if let weiValue = BigInt(valueStr) {
-                txValue = .wei(.init(bigInt: weiValue))
-            } else if let etherValue = Double(valueStr) {
-                let weiAmount = BigInt(etherValue * 1e18)
-                txValue = .wei(.init(bigInt: weiAmount))
-            } else {
-                txValue = .ether(.init(bigInt: .zero))
-            }
-        } else {
-            txValue = .ether(.init(bigInt: .zero))
-        }
-
-        // Create queued transaction
-        let queuedTx = QueuedTransaction(
-            to: contract.address,
-            value: txValue,
-            data: nil,
-            gasEstimate: nil,
-            contractFunctionName: .function(name: input.functionName),
-            contractParameters: params,
-            status: .pending,
-            bytecode: nil,
-            abi: parser.items
-        )
-
-        // Queue the transaction
-        walletSigner.queueTransaction(tx: queuedTx)
-
+        // Return immediately with pending confirmation
+        // The actual transaction building and queuing is handled by ToolRegistry.handleWriteCall
+        // when user clicks "Sign & Send" button in CallWriteInputView
         return CallWriteOutput(
             success: true,
             txHash: nil,
-            message: "Transaction queued. Please approve in the wallet.",
+            message: "Transaction queued. Please approve in the UI.",
             pendingConfirmation: true
         )
     }
@@ -293,11 +239,3 @@ enum CallTools {
     }
 }
 
-// MARK: - Pending Write Call
-
-struct PendingWriteCall: Sendable {
-    let id: UUID
-    let input: CallWriteInput
-    let contract: EVMContract
-    let queuedTransaction: QueuedTransaction
-}

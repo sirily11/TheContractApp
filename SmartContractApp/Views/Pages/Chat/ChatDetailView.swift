@@ -112,6 +112,9 @@ struct ChatDetailView: View {
                 ),
                 sources: chatViewModel.sources,
                 tools: toolRegistry.createTools(),
+                onSend: { _ in
+                    print("Message \(agentChat.messages)")
+                },
                 onMessageChange: { messages in
                     chatViewModel.saveMessages(messages, to: chat)
                 },

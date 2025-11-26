@@ -305,6 +305,8 @@ struct DeployOutput: Codable, Sendable {
     let txHash: String?
     let message: String
     let pendingConfirmation: Bool
+    let contractId: String?
+    let abiId: String?
 
     nonisolated func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
@@ -313,10 +315,12 @@ struct DeployOutput: Codable, Sendable {
         try container.encodeIfPresent(txHash, forKey: .txHash)
         try container.encode(message, forKey: .message)
         try container.encode(pendingConfirmation, forKey: .pendingConfirmation)
+        try container.encodeIfPresent(contractId, forKey: .contractId)
+        try container.encodeIfPresent(abiId, forKey: .abiId)
     }
 
     private enum CodingKeys: String, CodingKey {
-        case success, contractAddress, txHash, message, pendingConfirmation
+        case success, contractAddress, txHash, message, pendingConfirmation, contractId, abiId
     }
 }
 
@@ -327,6 +331,12 @@ struct CallReadInput: Codable, Sendable {
     let functionName: String
     let args: [String: String]?
 
+    init(contractId: String, functionName: String, args: [String: String]? = nil) {
+        self.contractId = contractId
+        self.functionName = functionName
+        self.args = args
+    }
+
     nonisolated init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         contractId = try container.decode(String.self, forKey: .contractId)
@@ -336,6 +346,11 @@ struct CallReadInput: Codable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case contractId, functionName, args
+    }
+
+    /// Preview helper
+    static func preview(contractId: String, functionName: String, args: [String: String]? = nil) -> CallReadInput {
+        CallReadInput(contractId: contractId, functionName: functionName, args: args)
     }
 }
 
@@ -362,6 +377,13 @@ struct CallWriteInput: Codable, Sendable {
     let args: [String: String]?
     let value: String?
 
+    init(contractId: String, functionName: String, args: [String: String]? = nil, value: String? = nil) {
+        self.contractId = contractId
+        self.functionName = functionName
+        self.args = args
+        self.value = value
+    }
+
     nonisolated init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         contractId = try container.decode(String.self, forKey: .contractId)
@@ -372,6 +394,16 @@ struct CallWriteInput: Codable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case contractId, functionName, args, value
+    }
+
+    /// Preview helper
+    static func preview(
+        contractId: String,
+        functionName: String,
+        args: [String: String]? = nil,
+        value: String? = nil
+    ) -> CallWriteInput {
+        CallWriteInput(contractId: contractId, functionName: functionName, args: args, value: value)
     }
 }
 
