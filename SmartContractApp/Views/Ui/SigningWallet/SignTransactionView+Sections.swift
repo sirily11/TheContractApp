@@ -119,19 +119,21 @@ extension SignTransactionView {
         Section("Transaction Details") {
             // Type
             HStack {
-                Label("Type", systemImage: transaction.isContractCall ? "doc.text" : "arrow.up.circle")
+                Label("Type", systemImage: transaction.contractFunctionName == .constructor ? "hammer" : (transaction.isContractCall ? "doc.text" : "arrow.up.circle"))
                     .foregroundColor(.secondary)
                 Spacer()
-                Text(transaction.isContractCall ? "Contract Call" : "ETH Transfer")
+                Text(transaction.contractFunctionName == .constructor ? "Contract Deployment" : (transaction.isContractCall ? "Contract Call" : "ETH Transfer"))
             }
 
-            // To
-            VStack(alignment: .leading, spacing: 4) {
-                Label("To", systemImage: "arrow.right")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                Text(TransactionFormatter.truncateAddress(transaction.to))
-                    .font(.system(.body, design: .monospaced))
+            // To (hide for contract deployment since there's no recipient)
+            if transaction.contractFunctionName != .constructor && !transaction.to.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Label("To", systemImage: "arrow.right")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    Text(TransactionFormatter.truncateAddress(transaction.to))
+                        .font(.system(.body, design: .monospaced))
+                }
             }
 
             // Value
@@ -141,6 +143,35 @@ extension SignTransactionView {
                 Spacer()
                 Text("\(String(transaction.value.toEthers().value)) ETH")
                     .foregroundColor(transaction.value.toHexString() != "0x" ? .blue : .secondary)
+            }
+        }
+    }
+
+    @ViewBuilder
+    var endpointSection: some View {
+        if let endpointName = transaction.endpointName {
+            Section("Network") {
+                // Endpoint name
+                HStack {
+                    Label("Network", systemImage: "network")
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Text(endpointName)
+                        .fontWeight(.medium)
+                }
+
+                // Endpoint URL
+                if let endpointUrl = transaction.endpointUrl {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Label("RPC URL", systemImage: "link")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        Text(endpointUrl)
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundColor(.secondary)
+                            .textSelection(.enabled)
+                    }
+                }
             }
         }
     }
@@ -158,14 +189,21 @@ extension SignTransactionView {
                         .font(.system(.body, design: .monospaced))
                 }
 
-                // Contract address
+                // Contract address (or "New Contract" for deployments)
                 VStack(alignment: .leading, spacing: 4) {
-                    Label("Contract Address", systemImage: "building.2")
+                    Label(functionName == .constructor ? "Deployment" : "Contract Address", systemImage: "building.2")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
-                    Text(transaction.to)
-                        .font(.system(.caption, design: .monospaced))
-                        .textSelection(.enabled)
+                    if functionName == .constructor {
+                        Text("New contract will be created")
+                            .font(.system(.caption))
+                            .foregroundColor(.secondary)
+                            .italic()
+                    } else {
+                        Text(transaction.to)
+                            .font(.system(.caption, design: .monospaced))
+                            .textSelection(.enabled)
+                    }
                 }
 
                 // Parameters
@@ -186,7 +224,19 @@ extension SignTransactionView {
 
     var dataSection: some View {
         Section("Raw Data") {
-            if let data = transaction.data, !data.isEmpty {
+            // For deployments, show bytecode; for other calls, show data
+            if let bytecode = transaction.bytecode, !bytecode.isEmpty, transaction.contractFunctionName == .constructor {
+                VStack(alignment: .leading, spacing: 4) {
+                    Label("Bytecode", systemImage: "chevron.left.forwardslash.chevron.right")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+
+                    Text(TransactionFormatter.truncateData(bytecode, maxLength: 60))
+                        .font(.system(.caption, design: .monospaced))
+                        .foregroundColor(.secondary)
+                        .textSelection(.enabled)
+                }
+            } else if let data = transaction.data, !data.isEmpty {
                 VStack(alignment: .leading, spacing: 4) {
                     Label("Data", systemImage: "chevron.left.forwardslash.chevron.right")
                         .font(.subheadline)

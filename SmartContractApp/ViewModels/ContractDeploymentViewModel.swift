@@ -389,11 +389,11 @@ final class ContractDeploymentViewModel {
         abi: [AbiItem],
         endpoint: Endpoint,
         value: TransactionValue,
-        constructorParameters: [TransactionParameter] = [],
+        constructorParameters: [TransactionParameter] = []
     ) async throws -> QueuedTransaction {
         // Update progress - Task 8.3: Display transaction progress
         deploymentProgress = .preparingTransaction
-            
+
         // Task 8.1: Queue deployment transaction
         // Create transaction with bytecode as data
         // For contract deployment, 'to' is empty and value is 0
@@ -406,9 +406,12 @@ final class ContractDeploymentViewModel {
             contractParameters: constructorParameters,
             status: .pending,
             bytecode: bytecode,
-            abi: abi
+            abi: abi,
+            endpointId: endpoint.id,
+            endpointName: endpoint.name,
+            endpointUrl: endpoint.url
         )
-        
+
         walletSigner.queueTransaction(tx: queuedTx)
         return queuedTx
     }

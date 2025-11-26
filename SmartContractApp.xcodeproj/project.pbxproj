@@ -14,6 +14,7 @@
 		DF72D0F12EBDA3F30007C5EB /* EvmCore in Frameworks */ = {isa = PBXBuildFile; productRef = DF72D0F02EBDA3F30007C5EB /* EvmCore */; };
 		DF72D0F32EBDA3F30007C5EB /* Solidity in Frameworks */ = {isa = PBXBuildFile; productRef = DF72D0F22EBDA3F30007C5EB /* Solidity */; };
 		DF9A68FC2ECF144600C95097 /* AgentKit in Frameworks */ = {isa = PBXBuildFile; productRef = DF9A68FB2ECF144600C95097 /* AgentKit */; };
+		DF9A6C762ED18ABD00C95097 /* JSONSchema in Frameworks */ = {isa = PBXBuildFile; productRef = DF9A6C752ED18ABD00C95097 /* JSONSchema */; };
 		DFBEF2CC2EC62696004A1BCF /* ViewInspector in Frameworks */ = {isa = PBXBuildFile; productRef = DFBEF2CB2EC62696004A1BCF /* ViewInspector */; };
 /* End PBXBuildFile section */
 
@@ -68,6 +69,7 @@
 				DF6933442EBDE82C00940F80 /* LanguageSupport in Frameworks */,
 				DF6933422EBDE82C00940F80 /* CodeEditorView in Frameworks */,
 				DF69334B2EBDF63000940F80 /* KeychainSwift in Frameworks */,
+				DF9A6C762ED18ABD00C95097 /* JSONSchema in Frameworks */,
 				DF72D0F12EBDA3F30007C5EB /* EvmCore in Frameworks */,
 				DF72D0F32EBDA3F30007C5EB /* Solidity in Frameworks */,
 				DF9A68FC2ECF144600C95097 /* AgentKit in Frameworks */,
@@ -140,6 +142,7 @@
 				DF6933432EBDE82C00940F80 /* LanguageSupport */,
 				DF69334A2EBDF63000940F80 /* KeychainSwift */,
 				DF9A68FB2ECF144600C95097 /* AgentKit */,
+				DF9A6C752ED18ABD00C95097 /* JSONSchema */,
 			);
 			productName = SmartContractApp;
 			productReference = DF72D0742EBB4A1F0007C5EB /* SmartContractApp.app */;
@@ -231,6 +234,7 @@
 				DF6933492EBDF63000940F80 /* XCRemoteSwiftPackageReference "keychain-swift" */,
 				DFBEF2CA2EC62696004A1BCF /* XCRemoteSwiftPackageReference "ViewInspector" */,
 				DF9A68FA2ECF144600C95097 /* XCLocalSwiftPackageReference "../AgentLayout" */,
+				DF9A6C742ED18ABD00C95097 /* XCRemoteSwiftPackageReference "swift-json-schema" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = DF72D0752EBB4A1F0007C5EB /* Products */;
@@ -664,6 +668,14 @@
 				minimumVersion = 24.0.0;
 			};
 		};
+		DF9A6C742ED18ABD00C95097 /* XCRemoteSwiftPackageReference "swift-json-schema" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sirily11/swift-json-schema";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.2;
+			};
+		};
 		DFBEF2CA2EC62696004A1BCF /* XCRemoteSwiftPackageReference "ViewInspector" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/nalexn/ViewInspector";
@@ -701,6 +713,11 @@
 		DF9A68FB2ECF144600C95097 /* AgentKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = AgentKit;
+		};
+		DF9A6C752ED18ABD00C95097 /* JSONSchema */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DF9A6C742ED18ABD00C95097 /* XCRemoteSwiftPackageReference "swift-json-schema" */;
+			productName = JSONSchema;
 		};
 		DFBEF2CB2EC62696004A1BCF /* ViewInspector */ = {
 			isa = XCSwiftPackageProductDependency;

@@ -40,6 +40,46 @@ struct ConfigurationsTabView: View {
 
     // MARK: - Body
 
+    @ViewBuilder
+    fileprivate var detailView: some View {
+        // Detail
+        if let selectedEndpoint = selectedEndpoint {
+            EndpointDetailView(endpoint: selectedEndpoint)
+                .navigationDestination(for: EVMContract.self) { contract in
+                    ContractDetailView(contract: contract)
+                }
+        } else if let selectedAbi = selectedAbi {
+            AbiDetailView(abi: selectedAbi)
+                .navigationDestination(for: EVMContract.self) { contract in
+                    ContractDetailView(contract: contract)
+                }
+        } else if let selectedWallet = selectedWallet {
+            WalletDetailView(wallet: selectedWallet)
+        } else if selectedCategory != nil {
+            ContentUnavailableView(
+                "No Selection",
+                systemImage: "doc",
+                description: Text("Select an item to view its details.")
+            )
+        } else {
+            VStack(spacing: 20) {
+                Image(systemName: "gearshape.2")
+                    .font(.system(size: 64))
+                    .foregroundColor(.secondary)
+
+                Text("Configurations")
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
+
+                Text("Select a configuration category from the sidebar")
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            .padding()
+        }
+    }
+
     var body: some View {
         NavigationSplitView {
             // Sidebar
@@ -70,42 +110,8 @@ struct ConfigurationsTabView: View {
                 )
             }
         } detail: {
-            // Detail
-            if let selectedEndpoint = selectedEndpoint {
-                EndpointDetailView(endpoint: selectedEndpoint)
-                    .navigationDestination(for: EVMContract.self) { contract in
-                        ContractDetailView(contract: contract)
-                    }
-            } else if let selectedAbi = selectedAbi {
-                AbiDetailView(abi: selectedAbi)
-                    .navigationDestination(for: EVMContract.self) { contract in
-                        ContractDetailView(contract: contract)
-                    }
-            } else if let selectedWallet = selectedWallet {
-                WalletDetailView(wallet: selectedWallet)
-            } else if selectedCategory != nil {
-                ContentUnavailableView(
-                    "No Selection",
-                    systemImage: "doc",
-                    description: Text("Select an item to view its details.")
-                )
-            } else {
-                VStack(spacing: 20) {
-                    Image(systemName: "gearshape.2")
-                        .font(.system(size: 64))
-                        .foregroundColor(.secondary)
-
-                    Text("Configurations")
-                        .font(.largeTitle)
-                        .fontWeight(.bold)
-
-                    Text("Select a configuration category from the sidebar")
-                        .font(.body)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-                .padding()
-            }
+            detailView
+                .navigationSplitViewColumnWidth(min: 200, ideal: 500)
         }
         .onChange(of: selectedCategory) { _, _ in
             // Clear all item selections when category changes

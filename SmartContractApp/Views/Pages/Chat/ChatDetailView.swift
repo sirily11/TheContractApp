@@ -14,7 +14,11 @@ struct ChatDetailView: View {
     let chat: ChatHistory?
 
     @Environment(ChatViewModel.self) private var chatViewModel
+    @Environment(ToolRegistry.self) private var toolRegistry
+    @Environment(ChatProvider.self) private var chatProvider
     @Query(sort: \AIProvider.name) private var providers: [AIProvider]
+    @Environment(\.openSettings) private var openSettingsWindow
+    @Environment(\.modelContext) private var modelContext
 
     @State private var agentChat: Chat?
     @State private var currentChatId: UUID? // Track which chat is initialized to prevent unnecessary re-initialization
@@ -69,15 +73,25 @@ struct ChatDetailView: View {
            let currentSource = chatViewModel.currentSource
         {
             AgentLayout(
+                chatProvider: chatProvider,
                 chat: agentChat,
                 currentModel: Binding(
                     get: { currentModel },
                     set: { newModel in
-                        if case .openAI(let model) = newModel {
-                            chatViewModel.selectModel(model.id)
-                            chat.model = model.id
-                            chat.updatedAt = Date()
+                        let modelId: String
+                        switch newModel {
+                        case .openAI(let model):
+                            modelId = model.id
+
+                        case .openRouter(let model):
+                            modelId = model.id
+
+                        case .custom(let model):
+                            modelId = model.id
                         }
+                        chatViewModel.selectModel(modelId)
+                        chat.model = modelId
+                        chat.updatedAt = Date()
                     }
                 ),
                 currentSource: Binding(
@@ -97,13 +111,11 @@ struct ChatDetailView: View {
                     }
                 ),
                 sources: chatViewModel.sources,
-                onSend: { message in
-                    handleSendMessage(message, chat: chat)
+                tools: toolRegistry.createTools(),
+                onMessageChange: { messages in
+                    chatViewModel.saveMessages(messages, to: chat)
                 },
-                onMessage: { message in
-                    // Save assistant messages and tool results to persistent storage
-                    chatViewModel.saveMessage(message, to: chat)
-                }
+                renderMessage: toolRegistry.createMessageRenderer()
             )
             .frame(maxWidth: 960)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -168,35 +180,34 @@ struct ChatDetailView: View {
 
     // MARK: - Message Handling
 
-    private func handleSendMessage(_ message: String, chat: ChatHistory) {
-        // Create user message
-        let userMessage = Message.openai(.user(.init(content: message)))
-
-        // Save to chat history
-        chatViewModel.saveMessage(userMessage, to: chat)
-
+    private func handleSendMessage(_ message: Message, chat: ChatHistory) {
         // Update provider/model info on chat
         if let provider = chatViewModel.currentProvider,
            let model = chatViewModel.currentModel
         {
-            if case .openAI(let openAIModel) = model {
-                chatViewModel.updateChatProvider(chat, provider: provider, modelId: openAIModel.id)
+            let modelId: String
+            switch model {
+            case .openAI(let openAIModel):
+                modelId = openAIModel.id
+            case .openRouter(let openRouterModel):
+                modelId = openRouterModel.id
+            case .custom(let customModel):
+                modelId = customModel.id
             }
+            chatViewModel.updateChatProvider(chat, provider: provider, modelId: modelId)
         }
     }
 
     // MARK: - Actions
 
     private func openSettings() {
-        #if os(macOS)
-            NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
-        #endif
+        openSettingsWindow()
     }
 }
 
 #Preview("With Chat") {
     let container = try! ModelContainer(
-        for: ChatHistory.self, AIProvider.self,
+        for: ChatHistory.self, AIProvider.self, Endpoint.self, EVMContract.self, EvmAbi.self, EVMWallet.self,
         configurations: ModelConfiguration(isStoredInMemoryOnly: true)
     )
 
@@ -214,14 +225,22 @@ struct ChatDetailView: View {
     let viewModel = ChatViewModel()
     viewModel.modelContext = container.mainContext
 
+    let walletSigner = WalletSignerViewModel()
+    walletSigner.modelContext = container.mainContext
+
+    let toolRegistry = ToolRegistry()
+    toolRegistry.modelContext = container.mainContext
+    toolRegistry.walletSigner = walletSigner
+
     return ChatDetailView(chat: chat)
         .modelContainer(container)
         .environment(viewModel)
+        .environment(toolRegistry)
 }
 
 #Preview("No Chat") {
     let container = try! ModelContainer(
-        for: ChatHistory.self, AIProvider.self,
+        for: ChatHistory.self, AIProvider.self, Endpoint.self, EVMContract.self, EvmAbi.self, EVMWallet.self,
         configurations: ModelConfiguration(isStoredInMemoryOnly: true)
     )
 
@@ -236,21 +255,37 @@ struct ChatDetailView: View {
     let viewModel = ChatViewModel()
     viewModel.modelContext = container.mainContext
 
+    let walletSigner = WalletSignerViewModel()
+    walletSigner.modelContext = container.mainContext
+
+    let toolRegistry = ToolRegistry()
+    toolRegistry.modelContext = container.mainContext
+    toolRegistry.walletSigner = walletSigner
+
     return ChatDetailView(chat: nil)
         .modelContainer(container)
         .environment(viewModel)
+        .environment(toolRegistry)
 }
 
 #Preview("No Providers") {
     let container = try! ModelContainer(
-        for: ChatHistory.self, AIProvider.self,
+        for: ChatHistory.self, AIProvider.self, Endpoint.self, EVMContract.self, EvmAbi.self, EVMWallet.self,
         configurations: ModelConfiguration(isStoredInMemoryOnly: true)
     )
 
     let viewModel = ChatViewModel()
     viewModel.modelContext = container.mainContext
 
+    let walletSigner = WalletSignerViewModel()
+    walletSigner.modelContext = container.mainContext
+
+    let toolRegistry = ToolRegistry()
+    toolRegistry.modelContext = container.mainContext
+    toolRegistry.walletSigner = walletSigner
+
     return ChatDetailView(chat: nil)
         .modelContainer(container)
         .environment(viewModel)
+        .environment(toolRegistry)
 }

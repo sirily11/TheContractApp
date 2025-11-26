@@ -13,6 +13,8 @@ import Solidity
 struct SolidityView: View {
     @Binding var content: String
     var compilationOutput: Binding<Output?>?
+    var readonly: Bool = false
+    var noCompile: Bool = false
 
     @State private var position: CodeEditor.Position = .init()
     @State private var messages: Set<TextLocated<Message>> = Set()
@@ -33,15 +35,26 @@ struct SolidityView: View {
             .environment(\.codeEditorTheme,
                          colorScheme == .dark ? Theme.defaultDark : Theme.defaultLight)
             .environment(\.codeEditorLayoutConfiguration, .init(showMinimap: false, wrapText: false))
+            .disabled(readonly)
             .onChange(of: content) { _, newValue in
-                handleContentChange(newValue)
+                if !readonly && !noCompile {
+                    handleContentChange(newValue)
+                }
+            }
+            .onAppear {
+                // For readonly mode, compile once on appear (unless noCompile is set)
+                if readonly && !noCompile && !content.isEmpty {
+                    Task {
+                        await compileCode(content)
+                    }
+                }
             }
             .onDisappear {
                 cleanup()
             }
 
-            // Loading spinner overlay
-            if isCompiling {
+            // Loading spinner overlay (only show if compilation is enabled)
+            if isCompiling && !noCompile {
                 ZStack {
                     Color.black.opacity(0.2)
                     ProgressView()
@@ -257,7 +270,7 @@ struct SolidityView: View {
     }
 }
 
-#Preview {
+#Preview("Editable") {
     @Previewable @State var content = """
     // SPDX-License-Identifier: MIT
     pragma solidity ^0.8.0;
@@ -276,4 +289,46 @@ struct SolidityView: View {
     """
 
     SolidityView(content: $content)
+}
+
+#Preview("Readonly") {
+    @Previewable @State var content = """
+    // SPDX-License-Identifier: MIT
+    pragma solidity ^0.8.0;
+
+    contract SimpleStorage {
+        uint256 private value;
+
+        function setValue(uint256 _value) public {
+            value = _value;
+        }
+
+        function getValue() public view returns (uint256) {
+            return value;
+        }
+    }
+    """
+
+    SolidityView(content: $content, readonly: true)
+}
+
+#Preview("No Compile") {
+    @Previewable @State var content = """
+    // SPDX-License-Identifier: MIT
+    pragma solidity ^0.8.0;
+
+    contract SimpleStorage {
+        uint256 private value;
+
+        function setValue(uint256 _value) public {
+            value = _value;
+        }
+
+        function getValue() public view returns (uint256) {
+            return value;
+        }
+    }
+    """
+
+    SolidityView(content: $content, readonly: true, noCompile: true)
 }

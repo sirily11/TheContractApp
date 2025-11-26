@@ -10,30 +10,6 @@ import Foundation
 import Observation
 import SwiftData
 
-// MARK: - Stored Message Type
-
-/// Simple struct for persisting messages to JSON
-struct StoredMessage: Codable {
-    enum Role: String, Codable {
-        case user
-        case assistant
-        case system
-        case tool
-    }
-
-    let id: String
-    let role: Role
-    let content: String
-    let timestamp: Date
-
-    init(id: String = UUID().uuidString, role: Role, content: String, timestamp: Date = Date()) {
-        self.id = id
-        self.role = role
-        self.content = content
-        self.timestamp = timestamp
-    }
-}
-
 // MARK: - Chat View Model
 
 @Observable
@@ -97,8 +73,10 @@ final class ChatViewModel {
         // Create Model based on provider type
         let model: Model
         switch provider.type {
-        case .openAI, .openRouter:
-            model = .openAI(OpenAICompatibleModel(id: modelId, name: modelId))
+        case .openAI:
+            model = .openAI(OpenAICompatibleModel(id: modelId))
+        case .openRouter:
+            model = .openRouter(OpenAICompatibleModel(id: modelId, reasoningConfig: .default))
         }
 
         currentModel = model
@@ -113,13 +91,11 @@ final class ChatViewModel {
     /// Convert ChatHistory messages to AgentKit Chat
     func convertToChat(_ chatHistory: ChatHistory) -> Chat {
         let messages = chatHistory.messages.compactMap { jsonString -> Message? in
-            guard let data = jsonString.data(using: .utf8),
-                let stored = try? JSONDecoder().decode(StoredMessage.self, from: data)
-            else {
+            guard let data = jsonString.data(using: .utf8) else {
                 return nil
             }
-
-            return storedMessageToAgentMessage(stored)
+            // Decode Message directly from JSON (preserves all fields including tool calls)
+            return try? JSONDecoder().decode(Message.self, from: data)
         }
 
         return Chat(
@@ -129,60 +105,19 @@ final class ChatViewModel {
         )
     }
 
-    /// Convert AgentKit Message to stored format
-    func agentMessageToStored(_ message: Message) -> StoredMessage? {
-        switch message {
-        case .openai(let openAIMessage):
-            switch openAIMessage {
-            case .user(let userMessage):
-                return StoredMessage(
-                    role: .user,
-                    content: userMessage.content
-                )
-            case .assistant(let assistantMessage):
-                return StoredMessage(
-                    role: .assistant,
-                    content: assistantMessage.content ?? ""
-                )
-            case .system(let systemMessage):
-                return StoredMessage(
-                    role: .system,
-                    content: systemMessage.content
-                )
-            case .tool(let toolMessage):
-                return StoredMessage(
-                    role: .tool,
-                    content: toolMessage.content
-                )
+    /// Save or update a message in chat history (handles streaming updates)
+    func saveMessages(_ messages: [Message], to chat: ChatHistory) {
+        let messages = messages.map {
+            if let data = try? JSONEncoder().encode($0),
+               let json = String(data: data, encoding: .utf8)
+            {
+                return json
             }
-        }
-    }
-
-    /// Convert stored message to AgentKit Message
-    func storedMessageToAgentMessage(_ stored: StoredMessage) -> Message {
-        switch stored.role {
-        case .user:
-            return .openai(.user(.init(content: stored.content)))
-        case .assistant:
-            return .openai(.assistant(.init(content: stored.content, audio: nil)))
-        case .system:
-            return .openai(.system(.init(content: stored.content)))
-        case .tool:
-            return .openai(.tool(.init(content: stored.content, toolCallId: stored.id)))
-        }
-    }
-
-    /// Save a message to chat history
-    func saveMessage(_ message: Message, to chat: ChatHistory) {
-        guard let stored = agentMessageToStored(message),
-            let data = try? JSONEncoder().encode(stored),
-            let json = String(data: data, encoding: .utf8)
-        else {
-            return
-        }
-
-        chat.messages.append(json)
+            return nil
+        }.compactMap { $0 }
+        chat.messages = messages
         chat.updatedAt = Date()
+        try? modelContext.save()
     }
 
     /// Update chat with provider and model info
@@ -195,8 +130,8 @@ final class ChatViewModel {
     /// Fetch models for a provider if auto-fetch is enabled
     func fetchModelsIfNeeded(for provider: AIProvider) async {
         guard provider.autoFetchModels,
-            provider.availableModels.isEmpty,
-            provider.type.supportsAutoFetchModels
+              provider.availableModels.isEmpty,
+              provider.type.supportsAutoFetchModels
         else {
             return
         }
@@ -231,25 +166,33 @@ final class ChatViewModel {
 
     /// Convert AIProvider to AgentKit Source
     private func convertToSource(_ provider: AIProvider) -> Source {
-        let models: [Model] = provider.availableModels.map { modelId in
-            switch provider.type {
-            case .openAI, .openRouter:
-                return .openAI(OpenAICompatibleModel(id: modelId, name: modelId))
-            }
-        }
-
-        let apiType: ApiType
         switch provider.type {
-        case .openAI, .openRouter:
-            apiType = .openAI
-        }
+        case .openAI:
+            let models: [Model] = provider.availableModels.map { modelId in
+                .openAI(OpenAICompatibleModel(id: modelId))
+            }
 
-        return Source(
-            displayName: provider.name,
-            endpoint: provider.endpoint,
-            apiKey: provider.apiKey,
-            apiType: apiType,
-            models: models
-        )
+            // Create OpenAI client with custom endpoint if provided
+            let client: OpenAIClient
+            if let baseURL = URL(string: provider.endpoint) {
+                client = OpenAIClient(apiKey: provider.apiKey, baseURL: baseURL)
+            } else {
+                client = OpenAIClient(apiKey: provider.apiKey)
+            }
+
+            return Source.openAI(client: client, models: models)
+
+        case .openRouter:
+            let models: [Model] = provider.availableModels.map { modelId in
+                .openRouter(OpenAICompatibleModel(id: modelId))
+            }
+
+            let client = OpenRouterClient(
+                apiKey: provider.apiKey,
+                appName: "SmartContractApp"
+            )
+
+            return Source.openRouter(client: client, models: models)
+        }
     }
 }

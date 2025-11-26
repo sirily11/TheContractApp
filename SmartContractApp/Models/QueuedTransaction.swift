@@ -48,6 +48,11 @@ struct QueuedTransaction: Identifiable, Codable, Hashable {
     // Optional wallet ID reference (instead of SwiftData relationship)
     let walletId: UUID?
 
+    // Endpoint information for display
+    let endpointId: UUID?
+    let endpointName: String?
+    let endpointUrl: String?
+
     init(
         id: UUID = UUID(),
         queuedAt: Date = Date(),
@@ -60,7 +65,10 @@ struct QueuedTransaction: Identifiable, Codable, Hashable {
         status: QueuedTransactionStatus = .pending,
         walletId: UUID? = nil,
         bytecode: String? = nil,
-        abi: [AbiItem]? = nil
+        abi: [AbiItem]? = nil,
+        endpointId: UUID? = nil,
+        endpointName: String? = nil,
+        endpointUrl: String? = nil
     ) {
         self.id = id
         self.queuedAt = queuedAt
@@ -74,6 +82,9 @@ struct QueuedTransaction: Identifiable, Codable, Hashable {
         self.walletId = walletId
         self.bytecode = bytecode
         self.abi = abi
+        self.endpointId = endpointId
+        self.endpointName = endpointName
+        self.endpointUrl = endpointUrl
     }
 
     // MARK: - Hashable Implementation
@@ -89,6 +100,9 @@ struct QueuedTransaction: Identifiable, Codable, Hashable {
         hasher.combine(contractParameters)
         hasher.combine(status)
         hasher.combine(walletId)
+        hasher.combine(endpointId)
+        hasher.combine(endpointName)
+        hasher.combine(endpointUrl)
     }
 
     static func == (lhs: QueuedTransaction, rhs: QueuedTransaction) -> Bool {
@@ -101,7 +115,10 @@ struct QueuedTransaction: Identifiable, Codable, Hashable {
             lhs.contractFunctionName == rhs.contractFunctionName &&
             lhs.contractParameters == rhs.contractParameters &&
             lhs.status == rhs.status &&
-            lhs.walletId == rhs.walletId
+            lhs.walletId == rhs.walletId &&
+            lhs.endpointId == rhs.endpointId &&
+            lhs.endpointName == rhs.endpointName &&
+            lhs.endpointUrl == rhs.endpointUrl
     }
 
     // MARK: - Helper Methods

@@ -257,7 +257,29 @@ final class WalletSignerViewModel {
             throw WalletSignerError.noWalletSelected
         }
 
-        // Create transaction params for gas estimation
+        // Handle contract creation (deployment) - to is empty, bytecode is present
+        if transaction.contractFunctionName == .constructor {
+            guard let bytecode = transaction.bytecode, !bytecode.isEmpty else {
+                throw WalletSignerError.missingBytecode
+            }
+
+            // For contract creation, use bytecode as data
+            // Note: Constructor arguments are encoded separately during actual deployment
+            // Gas estimate with just bytecode will be slightly conservative, which is fine
+            let deployData = bytecode.hasPrefix("0x") ? bytecode : "0x" + bytecode
+
+            // Contract creation params: no 'to' address
+            let params = TransactionParams(
+                from: wallet.address,
+                value: transaction.value,
+                data: deployData
+            )
+
+            let gasEstimate = try await client.estimateGas(params: params)
+            return "0x" + String(gasEstimate, radix: 16)
+        }
+
+        // Create transaction params for gas estimation (normal transaction)
         var params = TransactionParams(
             from: wallet.address,
             to: transaction.to,

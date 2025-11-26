@@ -85,6 +85,9 @@ struct SignTransactionView: View {
                     // Transaction details
                     transactionSection
 
+                    // Endpoint/Network info (if available)
+                    endpointSection
+
                     // Contract details (if applicable)
                     if transaction.isContractCall {
                         contractSection
