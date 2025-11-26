@@ -216,11 +216,26 @@ final class ContractInteractionViewModel {
 
             let parser = try AbiParser(fromJsonString: abi.abiContent)
 
-            // Create queued transaction
+            // Find the function in the ABI and encode the call data
+            guard let abiFunction = parser.typedFunction(named: functionName).first else {
+                throw FunctionExecutionError.functionNotFound(functionName)
+            }
+
+            // Encode the function call (selector + parameters)
+            let encodedData: String
+            do {
+                // Extract the underlying value from AnyCodable
+                let rawArgs = parameters.map { $0.value.value }
+                encodedData = try abiFunction.encodeCall(args: rawArgs)
+            } catch {
+                throw FunctionExecutionError.parameterEncodingFailed
+            }
+
+            // Create queued transaction with encoded data
             let queuedTx = QueuedTransaction(
                 to: contract.address,
                 value: value,
-                data: nil, // Will be encoded by EvmCore
+                data: encodedData,
                 gasEstimate: nil, // Will be estimated by wallet
                 contractFunctionName: .function(name: functionName),
                 contractParameters: parameters,

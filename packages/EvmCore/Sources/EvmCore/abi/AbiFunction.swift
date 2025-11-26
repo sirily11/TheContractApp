@@ -142,15 +142,58 @@ extension AbiFunction {
             return selector
         }
 
-        // Encode each argument
-        var encodedParams = ""
+        // ABI encoding has two sections:
+        // 1. Head: contains static values or offsets to dynamic data
+        // 2. Tail: contains the actual dynamic data
+
+        var headParts: [String] = []
+        var tailParts: [String] = []
+
+        // Calculate the starting offset for dynamic data
+        // Each parameter takes 32 bytes (64 hex chars) in the head
+        var currentTailOffset = inputs.count * 32  // in bytes
+
         for (index, arg) in args.enumerated() {
             let param = inputs[index]
-            let encoded = try encodeParameter(value: arg, type: param.type)
-            encodedParams += encoded
+
+            if isDynamicType(param.type) {
+                // For dynamic types, put offset in head and data in tail
+                let offsetHex = String(currentTailOffset, radix: 16)
+                let paddedOffset = String(repeating: "0", count: 64 - offsetHex.count) + offsetHex
+                headParts.append(paddedOffset)
+
+                // Encode the dynamic data
+                let dynamicData = try encodeDynamicParameter(value: arg, type: param.type)
+                tailParts.append(dynamicData)
+
+                // Update offset for next dynamic data (dynamicData length in bytes)
+                currentTailOffset += dynamicData.count / 2
+            } else {
+                // For static types, encode directly in head
+                let encoded = try encodeStaticParameter(value: arg, type: param.type)
+                headParts.append(encoded)
+            }
         }
 
-        return selector + encodedParams
+        return selector + headParts.joined() + tailParts.joined()
+    }
+
+    /// Check if a type is dynamic (variable length)
+    private func isDynamicType(_ type: String) -> Bool {
+        // Dynamic types: string, bytes, dynamic arrays (T[]), and tuples containing dynamic types
+        if type == "string" || type == "bytes" {
+            return true
+        }
+        // Dynamic array (ends with [])
+        if type.hasSuffix("[]") {
+            return true
+        }
+        // Fixed-size arrays of dynamic types
+        if type.contains("[") && type.contains("]") {
+            let elementType = String(type.prefix(while: { $0 != "[" }))
+            return isDynamicType(elementType)
+        }
+        return false
     }
 
     /// Decode function return data
@@ -219,8 +262,8 @@ extension AbiFunction {
         return param.type
     }
 
-    private func encodeParameter(value: Any, type: String) throws -> String {
-        // Handle different Solidity types
+    /// Encode a static (fixed-size) parameter
+    private func encodeStaticParameter(value: Any, type: String) throws -> String {
         switch type {
         case "address":
             return try encodeAddress(value)
@@ -230,13 +273,22 @@ extension AbiFunction {
             return try encodeInt(value, bits: parseIntegerBits(t))
         case "bool":
             return try encodeBool(value)
-        case "string":
-            return try encodeString(value)
-        case "bytes":
-            return try encodeBytes(value)
         case let t where t.hasPrefix("bytes") && t.count > 5:
             // Fixed bytes (bytes1, bytes32, etc.)
             return try encodeFixedBytes(value, size: parseFixedBytesSize(t))
+        default:
+            throw AbiEncodingError.unsupportedType(type)
+        }
+    }
+
+    /// Encode a dynamic (variable-length) parameter
+    /// Returns: length (32 bytes) + data (padded to 32-byte boundary)
+    private func encodeDynamicParameter(value: Any, type: String) throws -> String {
+        switch type {
+        case "string":
+            return try encodeStringDynamic(value)
+        case "bytes":
+            return try encodeBytesDynamic(value)
         default:
             throw AbiEncodingError.unsupportedType(type)
         }
@@ -338,31 +390,63 @@ extension AbiFunction {
         return String(repeating: "0", count: 63) + (boolValue ? "1" : "0")
     }
 
-    private func encodeString(_ value: Any) throws -> String {
+    /// Encode a string for dynamic ABI encoding
+    /// Returns: length (32 bytes) + data (padded to 32-byte boundary)
+    private func encodeStringDynamic(_ value: Any) throws -> String {
         guard let str = value as? String else {
             throw AbiEncodingError.invalidValue(expected: "string", got: String(describing: value))
         }
 
-        // Dynamic types require offset encoding - simplified for now
         guard let data = str.data(using: .utf8) else {
             throw AbiEncodingError.invalidValue(expected: "string", got: str)
         }
 
-        return data.toHexString()
+        // Encode length (32 bytes)
+        let lengthHex = String(data.count, radix: 16)
+        let paddedLength = String(repeating: "0", count: 64 - lengthHex.count) + lengthHex
+
+        // Encode data with padding to 32-byte boundary
+        let dataHex = data.toHexString()
+        let paddingNeeded = (32 - (data.count % 32)) % 32
+        let paddedData = dataHex + String(repeating: "0", count: paddingNeeded * 2)
+
+        return paddedLength + paddedData
     }
 
-    private func encodeBytes(_ value: Any) throws -> String {
-        if let data = value as? Data {
-            return data.toHexString()
+    /// Encode bytes for dynamic ABI encoding
+    /// Returns: length (32 bytes) + data (padded to 32-byte boundary)
+    private func encodeBytesDynamic(_ value: Any) throws -> String {
+        let data: Data
+        if let d = value as? Data {
+            data = d
         } else if let hex = value as? String {
-            return hex.stripHexPrefix()
+            data = Data(hex: hex.stripHexPrefix())
         } else {
             throw AbiEncodingError.invalidValue(expected: "bytes", got: String(describing: value))
         }
+
+        // Encode length (32 bytes)
+        let lengthHex = String(data.count, radix: 16)
+        let paddedLength = String(repeating: "0", count: 64 - lengthHex.count) + lengthHex
+
+        // Encode data with padding to 32-byte boundary
+        let dataHex = data.toHexString()
+        let paddingNeeded = (32 - (data.count % 32)) % 32
+        let paddedData = dataHex + String(repeating: "0", count: paddingNeeded * 2)
+
+        return paddedLength + paddedData
     }
 
     private func encodeFixedBytes(_ value: Any, size: Int) throws -> String {
-        let hex = try encodeBytes(value)
+        let hex: String
+        if let data = value as? Data {
+            hex = data.toHexString()
+        } else if let hexStr = value as? String {
+            hex = hexStr.stripHexPrefix()
+        } else {
+            throw AbiEncodingError.invalidValue(expected: "bytes\(size)", got: String(describing: value))
+        }
+
         guard hex.count <= size * 2 else {
             throw AbiEncodingError.invalidValue(expected: "bytes\(size)", got: hex)
         }
