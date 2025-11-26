@@ -113,11 +113,13 @@ struct FunctionCallSheet: View {
                         Button("Cancel") {
                             dismiss()
                         }
+                        .accessibilityIdentifier(.functionCall.cancelButton)
                     case .confirmation:
                         Button("Back") {
                             navigationPath.removeLast()
                             currentDestination = .parameters
                         }
+                        .accessibilityIdentifier(.functionCall.backButton)
                     case .processing:
                         // No button during processing
                         EmptyView()
@@ -125,12 +127,14 @@ struct FunctionCallSheet: View {
                         Button("Done") {
                             dismiss()
                         }
+                        .accessibilityIdentifier(.functionCall.doneButton)
                     }
                 } else {
                     // First page
                     Button("Cancel") {
                         dismiss()
                     }
+                    .accessibilityIdentifier(.functionCall.cancelButton)
                 }
             }
 
@@ -142,6 +146,7 @@ struct FunctionCallSheet: View {
                             handleCallFunction()
                         }
                         .disabled(!canCallFunction)
+                        .accessibilityIdentifier(isReadFunction ? .functionCall.callFunctionButton : .functionCall.continueButton)
                     case .confirmation:
                         Button {
                             handleConfirmTransaction()
@@ -149,6 +154,7 @@ struct FunctionCallSheet: View {
                             Label("Sign & Send", systemImage: "signature")
                         }
                         .tint(.orange)
+                        .accessibilityIdentifier(.functionCall.signAndSendButton)
                     case .processing:
                         EmptyView()
                     case .result:
@@ -158,6 +164,7 @@ struct FunctionCallSheet: View {
                                 handleRetry()
                             }
                             .tint(.blue)
+                            .accessibilityIdentifier(.functionCall.retryButton)
                         } else {
                             EmptyView()
                         }
@@ -168,6 +175,7 @@ struct FunctionCallSheet: View {
                         handleCallFunction()
                     }
                     .disabled(!canCallFunction)
+                    .accessibilityIdentifier(isReadFunction ? .functionCall.callFunctionButton : .functionCall.continueButton)
                 }
             }
         }

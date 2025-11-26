@@ -67,6 +67,7 @@ struct FunctionRowView: View {
                 .buttonStyle(.bordered)
                 .tint(buttonColor)
                 .disabled(isExecuting)
+                .accessibilityIdentifier("contract-call-button")
             }
 
             // Last result (if available)

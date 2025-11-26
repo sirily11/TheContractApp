@@ -21,6 +21,7 @@ extension WalletFormView {
                     .foregroundColor(.secondary)
                 TextField("Enter wallet name", text: $alias)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .accessibilityIdentifier(.wallet.aliasTextField)
             }
 
             if let wallet = wallet {
@@ -56,6 +57,7 @@ extension WalletFormView {
                     .foregroundColor(.secondary)
                 TextField("Enter wallet name", text: $alias)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .accessibilityIdentifier(.wallet.aliasTextField)
             }
         }
 
@@ -96,6 +98,7 @@ extension WalletFormView {
                 SecureField("0x...", text: $privateKeyInput)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
                     .fontDesign(.monospaced)
+                    .accessibilityIdentifier(.wallet.privateKeyField)
                 #if os(iOS)
                     .autocapitalization(.none)
                     .disableAutocorrection(true)

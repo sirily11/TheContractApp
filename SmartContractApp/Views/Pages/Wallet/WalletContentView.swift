@@ -93,12 +93,14 @@ struct WalletContentView: View {
             }) {
                 Label("Create Random Wallet", systemImage: "dice")
             }
+            .accessibilityIdentifier(.wallet.randomWalletMenuItem)
 
             Button(action: {
                 creationMode = .privateKey
             }) {
                 Label("Import from Private Key", systemImage: "key")
             }
+            .accessibilityIdentifier(.wallet.importFromPrivateKeyMenuItem)
 
             Button(action: {
                 creationMode = .mnemonic
@@ -108,6 +110,7 @@ struct WalletContentView: View {
         } label: {
             Image(systemName: "plus")
         }
+        .accessibilityIdentifier(.wallet.addButton)
     }
 
     private func deleteWallet(_ wallet: EVMWallet) {

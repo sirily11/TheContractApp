@@ -54,6 +54,7 @@ extension SolidityDeploymentSheet {
                         startCompilationFlow()
                     }
                     .disabled(!isReviewFormValid)
+                    .accessibilityIdentifier(.deployment.nextButton)
                 }
             }
     }
@@ -126,6 +127,7 @@ extension SolidityDeploymentSheet {
                             navigationPath.append(DeploymentDestination.constructorParams)
                         }
                         .buttonStyle(.borderedProminent)
+                        .accessibilityIdentifier(.deployment.nextButton)
                     } else if case .failed = compilationState {
                         Button("Retry") {
                             resetCompilationState()
@@ -134,6 +136,7 @@ extension SolidityDeploymentSheet {
                             }
                         }
                         .buttonStyle(.borderedProminent)
+                        .accessibilityIdentifier(.deployment.retryButton)
                     }
                 }
             }
@@ -180,6 +183,7 @@ extension SolidityDeploymentSheet {
                         navigationPath.append(DeploymentDestination.deployment)
                     }
                     .disabled(!isConstructorFormValid)
+                    .accessibilityIdentifier(.deployment.nextButton)
                 }
             }
     }
@@ -261,6 +265,7 @@ extension SolidityDeploymentSheet {
                             startDeployment()
                         }
                         .buttonStyle(.borderedProminent)
+                        .accessibilityIdentifier(.deployment.retryButton)
                     }
                 }
             }
@@ -339,6 +344,7 @@ extension SolidityDeploymentSheet {
 
             TextField("Enter contract alias", text: $contractName)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
+                .accessibilityIdentifier(.deployment.contractNameTextField)
             #if os(iOS)
                 .autocapitalization(.none)
                 .disableAutocorrection(true)
@@ -495,6 +501,7 @@ extension SolidityDeploymentSheet {
                     }
                 }
                 .pickerStyle(.menu)
+                .accessibilityIdentifier(.deployment.endpointPicker)
             }
 
             if selectedEndpoint == nil && !endpoints.isEmpty {

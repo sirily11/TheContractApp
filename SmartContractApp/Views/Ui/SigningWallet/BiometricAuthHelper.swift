@@ -14,6 +14,15 @@ class BiometricAuthHelper {
 
     private let context = LAContext()
 
+    /// Check if the app is running in testing mode
+    private var isTestingMode: Bool {
+        #if DEBUG
+        return CommandLine.arguments.contains("enable-testing")
+        #else
+        return false
+        #endif
+    }
+
     // MARK: - Biometric Availability
 
     /// Check if biometric authentication is available on this device
@@ -68,6 +77,14 @@ class BiometricAuthHelper {
     ///   - reason: The reason for authentication to show to the user
     ///   - completion: Completion handler with success/failure result
     func authenticate(reason: String = "Authenticate to sign transaction", completion: @escaping (Bool, Error?) -> Void) {
+        // Skip biometrics in testing mode
+        if isTestingMode {
+            DispatchQueue.main.async {
+                completion(true, nil)
+            }
+            return
+        }
+
         let context = LAContext()
         var error: NSError?
 
@@ -90,6 +107,11 @@ class BiometricAuthHelper {
     /// - Returns: True if authentication succeeded
     /// - Throws: LAError if authentication fails or is not available
     func authenticate(reason: String = "Authenticate to sign transaction") async throws -> Bool {
+        // Skip biometrics in testing mode
+        if isTestingMode {
+            return true
+        }
+
         let context = LAContext()
         var error: NSError?
 

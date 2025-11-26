@@ -263,6 +263,7 @@ struct BytecodeDeploymentSheet: View {
                             .tag(endpoint as Endpoint?)
                         }
                     }
+                    .accessibilityIdentifier(.contract.endpointButton)
                     .pickerStyle(.menu)
                 }
                 
