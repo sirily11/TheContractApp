@@ -286,8 +286,8 @@
             filePath = "SmartContractApp/Views/Pages/Chat/ChatDetailView.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "116"
-            endingLineNumber = "116"
+            startingLineNumber = "119"
+            endingLineNumber = "119"
             landmarkName = "chatContentView(for:)"
             landmarkType = "7">
          </BreakpointContent>
