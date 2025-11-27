@@ -326,6 +326,7 @@ extension SignTransactionView {
                 .listRowBackground(Color.blue)
                 .buttonStyle(.glass)
                 .foregroundColor(.white)
+                .accessibilityIdentifier(.signing.retryButton)
 
             } else {
                 // Waiting for approval - show approve and reject buttons
@@ -348,6 +349,7 @@ extension SignTransactionView {
                 }
                 .disabled(isAuthenticating || walletSigner.isProcessingTransaction)
                 .buttonStyle(.glass)
+                .accessibilityIdentifier(.signing.approveButton)
 
                 // Reject
                 Button(action: rejectTransaction) {
@@ -360,6 +362,7 @@ extension SignTransactionView {
                 }
                 .disabled(isAuthenticating || walletSigner.isProcessingTransaction)
                 .foregroundColor(.red)
+                .accessibilityIdentifier(.signing.rejectButton)
             }
         }
     }

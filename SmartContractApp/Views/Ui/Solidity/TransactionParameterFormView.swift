@@ -169,6 +169,7 @@ struct TransactionParameterFormView: View {
             } else {
                 ForEach($parameters) { $parameter in
                     parameterSection(for: $parameter)
+                        .accessibilityIdentifier(parameter.name)
                 }
             }
         }

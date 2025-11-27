@@ -51,11 +51,12 @@ struct EthereumValueField: View {
                 // Amount input field
                 TextField("0.0", text: $amount)
                     .textFieldStyle(.roundedBorder)
-                    #if os(iOS)
+                #if os(iOS)
                     .keyboardType(.decimalPad)
-                    #endif
+                #endif
                     .font(.body)
                     .frame(minWidth: 100)
+                    .accessibilityIdentifier("transaction-value")
 
                 // Unit picker
                 Picker("Unit", selection: $selectedUnit) {

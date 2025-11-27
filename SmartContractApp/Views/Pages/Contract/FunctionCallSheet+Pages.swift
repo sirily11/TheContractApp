@@ -190,6 +190,7 @@ extension FunctionCallSheet {
                 .font(.title)
                 .fontWeight(.bold)
                 .foregroundColor(resultColor)
+                .accessibilityIdentifier(executionState == .completed ? .functionCall.successMessage : .functionCall.errorMessage)
 
             // Result details
             if let result = result {

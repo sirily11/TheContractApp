@@ -75,6 +75,7 @@ struct WalletFormView: View {
                                 saveWallet()
                             }
                             .disabled(!isFormValid || isGenerating)
+                            .accessibilityIdentifier(isEditing ? .wallet.updateButton : .wallet.createButton)
                         }
                     #else
                         ToolbarItem(placement: .cancellationAction) {
@@ -88,6 +89,7 @@ struct WalletFormView: View {
                                 saveWallet()
                             }
                             .disabled(!isFormValid || isGenerating)
+                            .accessibilityIdentifier(isEditing ? .wallet.updateButton : .wallet.createButton)
                         }
                     #endif
                 }

@@ -240,30 +240,28 @@ private func encodeConstructorArguments(inputs: [AbiParameter], args: [Any]) thr
     var dynamicOffsets: [Int] = []
 
     // First pass: identify static vs dynamic and calculate offsets
-    var currentOffset = inputs.count * 32  // Initial offset after all static parts
+    var currentOffset = calculateHeadSize(params: inputs)
 
     for (param, arg) in zip(inputs, args) {
-        if isDynamicType(param.type) {
+        if isDynamicType(param.type, components: param.components) {
             // For dynamic types, static part is the offset
             dynamicOffsets.append(currentOffset)
-            let dynamicData = try encodeDynamicParameter(type: param.type, value: arg)
+            let dynamicData = try encodeParameter(param: param, value: arg)
             dynamicParts.append(dynamicData)
             currentOffset += dynamicData.count
             staticParts.append(Data())  // Placeholder, will be replaced with offset
         } else {
             // For static types, encode directly
-            let staticData = try encodeStaticParameter(type: param.type, value: arg)
+            let staticData = try encodeParameter(param: param, value: arg)
             staticParts.append(staticData)
             dynamicOffsets.append(-1)  // Not a dynamic type
         }
     }
 
     // Second pass: replace dynamic placeholders with actual offsets
-    var dynamicIndex = 0
     for i in 0..<staticParts.count {
         if dynamicOffsets[i] >= 0 {
             staticParts[i] = encodeUInt(BigInt(dynamicOffsets[i]))
-            dynamicIndex += 1
         }
     }
 
@@ -279,10 +277,275 @@ private func encodeConstructorArguments(inputs: [AbiParameter], args: [Any]) thr
     return "0x" + encoded.map { String(format: "%02x", $0) }.joined()
 }
 
+/// Calculate the head size for a list of parameters
+private func calculateHeadSize(params: [AbiParameter]) -> Int {
+    var size = 0
+    for param in params {
+        if isDynamicType(param.type, components: param.components) {
+            // Dynamic types take 32 bytes for offset in head
+            size += 32
+        } else if param.type == "tuple", let components = param.components {
+            // Static tuple: sum of component sizes
+            size += calculateHeadSize(params: components)
+        } else if let (_, arraySize) = parseFixedArraySize(param.type) {
+            // Fixed array of static types
+            size += 32 * arraySize
+        } else {
+            // Static types take 32 bytes
+            size += 32
+        }
+    }
+    return size
+}
+
+/// Parse fixed array size from type string like "uint256[5]"
+private func parseFixedArraySize(_ type: String) -> (elementType: String, size: Int)? {
+    guard let match = type.range(of: #"\[(\d+)\]$"#, options: .regularExpression) else {
+        return nil
+    }
+
+    let elementType = String(type[..<match.lowerBound])
+    let sizeStr = String(type[match]).dropFirst().dropLast() // Remove [ and ]
+    guard let size = Int(sizeStr) else {
+        return nil
+    }
+
+    return (elementType, size)
+}
+
 /// Check if a type is dynamic (requires offset encoding)
-private func isDynamicType(_ type: String) -> Bool {
-    // Dynamic types: string, bytes, arrays
-    return type == "string" || type == "bytes" || type.hasSuffix("[]")
+private func isDynamicType(_ type: String, components: [AbiParameter]? = nil) -> Bool {
+    // Dynamic types: string, bytes
+    if type == "string" || type == "bytes" {
+        return true
+    }
+
+    // Dynamic arrays (T[])
+    if type.hasSuffix("[]") {
+        return true
+    }
+
+    // Fixed-size arrays of dynamic types (T[k] where T is dynamic)
+    if let (elementType, _) = parseFixedArraySize(type) {
+        return isDynamicType(elementType, components: components)
+    }
+
+    // Tuples containing dynamic types
+    if type == "tuple" || type.hasPrefix("tuple["), let components = components {
+        return components.contains { isDynamicType($0.type, components: $0.components) }
+    }
+
+    return false
+}
+
+// MARK: - Master Parameter Encoding
+
+/// Encode a parameter value based on its ABI parameter definition
+private func encodeParameter(param: AbiParameter, value: Any) throws -> Data {
+    let type = param.type
+
+    // Handle tuples (structs)
+    if type == "tuple" {
+        guard let components = param.components else {
+            throw DeploymentError.encodingFailed("Tuple without components")
+        }
+        return try encodeTuple(value: value, components: components)
+    }
+
+    // Handle tuple arrays (e.g., "tuple[]", "tuple[3]")
+    if type.hasPrefix("tuple[") {
+        return try encodeTupleArray(value: value, param: param)
+    }
+
+    // Handle dynamic arrays (T[])
+    if type.hasSuffix("[]") {
+        let elementType = String(type.dropLast(2))
+        return try encodeDynamicArray(value: value, elementType: elementType, elementComponents: param.components)
+    }
+
+    // Handle fixed arrays (T[k])
+    if let (elementType, size) = parseFixedArraySize(type) {
+        return try encodeFixedArray(value: value, elementType: elementType, size: size, elementComponents: param.components)
+    }
+
+    // Handle dynamic types
+    if type == "string" {
+        if let str = value as? String {
+            return encodeStringData(str)
+        }
+        throw DeploymentError.encodingFailed("Invalid string value")
+    }
+
+    if type == "bytes" {
+        if let data = value as? Data {
+            return encodeBytesData(data)
+        } else if let hex = value as? String {
+            return encodeBytesData(Data(hex: hex.stripHexPrefix()))
+        }
+        throw DeploymentError.encodingFailed("Invalid bytes value")
+    }
+
+    // Handle static types
+    return try encodeStaticParameter(type: type, value: value)
+}
+
+// MARK: - Array Encoding
+
+/// Encode a dynamic array (T[])
+private func encodeDynamicArray(value: Any, elementType: String, elementComponents: [AbiParameter]?) throws -> Data {
+    guard let array = value as? [Any] else {
+        throw DeploymentError.encodingFailed("Expected array for dynamic array type")
+    }
+
+    // Encode length prefix
+    var result = encodeUInt(BigInt(array.count))
+
+    // Check if element type is dynamic
+    let elementIsDynamic = isDynamicType(elementType, components: elementComponents)
+
+    if elementIsDynamic {
+        // Dynamic elements: encode offsets in head, then data in tail
+        var offsets: [Int] = []
+        var tails: [Data] = []
+        var currentOffset = array.count * 32
+
+        for element in array {
+            offsets.append(currentOffset)
+            let elementParam = AbiParameter(name: "", type: elementType, components: elementComponents)
+            let encoded = try encodeParameter(param: elementParam, value: element)
+            tails.append(encoded)
+            currentOffset += encoded.count
+        }
+
+        // Append offsets
+        for offset in offsets {
+            result.append(encodeUInt(BigInt(offset)))
+        }
+
+        // Append data
+        for tail in tails {
+            result.append(tail)
+        }
+    } else {
+        // Static elements: encode each element directly
+        for element in array {
+            let elementParam = AbiParameter(name: "", type: elementType, components: elementComponents)
+            result.append(try encodeParameter(param: elementParam, value: element))
+        }
+    }
+
+    return result
+}
+
+/// Encode a fixed-size array (T[k])
+private func encodeFixedArray(value: Any, elementType: String, size: Int, elementComponents: [AbiParameter]?) throws -> Data {
+    guard let array = value as? [Any] else {
+        throw DeploymentError.encodingFailed("Expected array for fixed array type")
+    }
+
+    guard array.count == size else {
+        throw DeploymentError.encodingFailed("Expected array of size \(size), got \(array.count)")
+    }
+
+    // Check if element type is dynamic
+    let elementIsDynamic = isDynamicType(elementType, components: elementComponents)
+
+    if elementIsDynamic {
+        // Fixed array of dynamic types: similar to dynamic array but without length prefix
+        var offsets: [Int] = []
+        var tails: [Data] = []
+        var currentOffset = size * 32
+
+        for element in array {
+            offsets.append(currentOffset)
+            let elementParam = AbiParameter(name: "", type: elementType, components: elementComponents)
+            let encoded = try encodeParameter(param: elementParam, value: element)
+            tails.append(encoded)
+            currentOffset += encoded.count
+        }
+
+        var result = Data()
+        for offset in offsets {
+            result.append(encodeUInt(BigInt(offset)))
+        }
+        for tail in tails {
+            result.append(tail)
+        }
+        return result
+    } else {
+        // Fixed array of static types: encode each element directly
+        var result = Data()
+        for element in array {
+            let elementParam = AbiParameter(name: "", type: elementType, components: elementComponents)
+            result.append(try encodeParameter(param: elementParam, value: element))
+        }
+        return result
+    }
+}
+
+// MARK: - Tuple Encoding
+
+/// Encode a tuple (struct)
+private func encodeTuple(value: Any, components: [AbiParameter]) throws -> Data {
+    guard let values = value as? [Any] else {
+        throw DeploymentError.encodingFailed("Expected array of values for tuple")
+    }
+
+    guard values.count == components.count else {
+        throw DeploymentError.encodingFailed("Tuple component count mismatch: expected \(components.count), got \(values.count)")
+    }
+
+    // Check if tuple contains any dynamic types
+    let hasDynamicComponents = components.contains { isDynamicType($0.type, components: $0.components) }
+
+    if hasDynamicComponents {
+        // Dynamic tuple: head (static values + offsets) + tail (dynamic data)
+        var head = Data()
+        var tail = Data()
+        var currentOffset = calculateHeadSize(params: components)
+
+        for (component, val) in zip(components, values) {
+            if isDynamicType(component.type, components: component.components) {
+                // Add offset to head
+                head.append(encodeUInt(BigInt(currentOffset)))
+
+                // Add data to tail
+                let encoded = try encodeParameter(param: component, value: val)
+                tail.append(encoded)
+                currentOffset += encoded.count
+            } else {
+                // Add static value to head
+                head.append(try encodeParameter(param: component, value: val))
+            }
+        }
+
+        return head + tail
+    } else {
+        // Static tuple: encode all components sequentially
+        var result = Data()
+        for (component, val) in zip(components, values) {
+            result.append(try encodeParameter(param: component, value: val))
+        }
+        return result
+    }
+}
+
+/// Encode a tuple array (tuple[] or tuple[k])
+private func encodeTupleArray(value: Any, param: AbiParameter) throws -> Data {
+    guard let components = param.components else {
+        throw DeploymentError.encodingFailed("Tuple array without components")
+    }
+
+    let type = param.type
+
+    // Check if it's a dynamic or fixed tuple array
+    if type == "tuple[]" {
+        return try encodeDynamicArray(value: value, elementType: "tuple", elementComponents: components)
+    } else if let (_, size) = parseFixedArraySize(type) {
+        return try encodeFixedArray(value: value, elementType: "tuple", size: size, elementComponents: components)
+    } else {
+        throw DeploymentError.encodingFailed("Unsupported tuple array type: \(type)")
+    }
 }
 
 /// Encode a static parameter (fixed size)
@@ -332,6 +595,14 @@ private func encodeStaticParameter(type: String, value: Any) throws -> Data {
             return encodeBool(bool)
         }
         throw DeploymentError.encodingFailed("Invalid bool value")
+    }
+
+    // Handle fixed bytes (bytes1, bytes2, ..., bytes32)
+    if type.starts(with: "bytes") {
+        let sizeStr = type.dropFirst(5)  // Remove "bytes" prefix
+        if let size = Int(sizeStr), size >= 1, size <= 32 {
+            return try encodeFixedBytes(value: value, size: size)
+        }
     }
 
     throw DeploymentError.encodingFailed("Unsupported static parameter type: \(type)")
@@ -395,9 +666,15 @@ private func encodeUInt(_ value: BigInt) -> Data {
 }
 
 private func encodeInt(_ value: BigInt) -> Data {
-    // For simplicity, handle positive ints same as uint
-    // Full implementation would handle two's complement for negative
-    return encodeUInt(value)
+    if value >= 0 {
+        return encodeUInt(value)
+    } else {
+        // Two's complement for negative numbers
+        // For 256-bit signed integer, negative value n is represented as 2^256 + n
+        let maxUint256 = BigInt(2).power(256)
+        let twosComplement = maxUint256 + value
+        return encodeUInt(twosComplement)
+    }
 }
 
 private func encodeAddress(_ address: Address) -> Data {
@@ -409,6 +686,31 @@ private func encodeAddress(_ address: Address) -> Data {
 
 private func encodeBool(_ value: Bool) -> Data {
     return encodeUInt(value ? 1 : 0)
+}
+
+private func encodeFixedBytes(value: Any, size: Int) throws -> Data {
+    var bytes: Data
+    if let data = value as? Data {
+        bytes = data
+    } else if let hex = value as? String {
+        bytes = Data(hex: hex.stripHexPrefix())
+    } else if let byteArray = value as? [UInt8] {
+        bytes = Data(byteArray)
+    } else {
+        throw DeploymentError.encodingFailed("Invalid bytes\(size) value")
+    }
+
+    guard bytes.count <= size else {
+        throw DeploymentError.encodingFailed("bytes\(size) value too large: \(bytes.count) bytes")
+    }
+
+    // Right-pad to 32 bytes
+    var result = bytes
+    if result.count < size {
+        result.append(Data(repeating: 0, count: size - result.count))
+    }
+    result.append(Data(repeating: 0, count: 32 - size))
+    return result
 }
 
 private func encodeStringData(_ value: String) -> Data {

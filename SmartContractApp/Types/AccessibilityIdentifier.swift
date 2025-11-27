@@ -15,7 +15,8 @@ struct A11yID {
     let rawValue: String
 
     // MARK: - Sidebar Namespace
-    struct Sidebar {
+
+    enum Sidebar {
         static let endpoints = A11yID(rawValue: "sidebar-endpoints")
         static let abi = A11yID(rawValue: "sidebar-abi")
         static let wallet = A11yID(rawValue: "sidebar-wallet")
@@ -23,7 +24,8 @@ struct A11yID {
     }
 
     // MARK: - Endpoint Namespace
-    struct Endpoint {
+
+    enum Endpoint {
         // Buttons
         static let addButton = A11yID(rawValue: "endpoint-add-button")
         static let createButton = A11yID(rawValue: "endpoint-create-button")
@@ -58,7 +60,8 @@ struct A11yID {
     }
 
     // MARK: - ABI Namespace
-    struct ABI {
+
+    enum ABI {
         static let addButton = A11yID(rawValue: "abi-add-button")
         static let createButton = A11yID(rawValue: "abi-create-button")
         static let updateButton = A11yID(rawValue: "abi-update-button")
@@ -70,11 +73,20 @@ struct A11yID {
     }
 
     // MARK: - Wallet Namespace
-    struct Wallet {
+
+    enum Wallet {
         static let addButton = A11yID(rawValue: "wallet-add-button")
         static let createButton = A11yID(rawValue: "wallet-create-button")
         static let updateButton = A11yID(rawValue: "wallet-update-button")
         static let cancelButton = A11yID(rawValue: "wallet-cancel-button")
+
+        // Form fields
+        static let privateKeyField = A11yID(rawValue: "wallet-privatekey-field")
+        static let aliasTextField = A11yID(rawValue: "wallet-alias-textfield")
+
+        // Menu items
+        static let importFromPrivateKeyMenuItem = A11yID(rawValue: "wallet-import-privatekey-menu-item")
+        static let randomWalletMenuItem = A11yID(rawValue: "wallet-random-menu-item")
 
         static func row(_ id: String) -> A11yID {
             A11yID(rawValue: "wallet-row-\(id)")
@@ -82,19 +94,31 @@ struct A11yID {
     }
 
     // MARK: - Contract Namespace
-    struct Contract {
+
+    enum Contract {
         static let addButton = A11yID(rawValue: "contract-add-button")
         static let createButton = A11yID(rawValue: "contract-create-button")
         static let updateButton = A11yID(rawValue: "contract-update-button")
         static let cancelButton = A11yID(rawValue: "contract-cancel-button")
+        static let endpointButton = A11yID(rawValue: "contract-endpoint-button")
 
+        // Menu items
+        static let solidityMenuItem = A11yID(rawValue: "contract-solidity-menu-item")
+        static let bytecodeMenuItem = A11yID(rawValue: "contract-bytecode-menu-item")
+
+        // Dynamic identifiers
         static func row(_ id: String) -> A11yID {
             A11yID(rawValue: "contract-row-\(id)")
+        }
+
+        static func callButton(_ index: Int) -> A11yID {
+            A11yID(rawValue: "contract-call-button-\(index)")
         }
     }
 
     // MARK: - Chat Namespace
-    struct Chat {
+
+    enum Chat {
         static let addButton = A11yID(rawValue: "chat-add-button")
         static let deleteButton = A11yID(rawValue: "chat-delete-button")
         static let renameButton = A11yID(rawValue: "chat-rename-button")
@@ -110,7 +134,8 @@ struct A11yID {
     }
 
     // MARK: - Settings Namespace
-    struct Settings {
+
+    enum Settings {
         // Buttons
         static let addButton = A11yID(rawValue: "settings-add-button")
         static let createButton = A11yID(rawValue: "settings-create-button")
@@ -132,6 +157,57 @@ struct A11yID {
         static func providerRow(_ id: String) -> A11yID {
             A11yID(rawValue: "settings-provider-row-\(id)")
         }
+    }
+
+    // MARK: - Deployment Namespace
+
+    enum Deployment {
+        // Navigation buttons
+        static let nextButton = A11yID(rawValue: "deployment-next-button")
+        static let backButton = A11yID(rawValue: "deployment-back-button")
+        static let retryButton = A11yID(rawValue: "deployment-retry-button")
+        static let closeButton = A11yID(rawValue: "deployment-close-button")
+        static let cancelButton = A11yID(rawValue: "deployment-cancel-button")
+
+        // Form fields
+        static let contractNameTextField = A11yID(rawValue: "deployment-contract-name-textfield")
+        static let endpointPicker = A11yID(rawValue: "deployment-endpoint-picker")
+        static let solidityContractPicker = A11yID(rawValue: "deployment-solidity-contract-picker")
+        static let versionPicker = A11yID(rawValue: "deployment-version-picker")
+
+        // Constructor section
+        static let constructorSection = A11yID(rawValue: "deployment-constructor-section")
+    }
+
+    // MARK: - FunctionCall Namespace
+
+    enum FunctionCall {
+        static let cancelButton = A11yID(rawValue: "functioncall-cancel-button")
+        static let backButton = A11yID(rawValue: "functioncall-back-button")
+        static let continueButton = A11yID(rawValue: "functioncall-continue-button")
+        static let callFunctionButton = A11yID(rawValue: "functioncall-call-function-button")
+        static let signAndSendButton = A11yID(rawValue: "functioncall-sign-send-button")
+        static let doneButton = A11yID(rawValue: "functioncall-done-button")
+        static let retryButton = A11yID(rawValue: "functioncall-retry-button")
+
+        // Result page
+        static let successMessage = A11yID(rawValue: "functioncall-success-message")
+        static let errorMessage = A11yID(rawValue: "functioncall-error-message")
+
+        // Parameter form
+        static func parameterField(_ index: Int) -> A11yID {
+            A11yID(rawValue: "functioncall-parameter-\(index)")
+        }
+    }
+
+    // MARK: - Signing Namespace
+
+    enum Signing {
+        static let approveButton = A11yID(rawValue: "signing-approve-button")
+        static let rejectButton = A11yID(rawValue: "signing-reject-button")
+        static let retryButton = A11yID(rawValue: "signing-retry-button")
+        static let doneButton = A11yID(rawValue: "signing-done-button")
+        static let closeWindowButton = A11yID(rawValue: "signing-close-window-button")
     }
 
     // MARK: - Namespace Accessors (Enable dot syntax)
@@ -156,6 +232,15 @@ struct A11yID {
 
     /// Access Settings identifiers with dot syntax: .settings.addButton
     static let settings = Settings.self
+
+    /// Access Deployment identifiers with dot syntax: .deployment.nextButton
+    static let deployment = Deployment.self
+
+    /// Access FunctionCall identifiers with dot syntax: .functionCall.continueButton
+    static let functionCall = FunctionCall.self
+
+    /// Access Signing identifiers with dot syntax: .signing.approveButton
+    static let signing = Signing.self
 }
 
 // MARK: - View Extension

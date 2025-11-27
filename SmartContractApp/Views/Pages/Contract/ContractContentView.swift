@@ -120,6 +120,7 @@ struct ContractContentView: View {
                 } label: {
                     Label("Solidity", systemImage: "document")
                 }
+                .accessibilityIdentifier(.contract.solidityMenuItem)
 
                 Button {
                     // Reset state and show Bytecode deployment sheet
@@ -129,6 +130,7 @@ struct ContractContentView: View {
                 } label: {
                     Label("Bytecode", systemImage: "doc.text")
                 }
+                .accessibilityIdentifier(.contract.bytecodeMenuItem)
             }
 
             Button(action: {
@@ -140,6 +142,7 @@ struct ContractContentView: View {
         } label: {
             Image(systemName: "plus")
         }
+        .accessibilityIdentifier(.contract.addButton)
     }
 
     private func createDeploymentViewModel() -> ContractDeploymentViewModel {

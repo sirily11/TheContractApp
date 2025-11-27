@@ -150,6 +150,7 @@ struct SolidityDeploymentSheet: View {
                         Button("Close") {
                             dismiss()
                         }
+                        .accessibilityIdentifier(.deployment.closeButton)
                     }
                 } else {
                     // First page: Show Cancel

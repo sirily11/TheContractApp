@@ -142,15 +142,111 @@ extension AbiFunction {
             return selector
         }
 
-        // Encode each argument
-        var encodedParams = ""
+        // ABI encoding has two sections:
+        // 1. Head: contains static values or offsets to dynamic data
+        // 2. Tail: contains the actual dynamic data
+
+        var headParts: [String] = []
+        var tailParts: [String] = []
+
+        // Calculate the starting offset for dynamic data
+        // Each parameter takes 32 bytes (64 hex chars) in the head
+        var currentTailOffset = calculateHeadSize(params: inputs)
+
         for (index, arg) in args.enumerated() {
             let param = inputs[index]
-            let encoded = try encodeParameter(value: arg, type: param.type)
-            encodedParams += encoded
+
+            if isDynamicType(param.type, components: param.components) {
+                // For dynamic types, put offset in head and data in tail
+                let offsetHex = String(currentTailOffset, radix: 16)
+                let paddedOffset = String(repeating: "0", count: 64 - offsetHex.count) + offsetHex
+                headParts.append(paddedOffset)
+
+                // Encode the dynamic data
+                let dynamicData = try encodeParameter(value: arg, param: param)
+                tailParts.append(dynamicData)
+
+                // Update offset for next dynamic data (dynamicData length in bytes)
+                currentTailOffset += dynamicData.count / 2
+            } else {
+                // For static types, encode directly in head
+                let encoded = try encodeParameter(value: arg, param: param)
+                headParts.append(encoded)
+            }
         }
 
-        return selector + encodedParams
+        return selector + headParts.joined() + tailParts.joined()
+    }
+
+    /// Calculate the head size for a list of parameters
+    /// For static types, this is 32 bytes each
+    /// For dynamic types, this is 32 bytes (for the offset)
+    /// For static tuples, this is the sum of component sizes
+    private func calculateHeadSize(params: [AbiParameter]) -> Int {
+        var size = 0
+        for param in params {
+            if isDynamicType(param.type, components: param.components) {
+                // Dynamic types take 32 bytes for offset in head
+                size += 32
+            } else if param.type == "tuple", let components = param.components {
+                // Static tuple: sum of component sizes
+                size += calculateHeadSize(params: components)
+            } else if let (_, arraySize) = parseFixedArraySize(param.type) {
+                // Fixed array of static types
+                size += 32 * arraySize
+            } else {
+                // Static types take 32 bytes
+                size += 32
+            }
+        }
+        return size
+    }
+
+    /// Check if a type is dynamic (variable length)
+    /// - Parameters:
+    ///   - type: The Solidity type string
+    ///   - components: Optional components for tuple types
+    /// - Returns: True if the type is dynamic (variable length)
+    private func isDynamicType(_ type: String, components: [AbiParameter]? = nil) -> Bool {
+        // Dynamic types: string, bytes
+        if type == "string" || type == "bytes" {
+            return true
+        }
+
+        // Dynamic array (ends with [])
+        if type.hasSuffix("[]") {
+            return true
+        }
+
+        // Fixed-size arrays of dynamic types (T[k] where T is dynamic)
+        if let match = type.range(of: #"\[\d+\]$"#, options: .regularExpression) {
+            let elementType = String(type[..<match.lowerBound])
+            return isDynamicType(elementType, components: components)
+        }
+
+        // Tuples containing dynamic types
+        if type == "tuple", let components = components {
+            return components.contains { isDynamicType($0.type, components: $0.components) }
+        }
+
+        return false
+    }
+
+    /// Parse fixed array size from type string like "uint256[5]"
+    /// - Parameter type: The type string with array notation
+    /// - Returns: Tuple of (elementType, arraySize) or nil if not a fixed array
+    private func parseFixedArraySize(_ type: String) -> (elementType: String, size: Int)? {
+        guard let match = type.range(of: #"\[(\d+)\]$"#, options: .regularExpression) else {
+            return nil
+        }
+
+        let elementType = String(type[..<match.lowerBound])
+        let sizeStr = String(type[match]).dropFirst().dropLast() // Remove [ and ]
+        guard let size = Int(sizeStr) else {
+            return nil
+        }
+
+        return (elementType, size)
     }
 
     /// Decode function return data
@@ -216,11 +312,230 @@ extension AbiFunction {
             let componentTypes = components.map { formatType($0) }.joined(separator: ",")
             return "(\(componentTypes))"
         }
+        // Handle tuple arrays like "tuple[]"
+        if param.type.hasPrefix("tuple") && param.type.contains("["), let components = param.components {
+            let componentTypes = components.map { formatType($0) }.joined(separator: ",")
+            let arraySuffix = String(param.type.dropFirst(5)) // Remove "tuple" prefix
+            return "(\(componentTypes))\(arraySuffix)"
+        }
         return param.type
     }
 
-    private func encodeParameter(value: Any, type: String) throws -> String {
-        // Handle different Solidity types
+    // MARK: - Master Encoding Method
+
+    /// Encode a parameter value based on its ABI parameter definition
+    /// This is the main entry point for encoding any Solidity type
+    private func encodeParameter(value: Any, param: AbiParameter) throws -> String {
+        let type = param.type
+
+        // Handle tuples (structs)
+        if type == "tuple" {
+            guard let components = param.components else {
+                throw AbiEncodingError.unsupportedType("tuple without components")
+            }
+            return try encodeTuple(value: value, components: components)
+        }
+
+        // Handle tuple arrays (e.g., "tuple[]", "tuple[3]")
+        if type.hasPrefix("tuple[") {
+            return try encodeTupleArray(value: value, param: param)
+        }
+
+        // Handle dynamic arrays (T[])
+        if type.hasSuffix("[]") {
+            let elementType = String(type.dropLast(2))
+            return try encodeDynamicArray(value: value, elementType: elementType, elementComponents: param.components)
+        }
+
+        // Handle fixed arrays (T[k])
+        if let (elementType, size) = parseFixedArraySize(type) {
+            return try encodeFixedArray(value: value, elementType: elementType, size: size, elementComponents: param.components)
+        }
+
+        // Handle dynamic types
+        if type == "string" {
+            return try encodeStringDynamic(value)
+        }
+        if type == "bytes" {
+            return try encodeBytesDynamic(value)
+        }
+
+        // Handle static types
+        return try encodeStaticParameter(value: value, type: type)
+    }
+
+    // MARK: - Array Encoding
+
+    /// Encode a dynamic array (T[])
+    /// Format: length (32 bytes) + encoded elements
+    private func encodeDynamicArray(value: Any, elementType: String, elementComponents: [AbiParameter]?) throws -> String {
+        guard let array = value as? [Any] else {
+            throw AbiEncodingError.invalidValue(expected: "array", got: String(describing: value))
+        }
+
+        // Encode length prefix (32 bytes)
+        let lengthHex = String(array.count, radix: 16)
+        var result = String(repeating: "0", count: 64 - lengthHex.count) + lengthHex
+
+        // Check if element type is dynamic
+        let elementIsDynamic = isDynamicType(elementType, components: elementComponents)
+
+        if elementIsDynamic {
+            // Dynamic elements: encode offsets in head, then data in tail
+            var offsets: [Int] = []
+            var tails: [String] = []
+            var currentOffset = array.count * 32 // Start after all offset slots
+
+            for element in array {
+                offsets.append(currentOffset)
+                let elementParam = AbiParameter(name: "", type: elementType, components: elementComponents)
+                let encoded = try encodeParameter(value: element, param: elementParam)
+                tails.append(encoded)
+                currentOffset += encoded.count / 2 // Convert hex chars to bytes
+            }
+
+            // Append offsets
+            for offset in offsets {
+                let offsetHex = String(offset, radix: 16)
+                result += String(repeating: "0", count: 64 - offsetHex.count) + offsetHex
+            }
+
+            // Append data
+            for tail in tails {
+                result += tail
+            }
+        } else {
+            // Static elements: encode each element directly
+            for element in array {
+                let elementParam = AbiParameter(name: "", type: elementType, components: elementComponents)
+                result += try encodeParameter(value: element, param: elementParam)
+            }
+        }
+
+        return result
+    }
+
+    /// Encode a fixed-size array (T[k])
+    private func encodeFixedArray(value: Any, elementType: String, size: Int, elementComponents: [AbiParameter]?) throws -> String {
+        guard let array = value as? [Any] else {
+            throw AbiEncodingError.invalidValue(expected: "array[\(size)]", got: String(describing: value))
+        }
+
+        guard array.count == size else {
+            throw AbiEncodingError.invalidValue(expected: "array[\(size)]", got: "array[\(array.count)]")
+        }
+
+        // Check if element type is dynamic
+        let elementIsDynamic = isDynamicType(elementType, components: elementComponents)
+
+        if elementIsDynamic {
+            // Fixed array of dynamic types: similar to dynamic array but without length prefix
+            var offsets: [Int] = []
+            var tails: [String] = []
+            var currentOffset = size * 32
+
+            for element in array {
+                offsets.append(currentOffset)
+                let elementParam = AbiParameter(name: "", type: elementType, components: elementComponents)
+                let encoded = try encodeParameter(value: element, param: elementParam)
+                tails.append(encoded)
+                currentOffset += encoded.count / 2
+            }
+
+            var result = ""
+            for offset in offsets {
+                let offsetHex = String(offset, radix: 16)
+                result += String(repeating: "0", count: 64 - offsetHex.count) + offsetHex
+            }
+            for tail in tails {
+                result += tail
+            }
+            return result
+        } else {
+            // Fixed array of static types: encode each element directly
+            var result = ""
+            for element in array {
+                let elementParam = AbiParameter(name: "", type: elementType, components: elementComponents)
+                result += try encodeParameter(value: element, param: elementParam)
+            }
+            return result
+        }
+    }
+
+    // MARK: - Tuple Encoding
+
+    /// Encode a tuple (struct)
+    /// Format: For static tuples, concatenate all encoded values
+    ///         For dynamic tuples, use head (values/offsets) + tail (dynamic data)
+    private func encodeTuple(value: Any, components: [AbiParameter]) throws -> String {
+        guard let values = value as? [Any] else {
+            throw AbiEncodingError.invalidValue(expected: "tuple (array of values)", got: String(describing: value))
+        }
+
+        guard values.count == components.count else {
+            throw AbiEncodingError.argumentCountMismatch(expected: components.count, got: values.count)
+        }
+
+        // Check if tuple contains any dynamic types
+        let hasDynamicComponents = components.contains { isDynamicType($0.type, components: $0.components) }
+
+        if hasDynamicComponents {
+            // Dynamic tuple: head (static values + offsets) + tail (dynamic data)
+            var head = ""
+            var tail = ""
+            var currentOffset = calculateHeadSize(params: components)
+
+            for (component, val) in zip(components, values) {
+                if isDynamicType(component.type, components: component.components) {
+                    // Add offset to head
+                    let offsetHex = String(currentOffset, radix: 16)
+                    head += String(repeating: "0", count: 64 - offsetHex.count) + offsetHex
+
+                    // Add data to tail
+                    let encoded = try encodeParameter(value: val, param: component)
+                    tail += encoded
+                    currentOffset += encoded.count / 2
+                } else {
+                    // Add static value to head
+                    head += try encodeParameter(value: val, param: component)
+                }
+            }
+
+            return head + tail
+        } else {
+            // Static tuple: encode all components sequentially
+            var result = ""
+            for (component, val) in zip(components, values) {
+                result += try encodeParameter(value: val, param: component)
+            }
+            return result
+        }
+    }
+
+    /// Encode a tuple array (tuple[] or tuple[k])
+    private func encodeTupleArray(value: Any, param: AbiParameter) throws -> String {
+        guard let components = param.components else {
+            throw AbiEncodingError.unsupportedType("tuple array without components")
+        }
+
+        let type = param.type
+
+        // Check if it's a dynamic or fixed tuple array
+        if type == "tuple[]" {
+            // Dynamic tuple array
+            return try encodeDynamicArray(value: value, elementType: "tuple", elementComponents: components)
+        } else if let (_, size) = parseFixedArraySize(type) {
+            // Fixed tuple array
+            return try encodeFixedArray(value: value, elementType: "tuple", size: size, elementComponents: components)
+        } else {
+            throw AbiEncodingError.unsupportedType(type)
+        }
+    }
+
+    // MARK: - Static Type Encoding
+
+    /// Encode a static (fixed-size) parameter
+    private func encodeStaticParameter(value: Any, type: String) throws -> String {
         switch type {
         case "address":
             return try encodeAddress(value)
@@ -230,10 +545,6 @@ extension AbiFunction {
             return try encodeInt(value, bits: parseIntegerBits(t))
         case "bool":
             return try encodeBool(value)
-        case "string":
-            return try encodeString(value)
-        case "bytes":
-            return try encodeBytes(value)
         case let t where t.hasPrefix("bytes") && t.count > 5:
             // Fixed bytes (bytes1, bytes32, etc.)
             return try encodeFixedBytes(value, size: parseFixedBytesSize(t))
@@ -338,31 +649,63 @@ extension AbiFunction {
         return String(repeating: "0", count: 63) + (boolValue ? "1" : "0")
     }
 
-    private func encodeString(_ value: Any) throws -> String {
+    /// Encode a string for dynamic ABI encoding
+    /// Returns: length (32 bytes) + data (padded to 32-byte boundary)
+    private func encodeStringDynamic(_ value: Any) throws -> String {
         guard let str = value as? String else {
             throw AbiEncodingError.invalidValue(expected: "string", got: String(describing: value))
         }
 
-        // Dynamic types require offset encoding - simplified for now
         guard let data = str.data(using: .utf8) else {
             throw AbiEncodingError.invalidValue(expected: "string", got: str)
         }
 
-        return data.toHexString()
+        // Encode length (32 bytes)
+        let lengthHex = String(data.count, radix: 16)
+        let paddedLength = String(repeating: "0", count: 64 - lengthHex.count) + lengthHex
+
+        // Encode data with padding to 32-byte boundary
+        let dataHex = data.toHexString()
+        let paddingNeeded = (32 - (data.count % 32)) % 32
+        let paddedData = dataHex + String(repeating: "0", count: paddingNeeded * 2)
+
+        return paddedLength + paddedData
     }
 
-    private func encodeBytes(_ value: Any) throws -> String {
-        if let data = value as? Data {
-            return data.toHexString()
+    /// Encode bytes for dynamic ABI encoding
+    /// Returns: length (32 bytes) + data (padded to 32-byte boundary)
+    private func encodeBytesDynamic(_ value: Any) throws -> String {
+        let data: Data
+        if let d = value as? Data {
+            data = d
         } else if let hex = value as? String {
-            return hex.stripHexPrefix()
+            data = Data(hex: hex.stripHexPrefix())
         } else {
             throw AbiEncodingError.invalidValue(expected: "bytes", got: String(describing: value))
         }
+
+        // Encode length (32 bytes)
+        let lengthHex = String(data.count, radix: 16)
+        let paddedLength = String(repeating: "0", count: 64 - lengthHex.count) + lengthHex
+
+        // Encode data with padding to 32-byte boundary
+        let dataHex = data.toHexString()
+        let paddingNeeded = (32 - (data.count % 32)) % 32
+        let paddedData = dataHex + String(repeating: "0", count: paddingNeeded * 2)
+
+        return paddedLength + paddedData
     }
 
     private func encodeFixedBytes(_ value: Any, size: Int) throws -> String {
-        let hex = try encodeBytes(value)
+        let hex: String
+        if let data = value as? Data {
+            hex = data.toHexString()
+        } else if let hexStr = value as? String {
+            hex = hexStr.stripHexPrefix()
+        } else {
+            throw AbiEncodingError.invalidValue(expected: "bytes\(size)", got: String(describing: value))
+        }
+
         guard hex.count <= size * 2 else {
             throw AbiEncodingError.invalidValue(expected: "bytes\(size)", got: hex)
         }
