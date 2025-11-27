@@ -5,9 +5,9 @@
 //  Created by Qiwei Li on 11/5/25.
 //
 
+import AgentLayout
 import SwiftData
 import SwiftUI
-import AgentLayout
 
 @main
 struct SmartContractAppApp: App {
@@ -88,7 +88,7 @@ struct SmartContractAppApp: App {
         .modelContainer(sharedModelContainer)
 
         #if os(macOS)
-        WindowGroup(id: "signing-wallet") {
+        Window(Text("Signing window"), id: "signing-wallet") {
             SigningWalletWindowWrapper()
                 .containerBackground(.thinMaterial, for: .window)
                 .environment(walletSignerViewModel)
