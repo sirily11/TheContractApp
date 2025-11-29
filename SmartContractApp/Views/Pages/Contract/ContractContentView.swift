@@ -155,10 +155,10 @@ struct ContractContentView: View {
         let walletSigner = WalletSignerViewModel(currentWallet: currentWallet)
         walletSigner.modelContext = modelContext
 
-        return ContractDeploymentViewModel(
-            modelContext: modelContext,
-            walletSigner: walletSigner
-        )
+        let viewModel = ContractDeploymentViewModel()
+        viewModel.modelContext = modelContext
+        viewModel.walletSigner = walletSigner
+        return viewModel
     }
 
     private func deleteContract(_ contract: EVMContract) {

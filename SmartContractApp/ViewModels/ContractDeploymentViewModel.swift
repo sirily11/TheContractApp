@@ -90,24 +90,21 @@ enum DeploymentError: LocalizedError {
 @Observable
 final class ContractDeploymentViewModel {
     // MARK: - State Properties
-    
+
     var isCompiling: Bool = false
     var isDeploying: Bool = false
     var compilationError: String?
     var deploymentError: String?
     var deploymentProgress: DeploymentProgress = .idle
-    
+
     // MARK: - Dependencies
-    
-    private let modelContext: ModelContext
-    private let walletSigner: WalletSignerViewModel
-    
+
+    var modelContext: ModelContext!
+    var walletSigner: WalletSignerProtocol!
+
     // MARK: - Initialization
-    
-    init(modelContext: ModelContext, walletSigner: WalletSignerViewModel) {
-        self.modelContext = modelContext
-        self.walletSigner = walletSigner
-    }
+
+    init() {}
     
     // MARK: - Solidity Deployment
     

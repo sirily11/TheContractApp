@@ -153,6 +153,7 @@ struct ChatDetailView: View {
         // would cause setupChat to be called again and reinitialize agentChat from persistent storage
         if currentChatId != chat.id {
             agentChat = chatViewModel.convertToChat(chat)
+            print("Messages: \(agentChat?.messages)")
             currentChatId = chat.id
         }
 

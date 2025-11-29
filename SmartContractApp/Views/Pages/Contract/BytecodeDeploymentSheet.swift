@@ -523,11 +523,11 @@ struct BytecodeDeploymentSheet: View {
                 currentWallet: mockWallet
             )
             walletSigner.modelContext = container.mainContext
-            
-            return ContractDeploymentViewModel(
-                modelContext: container.mainContext,
-                walletSigner: walletSigner
-            )
+
+            let viewModel = ContractDeploymentViewModel()
+            viewModel.modelContext = container.mainContext
+            viewModel.walletSigner = walletSigner
+            return viewModel
         }()
     )
     .modelContainer({

@@ -18,7 +18,7 @@ enum DeployTools {
     /// This tool returns immediately with pending confirmation, and the UI will handle user interaction
     static func deployContractTool(
         context: ModelContext,
-        walletSigner: WalletSignerViewModel,
+        walletSigner: any WalletSignerProtocol,
         registry: ToolRegistry
     ) -> AgentTool<DeployInput, DeployOutput> {
         AgentTool(
@@ -49,7 +49,6 @@ enum DeployTools {
                 try await deployContract(
                     input: input,
                     context: context,
-                    walletSigner: walletSigner,
                     registry: registry
                 )
             }
@@ -61,7 +60,6 @@ enum DeployTools {
     private static func deployContract(
         input: DeployInput,
         context: ModelContext,
-        walletSigner: WalletSignerViewModel,
         registry: ToolRegistry
     ) async throws -> DeployOutput {
         // Basic validation - actual deployment is handled by ToolRegistry.handleDeploy

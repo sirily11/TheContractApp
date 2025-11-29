@@ -58,7 +58,7 @@ final class ToolRegistry {
     // MARK: - Dependencies
 
     var modelContext: ModelContext!
-    var walletSigner: WalletSignerViewModel!
+    var walletSigner: WalletSignerProtocol!
 
     // MARK: - Pending Deployment Tracking
 
@@ -86,15 +86,17 @@ final class ToolRegistry {
 
     private var transactionSubscription: Task<Void, Never>?
 
-    private var chatProvider: ChatProvider!
+    private var chatProvider: ChatProviderProtocol!
+    var deploymentProvider: ContractDeploymentProtocol!
 
     init() {
         // Start listening to transaction events immediately
         startTransactionSubscription()
     }
 
-    func setChatProvider(_ chatProvider: ChatProvider) {
+    func setProviders(_ chatProvider: ChatProviderProtocol, deploymentProvider: ContractDeploymentProtocol) {
         self.chatProvider = chatProvider
+        self.deploymentProvider = deploymentProvider
     }
 
     // MARK: - Transaction Subscription
@@ -117,7 +119,9 @@ final class ToolRegistry {
 
     /// Creates all available tools
     func createTools() -> [any AgentToolProtocol] {
-        guard let context = modelContext, let signer = walletSigner else {
+        guard let context = modelContext,
+              let signer = walletSigner
+        else {
             return []
         }
 
@@ -286,11 +290,14 @@ final class ToolRegistry {
     }
 
     /// Handles deployment when user clicks "Sign & Deploy"
+    /// - Parameters:
+    ///   - input: The deployment input
+    ///   - toolCallId: The tool call ID
     func handleDeploy(
         input: DeployInput,
         toolCallId: String
     ) async -> DeploymentState {
-        guard let context = modelContext, let signer = walletSigner else {
+        guard let context = modelContext, let _ = walletSigner, let provider = deploymentProvider else {
             return .failed("Dependencies not configured")
         }
 
@@ -314,10 +321,9 @@ final class ToolRegistry {
         }
 
         // 3. Compile source code
-        let viewModel = ContractDeploymentViewModel(modelContext: context, walletSigner: signer)
         let compilationResult: (bytecode: String, abi: String)
         do {
-            compilationResult = try await viewModel.compileSolidity(sourceCode)
+            compilationResult = try await provider.compileSolidity(sourceCode, contractName: nil, version: "0.8.21")
         } catch {
             return .failed("Compilation failed: \(error.localizedDescription)")
         }
@@ -348,7 +354,7 @@ final class ToolRegistry {
 
         // 6. Queue deployment transaction
         do {
-            let queuedTx = try await viewModel.deployBytecodeToNetwork(
+            let queuedTx = try await provider.deployBytecodeToNetwork(
                 compilationResult.bytecode,
                 abi: parser?.items ?? [],
                 endpoint: endpoint,

@@ -20,7 +20,7 @@ enum CallTools {
     /// Creates the call_contract_read tool for calling view/pure functions
     static func callReadTool(
         context: ModelContext,
-        walletSigner: WalletSignerViewModel
+        walletSigner: any WalletSignerProtocol
     ) -> AgentTool<CallReadInput, CallReadOutput> {
         AgentTool(
             name: CallTools.nameReadTool,
@@ -54,7 +54,7 @@ enum CallTools {
     /// Creates the call_contract_write tool for calling state-changing functions
     static func callWriteTool(
         context: ModelContext,
-        walletSigner: WalletSignerViewModel,
+        walletSigner: any WalletSignerProtocol,
         registry: ToolRegistry
     ) -> AgentTool<CallWriteInput, CallWriteOutput> {
         AgentTool(
@@ -94,7 +94,7 @@ enum CallTools {
     private static func callReadFunction(
         input: CallReadInput,
         context: ModelContext,
-        walletSigner: WalletSignerViewModel
+        walletSigner: any WalletSignerProtocol
     ) async throws -> CallReadOutput {
         // Get contract
         guard let contractId = UUID(uuidString: input.contractId) else {
@@ -187,7 +187,7 @@ enum CallTools {
     private static func callWriteFunction(
         input: CallWriteInput,
         context: ModelContext,
-        walletSigner: WalletSignerViewModel,
+        walletSigner: any WalletSignerProtocol,
         registry: ToolRegistry
     ) async throws -> CallWriteOutput {
         // Basic validation - actual execution is handled by ToolRegistry.handleWriteCall
