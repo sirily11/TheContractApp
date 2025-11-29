@@ -113,7 +113,6 @@ struct ChatDetailView: View {
                 sources: chatViewModel.sources,
                 tools: toolRegistry.createTools(),
                 onSend: { _ in
-                    print("Message \(agentChat.messages)")
                 },
                 onMessageChange: { messages in
                     chatViewModel.saveMessages(messages, to: chat)
@@ -153,6 +152,7 @@ struct ChatDetailView: View {
         // would cause setupChat to be called again and reinitialize agentChat from persistent storage
         if currentChatId != chat.id {
             agentChat = chatViewModel.convertToChat(chat)
+            print("Messages: \(agentChat?.messages)")
             currentChatId = chat.id
         }
 

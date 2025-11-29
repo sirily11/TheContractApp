@@ -76,7 +76,9 @@ struct SolidityDeploymentSheet: View {
         if let vm = _viewModel {
             return vm
         }
-        let vm = ContractDeploymentViewModel(modelContext: modelContext, walletSigner: signerViewModel)
+        let vm = ContractDeploymentViewModel()
+        vm.modelContext = modelContext
+        vm.walletSigner = signerViewModel
         _viewModel = vm
         return vm
     }

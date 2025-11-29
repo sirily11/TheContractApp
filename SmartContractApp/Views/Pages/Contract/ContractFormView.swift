@@ -325,14 +325,10 @@ struct ContractFormView: View {
             )
         } else if contractType == .bytecode {
             if let walletSigner = getWalletSigner() {
-                let viewModel = ContractDeploymentViewModel(
-                    modelContext: modelContext,
-                    walletSigner: walletSigner
-                )
                 BytecodeDeploymentSheet(
                     bytecode: $bytecode,
                     contractName: $name,
-                    viewModel: viewModel,
+                    viewModel: makeDeploymentViewModel(walletSigner: walletSigner),
                     onDeploy: { deployedContract in
                         // Dismiss the form after successful deployment
                         dismiss()
@@ -346,7 +342,14 @@ struct ContractFormView: View {
     }
     
     // MARK: - Helper Functions
-    
+
+    private func makeDeploymentViewModel(walletSigner: WalletSignerViewModel) -> ContractDeploymentViewModel {
+        let viewModel = ContractDeploymentViewModel()
+        viewModel.modelContext = modelContext
+        viewModel.walletSigner = walletSigner
+        return viewModel
+    }
+
     private func getWalletSigner() -> WalletSignerViewModel? {
         // Query for the first available wallet
         let descriptor = FetchDescriptor<EVMWallet>()

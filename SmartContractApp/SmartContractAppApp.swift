@@ -14,6 +14,7 @@ struct SmartContractAppApp: App {
     @State private var windowStateManager = WindowStateManager()
     @State private var walletSignerViewModel = WalletSignerViewModel()
     @State private var contractInteractionViewModel = ContractInteractionViewModel()
+    @State private var contractDeploymentViewModel = ContractDeploymentViewModel()
     @State private var functionListViewModel = FunctionListViewModel()
     @State private var chatViewModel = ChatViewModel()
     @State private var toolRegistry = ToolRegistry()
@@ -80,6 +81,7 @@ struct SmartContractAppApp: App {
                 .environment(windowStateManager)
                 .environment(walletSignerViewModel)
                 .environment(contractInteractionViewModel)
+                .environment(contractDeploymentViewModel)
                 .environment(functionListViewModel)
                 .environment(chatViewModel)
                 .environment(toolRegistry)
@@ -113,6 +115,7 @@ private struct ContentViewWrapper: View {
     @Environment(\.modelContext) var modelContext
     @Environment(WalletSignerViewModel.self) var walletSignerViewModel
     @Environment(ContractInteractionViewModel.self) var contractInteractionViewModel
+    @Environment(ContractDeploymentViewModel.self) var contractDeploymentViewModel
     @Environment(FunctionListViewModel.self) var functionListViewModel
     @Environment(ChatViewModel.self) var chatViewModel
     @Environment(ToolRegistry.self) var toolRegistry
@@ -129,11 +132,13 @@ private struct ContentViewWrapper: View {
                 walletSignerViewModel.modelContext = modelContext
                 contractInteractionViewModel.modelContext = modelContext
                 contractInteractionViewModel.walletSigner = walletSignerViewModel
+                contractDeploymentViewModel.modelContext = modelContext
+                contractDeploymentViewModel.walletSigner = walletSignerViewModel
                 functionListViewModel.interactionViewModel = contractInteractionViewModel
                 chatViewModel.modelContext = modelContext
                 toolRegistry.modelContext = modelContext
                 toolRegistry.walletSigner = walletSignerViewModel
-                toolRegistry.setChatProvider(chatProvider)
+                toolRegistry.setProviders(chatProvider, deploymentProvider: contractDeploymentViewModel)
 
                 // Initialize wallet selection from AppStorage
                 initializeWalletSelection()

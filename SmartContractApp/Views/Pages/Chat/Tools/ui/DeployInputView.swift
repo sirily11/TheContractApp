@@ -340,7 +340,7 @@ private struct SourceCodeSheet: View {
     }
 
     var body: some View {
-        NavigationStack {
+        ScrollView {
             SolidityView(content: $content, readonly: true, noCompile: true)
                 .frame(minWidth: 500, minHeight: 400)
                 .navigationTitle("Source Code")
@@ -353,7 +353,6 @@ private struct SourceCodeSheet: View {
                     }
                 }
         }
-        .frame(minWidth: 600, minHeight: 500)
     }
 }
 
