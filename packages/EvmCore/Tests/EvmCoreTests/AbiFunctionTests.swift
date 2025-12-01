@@ -748,9 +748,9 @@ struct AbiFunctionTests {
 
         // Encode 100 as 32-byte hex
         let data = "0x" + String(repeating: "0", count: 62) + "64" // 100 in hex
-        let result: UInt64 = try function.decodeResult(data: data)
+        let result: BigInt = try function.decodeResult(data: data)
 
-        #expect(result == 100)
+        #expect(result == BigInt(100))
     }
 
     @Test("Decode bool result")

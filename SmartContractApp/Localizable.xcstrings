@@ -199,9 +199,6 @@
     "0x0" : {
 
     },
-    "1" : {
-
-    },
     "1, 137, 56, etc." : {
       "localizations" : {
         "zh-Hans" : {
@@ -2143,9 +2140,6 @@
         }
       }
     },
-    "https://..." : {
-
-    },
     "Import Existing Contract" : {
       "localizations" : {
         "zh-Hans" : {
@@ -2427,6 +2421,7 @@
       }
     },
     "Network chain ID (e.g., 1 for Ethereum Mainnet)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -2897,6 +2892,7 @@
       }
     },
     "Paste the contract ABI JSON" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -2945,6 +2941,9 @@
           }
         }
       }
+    },
+    "Please select an ABI" : {
+
     },
     "Please select an endpoint" : {
       "localizations" : {
@@ -3371,6 +3370,9 @@
         }
       }
     },
+    "Select ABI..." : {
+
+    },
     "Select an item to view its details." : {
       "localizations" : {
         "zh-Hans" : {
@@ -3457,6 +3459,19 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "选择要从 Solidity 代码中部署的合约"
+          }
+        }
+      }
+    },
+    "Selected: %@" : {
+
+    },
+    "Selected: %@ - %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Selected: %1$@ - %2$@"
           }
         }
       }
