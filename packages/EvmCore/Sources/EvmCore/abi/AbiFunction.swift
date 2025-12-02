@@ -259,6 +259,11 @@ extension AbiFunction {
             throw AbiEncodingError.noOutputs
         }
 
+        // Handle empty data (0x)
+        guard !cleanData.isEmpty else {
+            throw AbiEncodingError.noData
+        }
+
         // Single return value
         if outputs.count == 1 {
             let output = outputs[0]
@@ -296,6 +301,11 @@ extension AbiFunction {
 
         guard outputs.count > 0 else {
             throw AbiEncodingError.noOutputs
+        }
+
+        // Handle empty data (0x)
+        guard !cleanData.isEmpty else {
+            throw AbiEncodingError.noData
         }
 
         // For now, we'll implement a basic decoder that handles simple types
@@ -1269,7 +1279,7 @@ extension AbiFunction {
 
 // MARK: - Encoding Errors
 
-public enum AbiEncodingError: Error, LocalizedError {
+public enum AbiEncodingError: Error, LocalizedError, Equatable {
     case invalidSignature
     case argumentCountMismatch(expected: Int, got: Int)
     case unsupportedType(String)
@@ -1278,6 +1288,7 @@ public enum AbiEncodingError: Error, LocalizedError {
     case invalidHexString
     case insufficientData
     case noOutputs
+    case noData
     case decodingFailed(String)
 
     public var errorDescription: String? {
@@ -1298,6 +1309,8 @@ public enum AbiEncodingError: Error, LocalizedError {
             return "Insufficient data for decoding"
         case .noOutputs:
             return "Function has no outputs to decode"
+        case .noData:
+            return "No data to decode (received empty 0x)"
         case .decodingFailed(let message):
             return "Decoding failed: \(message)"
         }

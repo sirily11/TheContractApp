@@ -400,5 +400,111 @@
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "964EB823-ED70-4E16-BC87-1E24E672A3DD"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "SmartContractApp/ViewModels/ContractInteractionViewModel.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "113"
+            endingLineNumber = "113"
+            landmarkName = "executeReadFunction(contract:functionName:parameters:)"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "E4F762F7-3B0E-422D-BA5C-1C159C63828A"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "packages/EvmCore/Sources/EvmCore/contract/EvmContract.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "71"
+            endingLineNumber = "71"
+            landmarkName = "callFunction(name:args:value:gasLimit:gasPrice:)"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "EFFC86AC-7456-4A17-8176-D9F0318D7A69"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "packages/EvmCore/Sources/EvmCore/contract/EvmContract.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "93"
+            endingLineNumber = "93"
+            landmarkName = "callFunction(name:args:value:gasLimit:gasPrice:)"
+            landmarkType = "7">
+            <Locations>
+               <Location
+                  uuid = "EFFC86AC-7456-4A17-8176-D9F0318D7A69 - e4ac9affae8b665a"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "(1) suspend resume partial function for EvmCore.EvmContract.callFunction(name: Swift.String, args: Swift.Array&lt;EvmCore.AnyCodable&gt;, value: EvmCore.TransactionValue, gasLimit: Swift.Optional&lt;EvmCore.GasLimit&gt;, gasPrice: Swift.Optional&lt;EvmCore.Gwei&gt;) async throws -&gt; EvmCore.ContractCallResult"
+                  moduleName = "SmartContractApp.debug.dylib"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/qiweili/Desktop/rxlab/SmartContractApp/packages/EvmCore/Sources/EvmCore/contract/EvmContract.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "93"
+                  endingLineNumber = "93">
+               </Location>
+               <Location
+                  uuid = "EFFC86AC-7456-4A17-8176-D9F0318D7A69 - 8f711d6ff1b56ade"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "(2) await resume partial function for EvmCore.EvmContract.callFunction(name: Swift.String, args: Swift.Array&lt;EvmCore.AnyCodable&gt;, value: EvmCore.TransactionValue, gasLimit: Swift.Optional&lt;EvmCore.GasLimit&gt;, gasPrice: Swift.Optional&lt;EvmCore.Gwei&gt;) async throws -&gt; EvmCore.ContractCallResult"
+                  moduleName = "SmartContractApp.debug.dylib"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/qiweili/Desktop/rxlab/SmartContractApp/packages/EvmCore/Sources/EvmCore/contract/EvmContract.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "93"
+                  endingLineNumber = "93">
+               </Location>
+               <Location
+                  uuid = "EFFC86AC-7456-4A17-8176-D9F0318D7A69 - 713b7fa1d2578a6c"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "(3) suspend resume partial function for EvmCore.EvmContract.callFunction(name: Swift.String, args: Swift.Array&lt;EvmCore.AnyCodable&gt;, value: EvmCore.TransactionValue, gasLimit: Swift.Optional&lt;EvmCore.GasLimit&gt;, gasPrice: Swift.Optional&lt;EvmCore.Gwei&gt;) async throws -&gt; EvmCore.ContractCallResult"
+                  moduleName = "SmartContractApp.debug.dylib"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/qiweili/Desktop/rxlab/SmartContractApp/packages/EvmCore/Sources/EvmCore/contract/EvmContract.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "93"
+                  endingLineNumber = "93">
+               </Location>
+               <Location
+                  uuid = "EFFC86AC-7456-4A17-8176-D9F0318D7A69 - 5112c3821162ff89"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "(6) suspend resume partial function for EvmCore.EvmContract.callFunction(name: Swift.String, args: Swift.Array&lt;EvmCore.AnyCodable&gt;, value: EvmCore.TransactionValue, gasLimit: Swift.Optional&lt;EvmCore.GasLimit&gt;, gasPrice: Swift.Optional&lt;EvmCore.Gwei&gt;) async throws -&gt; EvmCore.ContractCallResult"
+                  moduleName = "SmartContractApp.debug.dylib"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/qiweili/Desktop/rxlab/SmartContractApp/packages/EvmCore/Sources/EvmCore/contract/EvmContract.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "93"
+                  endingLineNumber = "93">
+               </Location>
+            </Locations>
+         </BreakpointContent>
+      </BreakpointProxy>
    </Breakpoints>
 </Bucket>

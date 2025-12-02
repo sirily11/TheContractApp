@@ -869,4 +869,97 @@ struct AbiFunctionTests {
         let description = error.errorDescription ?? ""
         #expect(description.contains("test error"))
     }
+
+    @Test("AbiEncodingError noData")
+    func testAbiEncodingErrorNoData() {
+        let error = AbiEncodingError.noData
+        let description = error.errorDescription ?? ""
+        #expect(description.contains("No data"))
+    }
+
+    // MARK: - Empty Data (0x) Decoding Tests
+
+    @Test("Decode empty 0x data for uint256 throws noData")
+    func testDecodeEmptyDataUint256ThrowsNoData() throws {
+        let function = AbiFunction(
+            name: "getValue",
+            inputs: [],
+            outputs: [AbiParameter(name: "", type: "uint256")],
+            stateMutability: .view
+        )
+
+        #expect(throws: AbiEncodingError.noData) {
+            _ = try function.decodeResultToAny(data: "0x")
+        }
+    }
+
+    @Test("Decode empty 0x data for string throws noData")
+    func testDecodeEmptyDataStringThrowsNoData() throws {
+        let function = AbiFunction(
+            name: "getName",
+            inputs: [],
+            outputs: [AbiParameter(name: "", type: "string")],
+            stateMutability: .view
+        )
+
+        #expect(throws: AbiEncodingError.noData) {
+            _ = try function.decodeResultToAny(data: "0x")
+        }
+    }
+
+    @Test("Decode empty 0x data for address throws noData")
+    func testDecodeEmptyDataAddressThrowsNoData() throws {
+        let function = AbiFunction(
+            name: "getOwner",
+            inputs: [],
+            outputs: [AbiParameter(name: "", type: "address")],
+            stateMutability: .view
+        )
+
+        #expect(throws: AbiEncodingError.noData) {
+            _ = try function.decodeResultToAny(data: "0x")
+        }
+    }
+
+    @Test("Decode empty 0x data for bool throws noData")
+    func testDecodeEmptyDataBoolThrowsNoData() throws {
+        let function = AbiFunction(
+            name: "getFlag",
+            inputs: [],
+            outputs: [AbiParameter(name: "", type: "bool")],
+            stateMutability: .view
+        )
+
+        #expect(throws: AbiEncodingError.noData) {
+            _ = try function.decodeResultToAny(data: "0x")
+        }
+    }
+
+    @Test("Decode empty string (no 0x prefix) throws noData")
+    func testDecodeEmptyStringThrowsNoData() throws {
+        let function = AbiFunction(
+            name: "getValue",
+            inputs: [],
+            outputs: [AbiParameter(name: "", type: "uint256")],
+            stateMutability: .view
+        )
+
+        #expect(throws: AbiEncodingError.noData) {
+            _ = try function.decodeResultToAny(data: "")
+        }
+    }
+
+    @Test("Generic decodeResult with empty 0x throws noData")
+    func testGenericDecodeResultEmptyDataThrowsNoData() throws {
+        let function = AbiFunction(
+            name: "getValue",
+            inputs: [],
+            outputs: [AbiParameter(name: "", type: "uint256")],
+            stateMutability: .view
+        )
+
+        #expect(throws: AbiEncodingError.noData) {
+            _ = try function.decodeResult(data: "0x") as BigInt
+        }
+    }
 }

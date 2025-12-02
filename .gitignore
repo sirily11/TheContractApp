@@ -6,16 +6,3 @@
 *.xcworkspace
 xcuserdata/
 DerivedData/
-*.moved-aside
-*.hmap
-*.ipa
-*.dSYM.zip
-*.dSYM
-# Test Results
-test-results/
-*.xcresult
-
-# macOS
-.DS_Store
-.AppleDouble
-.LSOverride

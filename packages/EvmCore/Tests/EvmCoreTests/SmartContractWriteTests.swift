@@ -1466,7 +1466,9 @@ struct SmartContractWriteE2ETests {
         let contract = try await Self.deployWriteFunctionTestContract()
         print("Contract deployed at: \(contract.address.value)")
 
-        let testAddresses = [AnvilAccounts.account1, AnvilAccounts.account2, AnvilAccounts.allAccounts[3]]
+        let testAddresses = [
+            AnvilAccounts.account1, AnvilAccounts.account2, AnvilAccounts.allAccounts[3],
+        ]
 
         print("Calling setAddressArray(\(testAddresses))...")
         _ = try await contract.callFunction(
