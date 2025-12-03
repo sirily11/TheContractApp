@@ -19,6 +19,7 @@ struct SmartContractAppApp: App {
     @State private var chatViewModel = ChatViewModel()
     @State private var toolRegistry = ToolRegistry()
     @State private var chatProvider = ChatProvider()
+    @State private var chatContextViewModel = ChatContextViewModel()
 
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
@@ -86,6 +87,7 @@ struct SmartContractAppApp: App {
                 .environment(chatViewModel)
                 .environment(toolRegistry)
                 .environment(chatProvider)
+                .environment(chatContextViewModel)
         }
         .modelContainer(sharedModelContainer)
 
@@ -120,6 +122,7 @@ private struct ContentViewWrapper: View {
     @Environment(ChatViewModel.self) var chatViewModel
     @Environment(ToolRegistry.self) var toolRegistry
     @Environment(ChatProvider.self) var chatProvider
+    @Environment(ChatContextViewModel.self) var chatContextViewModel
 
     // MARK: - AppStorage for Centralized Selection
 
@@ -139,6 +142,7 @@ private struct ContentViewWrapper: View {
                 toolRegistry.modelContext = modelContext
                 toolRegistry.walletSigner = walletSignerViewModel
                 toolRegistry.setProviders(chatProvider, deploymentProvider: contractDeploymentViewModel)
+                chatContextViewModel.setUp()
 
                 // Initialize wallet selection from AppStorage
                 initializeWalletSelection()

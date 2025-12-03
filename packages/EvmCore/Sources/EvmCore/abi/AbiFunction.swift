@@ -249,6 +249,50 @@ extension AbiFunction {
         return (elementType, size)
     }
 
+    /// Decode function return data to Any type (for complex types like tuples and arrays)
+    /// - Parameter data: Hex string of return data
+    /// - Returns: Decoded result as Any (can be a single value, array, or nested structure)
+    public func decodeResultToAny(data: String) throws -> Any {
+        let cleanData = data.stripHexPrefix()
+
+        guard outputs.count > 0 else {
+            throw AbiEncodingError.noOutputs
+        }
+
+        // Handle empty data (0x)
+        guard !cleanData.isEmpty else {
+            throw AbiEncodingError.noData
+        }
+
+        // Single return value
+        if outputs.count == 1 {
+            let output = outputs[0]
+            return try decodeParameter(data: cleanData, type: output.type, offset: 0, components: output.components)
+        }
+
+        // Multiple return values - handle as ABI-encoded tuple
+        var results: [Any] = []
+        var headOffset = 0
+
+        for output in outputs {
+            if isDynamicType(output.type) {
+                let offsetSlice = String(cleanData[cleanData.index(cleanData.startIndex, offsetBy: headOffset)..<cleanData.index(cleanData.startIndex, offsetBy: headOffset + 64)])
+                guard let dataOffset = UInt64(offsetSlice, radix: 16) else {
+                    throw AbiEncodingError.decodingFailed("Failed to decode offset for \(output.name)")
+                }
+                let absoluteOffset = Int(dataOffset) * 2
+                let decoded = try decodeParameterAtAbsoluteOffset(data: cleanData, type: output.type, absoluteOffset: absoluteOffset, components: output.components)
+                results.append(decoded)
+            } else {
+                let decoded = try decodeParameter(data: cleanData, type: output.type, offset: headOffset, components: output.components)
+                results.append(decoded)
+            }
+            headOffset += 64
+        }
+
+        return results
+    }
+
     /// Decode function return data
     /// - Parameter data: Hex string of return data
     /// - Returns: Decoded result as specified type
@@ -259,13 +303,18 @@ extension AbiFunction {
             throw AbiEncodingError.noOutputs
         }
 
+        // Handle empty data (0x)
+        guard !cleanData.isEmpty else {
+            throw AbiEncodingError.noData
+        }
+
         // For now, we'll implement a basic decoder that handles simple types
         // A full implementation would need to handle all Solidity types
 
         // Single return value
         if outputs.count == 1 {
             let output = outputs[0]
-            let decoded = try decodeParameter(data: cleanData, type: output.type, offset: 0)
+            let decoded = try decodeParameter(data: cleanData, type: output.type, offset: 0, components: output.components)
 
             // Try to convert to expected type directly
             if let result = decoded as? T {
@@ -281,8 +330,14 @@ extension AbiFunction {
                 }
             }
 
+            // Special case: when caller wants [Any], return decoded value directly if it's an array
+            if T.self == [Any].self, let array = decoded as? [Any] {
+                return array as! T
+            }
+
             // For other types, wrap in array for JSON serialization
-            let jsonData = try JSONSerialization.data(withJSONObject: [decoded])
+            let jsonSerializable = makeJSONSerializable(decoded)
+            let jsonData = try JSONSerialization.data(withJSONObject: [jsonSerializable])
             let array = try JSONDecoder().decode([T].self, from: jsonData)
             guard let result = array.first else {
                 throw AbiEncodingError.decodingFailed("Failed to decode result")
@@ -290,22 +345,74 @@ extension AbiFunction {
             return result
         }
 
-        // Multiple return values - return as tuple/array
+        // Multiple return values - handle as ABI-encoded tuple
+        // In Solidity, multiple return values are encoded the same as a tuple
+        // with head/tail encoding for dynamic types
         var results: [Any] = []
-        var offset = 0
+        var headOffset = 0
 
         for output in outputs {
-            let decoded = try decodeParameter(data: cleanData, type: output.type, offset: offset)
-            results.append(decoded)
-            offset += 64 // Each param takes 32 bytes (64 hex chars)
+            if isDynamicType(output.type) {
+                // For dynamic types, read the offset from the head, then decode from that position
+                let offsetSlice = String(cleanData[cleanData.index(cleanData.startIndex, offsetBy: headOffset)..<cleanData.index(cleanData.startIndex, offsetBy: headOffset + 64)])
+                guard let dataOffset = UInt64(offsetSlice, radix: 16) else {
+                    throw AbiEncodingError.decodingFailed("Failed to decode offset for \(output.name)")
+                }
+                let absoluteOffset = Int(dataOffset) * 2 // Convert bytes to hex chars
+                let decoded = try decodeParameterAtAbsoluteOffset(data: cleanData, type: output.type, absoluteOffset: absoluteOffset, components: output.components)
+                results.append(decoded)
+            } else {
+                // For static types, decode directly from head position
+                let decoded = try decodeParameter(data: cleanData, type: output.type, offset: headOffset, components: output.components)
+                results.append(decoded)
+            }
+            headOffset += 64 // Each head slot is 32 bytes (64 hex chars)
         }
 
-        // Try to convert to expected type
-        let jsonData = try JSONSerialization.data(withJSONObject: results)
+        // Special case: when caller wants [Any], return results directly
+        if T.self == [Any].self {
+            return results as! T
+        }
+
+        // Try to convert to expected type via JSON serialization
+        let jsonSerializable = makeJSONSerializable(results)
+        let jsonData = try JSONSerialization.data(withJSONObject: jsonSerializable)
         return try JSONDecoder().decode(T.self, from: jsonData)
     }
 
     // MARK: - Private Helpers
+
+    /// Convert a decoded value to a JSON-serializable type
+    /// BigInt values are converted to String for lossless representation
+    private func makeJSONSerializable(_ value: Any) -> Any {
+        if let bigInt = value as? BigInt {
+            return String(bigInt)
+        }
+        if let array = value as? [Any] {
+            return array.map { makeJSONSerializable($0) }
+        }
+        return value
+    }
+
+    /// Check if a type is dynamic (variable-length) in ABI encoding
+    private func isDynamicType(_ type: String) -> Bool {
+        if type == "string" || type == "bytes" {
+            return true
+        }
+        if type.hasSuffix("[]") {
+            return true
+        }
+        if type == "tuple" {
+            // Tuples are dynamic if they contain any dynamic components
+            // For simplicity, we'll treat all tuples as dynamic
+            return true
+        }
+        if type.hasPrefix("tuple") && type.contains("[") {
+            // tuple[] or tuple[k]
+            return true
+        }
+        return false
+    }
 
     private func formatType(_ param: AbiParameter) -> String {
         if param.type == "tuple", let components = param.components {
@@ -553,7 +660,14 @@ extension AbiFunction {
         }
     }
 
-    private func decodeParameter(data: String, type: String, offset: Int) throws -> Any {
+    /// Decode a single parameter from ABI-encoded data
+    /// - Parameters:
+    ///   - data: The hex-encoded data string (without 0x prefix)
+    ///   - type: The Solidity type string
+    ///   - offset: Byte offset into the data (in hex chars, so offset*2 for actual position)
+    ///   - components: Optional components for tuple types
+    /// - Returns: The decoded value
+    private func decodeParameter(data: String, type: String, offset: Int, components: [AbiParameter]? = nil) throws -> Any {
         let start = offset
         let end = start + 64 // 32 bytes = 64 hex chars
 
@@ -564,18 +678,51 @@ extension AbiFunction {
         let slice = String(data[data.index(data.startIndex, offsetBy: start)..<data.index(data.startIndex, offsetBy: end)])
 
         switch type {
+        // IMPORTANT: Check arrays and tuples BEFORE primitive types
+        // because "uint256[]" would match "hasPrefix(uint)"
+        case "tuple":
+            guard let components = components else {
+                throw AbiEncodingError.unsupportedType("tuple without components")
+            }
+            // Check if tuple is dynamic (contains any dynamic types)
+            let tupleIsDynamic = components.contains { isDynamicType($0.type, components: $0.components) }
+            if tupleIsDynamic {
+                // Dynamic tuple: first read offset pointer, then decode from that position
+                guard let tupleOffset = UInt64(slice, radix: 16) else {
+                    throw AbiEncodingError.invalidHexString
+                }
+                let actualTupleStart = Int(tupleOffset) * 2  // Convert bytes to hex chars
+                return try decodeTuple(data: data, offset: actualTupleStart, components: components)
+            } else {
+                // Static tuple: decode directly
+                return try decodeTuple(data: data, offset: offset, components: components)
+            }
+        case let t where t.hasSuffix("[]"):
+            // Dynamic array
+            let elementType = String(t.dropLast(2))
+            return try decodeDynamicArray(data: data, offset: offset, elementType: elementType, elementComponents: components)
+        case let t where t.contains("[") && t.contains("]"):
+            // Fixed array (e.g., uint256[3])
+            if let (elementType, size) = parseFixedArraySize(t) {
+                return try decodeFixedArray(data: data, offset: offset, elementType: elementType, size: size, elementComponents: components)
+            }
+            throw AbiEncodingError.unsupportedType(type)
         case "address":
             return try decodeAddress(slice)
         case let t where t.hasPrefix("uint"):
-            return try decodeUint(slice)
+            return try decodeUintBigInt(slice)
         case let t where t.hasPrefix("int"):
-            return try decodeInt(slice)
+            return try decodeIntBigInt(slice)
         case "bool":
             return try decodeBool(slice)
         case "string":
             return try decodeString(data, offset: offset)
         case "bytes":
-            return try decodeDynamicBytes(data, offset: offset)
+            return try decodeDynamicBytesAsHex(data, offset: offset)
+        case let t where t.hasPrefix("bytes") && t.count > 5:
+            // Fixed bytes (bytes1, bytes32, etc.)
+            let size = parseFixedBytesSize(t)
+            return try decodeFixedBytesAsHex(slice, size: size)
         default:
             throw AbiEncodingError.unsupportedType(type)
         }
@@ -844,6 +991,279 @@ extension AbiFunction {
         return Data(hex: bytesHex)
     }
 
+    // MARK: - BigInt Decoding Functions
+
+    /// Decode a uint256 value as BigInt (handles values larger than UInt64)
+    private func decodeUintBigInt(_ hex: String) throws -> BigInt {
+        let cleanHex = hex.stripHexPrefix()
+        guard !cleanHex.isEmpty else {
+            throw AbiEncodingError.invalidHexString
+        }
+        guard let value = BigInt(cleanHex, radix: 16) else {
+            throw AbiEncodingError.invalidHexString
+        }
+        return value
+    }
+
+    /// Decode an int256 value as BigInt with two's complement handling
+    private func decodeIntBigInt(_ hex: String) throws -> BigInt {
+        let cleanHex = hex.stripHexPrefix()
+        guard !cleanHex.isEmpty else {
+            throw AbiEncodingError.invalidHexString
+        }
+        guard let value = BigInt(cleanHex, radix: 16) else {
+            throw AbiEncodingError.invalidHexString
+        }
+
+        // Check if the value is negative (highest bit set)
+        // For 256-bit signed int, if value >= 2^255, it's negative
+        let maxPositive = BigInt(2).power(255)
+        if value >= maxPositive {
+            // Two's complement: subtract 2^256
+            let modulus = BigInt(2).power(256)
+            return value - modulus
+        }
+        return value
+    }
+
+    /// Decode dynamic bytes and return as hex string (avoids JSON serialization issues)
+    private func decodeDynamicBytesAsHex(_ data: String, offset: Int) throws -> String {
+        let bytesData = try decodeDynamicBytes(data, offset: offset)
+        return "0x" + bytesData.toHexString()
+    }
+
+    /// Decode fixed bytes (bytes1-bytes32) and return as hex string
+    private func decodeFixedBytesAsHex(_ hex: String, size: Int) throws -> String {
+        let cleanHex = hex.stripHexPrefix()
+        // Fixed bytes are left-aligned, so we take the first `size * 2` characters
+        let bytesHex = String(cleanHex.prefix(size * 2))
+        return "0x" + bytesHex
+    }
+
+    // MARK: - Tuple Decoding
+
+    /// Decode a tuple (struct) from ABI-encoded data
+    private func decodeTuple(data: String, offset: Int, components: [AbiParameter]) throws -> [Any] {
+        let cleanData = data.stripHexPrefix()
+        var results: [Any] = []
+
+        // Check if tuple is dynamic (contains any dynamic types)
+        let isDynamic = components.contains { isDynamicType($0.type, components: $0.components) }
+
+        if isDynamic {
+            // Dynamic tuple: head contains values/offsets, tail contains dynamic data
+            // The tuple data starts directly at the given offset (for return values)
+            let tupleDataStart = offset
+            var componentOffset = 0
+
+            for component in components {
+                let componentStart = tupleDataStart + componentOffset
+
+                if isDynamicType(component.type, components: component.components) {
+                    // Read offset to dynamic data
+                    let dynamicOffsetHex = String(cleanData[cleanData.index(cleanData.startIndex, offsetBy: componentStart)..<cleanData.index(cleanData.startIndex, offsetBy: componentStart + 64)])
+                    guard let dynamicOffset = UInt64(dynamicOffsetHex, radix: 16) else {
+                        throw AbiEncodingError.invalidHexString
+                    }
+
+                    // Decode from the actual data location (relative to tuple start)
+                    let actualDataStart = tupleDataStart + Int(dynamicOffset) * 2
+                    let decoded = try decodeParameterAtAbsoluteOffset(data: cleanData, type: component.type, absoluteOffset: actualDataStart, components: component.components)
+                    results.append(decoded)
+                } else {
+                    // Static type: read directly
+                    let decoded = try decodeParameter(data: cleanData, type: component.type, offset: componentStart, components: component.components)
+                    results.append(decoded)
+                }
+
+                componentOffset += 64 // Move to next slot in head
+            }
+        } else {
+            // Static tuple: all components are packed sequentially
+            var componentOffset = offset
+            for component in components {
+                let decoded = try decodeParameter(data: cleanData, type: component.type, offset: componentOffset, components: component.components)
+                results.append(decoded)
+                componentOffset += 64
+            }
+        }
+
+        return results
+    }
+
+    /// Decode a parameter at an absolute offset (for dynamic data in tuples)
+    private func decodeParameterAtAbsoluteOffset(data: String, type: String, absoluteOffset: Int, components: [AbiParameter]?) throws -> Any {
+        switch type {
+        case "string":
+            return try decodeStringAtAbsoluteOffset(data, absoluteOffset: absoluteOffset)
+        case "bytes":
+            return try decodeDynamicBytesAtAbsoluteOffset(data, absoluteOffset: absoluteOffset)
+        case "tuple":
+            guard let components = components else {
+                throw AbiEncodingError.unsupportedType("tuple without components")
+            }
+            return try decodeTupleAtAbsoluteOffset(data: data, absoluteOffset: absoluteOffset, components: components)
+        case let t where t.hasSuffix("[]"):
+            let elementType = String(t.dropLast(2))
+            return try decodeDynamicArrayAtAbsoluteOffset(data: data, absoluteOffset: absoluteOffset, elementType: elementType, elementComponents: components)
+        default:
+            return try decodeParameter(data: data, type: type, offset: absoluteOffset, components: components)
+        }
+    }
+
+    /// Decode string at absolute offset (no offset indirection)
+    private func decodeStringAtAbsoluteOffset(_ data: String, absoluteOffset: Int) throws -> String {
+        // Read length at current position
+        let lengthHex = String(data[data.index(data.startIndex, offsetBy: absoluteOffset)..<data.index(data.startIndex, offsetBy: absoluteOffset + 64)])
+        guard let length = UInt64(lengthHex, radix: 16) else {
+            throw AbiEncodingError.invalidHexString
+        }
+
+        // Read string data
+        let dataStart = absoluteOffset + 64
+        let dataLength = Int(length) * 2
+
+        guard data.count >= dataStart + dataLength else {
+            throw AbiEncodingError.insufficientData
+        }
+
+        let stringHex = String(data[data.index(data.startIndex, offsetBy: dataStart)..<data.index(data.startIndex, offsetBy: dataStart + dataLength)])
+        let stringData = Data(hex: stringHex)
+        guard let result = String(data: stringData, encoding: .utf8) else {
+            throw AbiEncodingError.decodingFailed("Failed to decode string from UTF-8")
+        }
+
+        return result
+    }
+
+    /// Decode bytes at absolute offset (no offset indirection)
+    private func decodeDynamicBytesAtAbsoluteOffset(_ data: String, absoluteOffset: Int) throws -> String {
+        let lengthHex = String(data[data.index(data.startIndex, offsetBy: absoluteOffset)..<data.index(data.startIndex, offsetBy: absoluteOffset + 64)])
+        guard let length = UInt64(lengthHex, radix: 16) else {
+            throw AbiEncodingError.invalidHexString
+        }
+
+        let dataStart = absoluteOffset + 64
+        let dataLength = Int(length) * 2
+
+        guard data.count >= dataStart + dataLength else {
+            throw AbiEncodingError.insufficientData
+        }
+
+        let bytesHex = String(data[data.index(data.startIndex, offsetBy: dataStart)..<data.index(data.startIndex, offsetBy: dataStart + dataLength)])
+        return "0x" + bytesHex
+    }
+
+    /// Decode tuple at absolute offset
+    private func decodeTupleAtAbsoluteOffset(data: String, absoluteOffset: Int, components: [AbiParameter]) throws -> [Any] {
+        var results: [Any] = []
+        var componentOffset = 0
+
+        for component in components {
+            let componentStart = absoluteOffset + componentOffset
+
+            if isDynamicType(component.type, components: component.components) {
+                let dynamicOffsetHex = String(data[data.index(data.startIndex, offsetBy: componentStart)..<data.index(data.startIndex, offsetBy: componentStart + 64)])
+                guard let dynamicOffset = UInt64(dynamicOffsetHex, radix: 16) else {
+                    throw AbiEncodingError.invalidHexString
+                }
+
+                let actualDataStart = absoluteOffset + Int(dynamicOffset) * 2
+                let decoded = try decodeParameterAtAbsoluteOffset(data: data, type: component.type, absoluteOffset: actualDataStart, components: component.components)
+                results.append(decoded)
+            } else {
+                let decoded = try decodeParameter(data: data, type: component.type, offset: componentStart, components: component.components)
+                results.append(decoded)
+            }
+
+            componentOffset += 64
+        }
+
+        return results
+    }
+
+    // MARK: - Array Decoding
+
+    /// Decode a dynamic array (T[])
+    private func decodeDynamicArray(data: String, offset: Int, elementType: String, elementComponents: [AbiParameter]?) throws -> [Any] {
+        let cleanData = data.stripHexPrefix()
+
+        // Read offset to array data
+        let arrayOffsetHex = String(cleanData[cleanData.index(cleanData.startIndex, offsetBy: offset)..<cleanData.index(cleanData.startIndex, offsetBy: offset + 64)])
+        guard let arrayOffset = UInt64(arrayOffsetHex, radix: 16) else {
+            throw AbiEncodingError.invalidHexString
+        }
+
+        return try decodeDynamicArrayAtAbsoluteOffset(data: cleanData, absoluteOffset: Int(arrayOffset) * 2, elementType: elementType, elementComponents: elementComponents)
+    }
+
+    /// Decode dynamic array at absolute offset
+    private func decodeDynamicArrayAtAbsoluteOffset(data: String, absoluteOffset: Int, elementType: String, elementComponents: [AbiParameter]?) throws -> [Any] {
+        // Read length
+        let lengthHex = String(data[data.index(data.startIndex, offsetBy: absoluteOffset)..<data.index(data.startIndex, offsetBy: absoluteOffset + 64)])
+        guard let length = UInt64(lengthHex, radix: 16) else {
+            throw AbiEncodingError.invalidHexString
+        }
+
+        var results: [Any] = []
+        let elementsStart = absoluteOffset + 64
+
+        let elementIsDynamic = isDynamicType(elementType, components: elementComponents)
+
+        for i in 0..<Int(length) {
+            let elementOffset = elementsStart + (i * 64)
+
+            if elementIsDynamic {
+                // Read offset to element data
+                let dynamicOffsetHex = String(data[data.index(data.startIndex, offsetBy: elementOffset)..<data.index(data.startIndex, offsetBy: elementOffset + 64)])
+                guard let dynamicOffset = UInt64(dynamicOffsetHex, radix: 16) else {
+                    throw AbiEncodingError.invalidHexString
+                }
+
+                let actualDataStart = elementsStart + Int(dynamicOffset) * 2
+                let decoded = try decodeParameterAtAbsoluteOffset(data: data, type: elementType, absoluteOffset: actualDataStart, components: elementComponents)
+                results.append(decoded)
+            } else {
+                let decoded = try decodeParameter(data: data, type: elementType, offset: elementOffset, components: elementComponents)
+                results.append(decoded)
+            }
+        }
+
+        return results
+    }
+
+    /// Decode a fixed array (T[k])
+    private func decodeFixedArray(data: String, offset: Int, elementType: String, size: Int, elementComponents: [AbiParameter]?) throws -> [Any] {
+        let cleanData = data.stripHexPrefix()
+        var results: [Any] = []
+
+        let elementIsDynamic = isDynamicType(elementType, components: elementComponents)
+
+        if elementIsDynamic {
+            // Fixed array of dynamic elements: offsets in head, data in tail
+            for i in 0..<size {
+                let elementOffset = offset + (i * 64)
+                let dynamicOffsetHex = String(cleanData[cleanData.index(cleanData.startIndex, offsetBy: elementOffset)..<cleanData.index(cleanData.startIndex, offsetBy: elementOffset + 64)])
+                guard let dynamicOffset = UInt64(dynamicOffsetHex, radix: 16) else {
+                    throw AbiEncodingError.invalidHexString
+                }
+
+                let actualDataStart = offset + Int(dynamicOffset) * 2
+                let decoded = try decodeParameterAtAbsoluteOffset(data: cleanData, type: elementType, absoluteOffset: actualDataStart, components: elementComponents)
+                results.append(decoded)
+            }
+        } else {
+            // Fixed array of static elements: packed sequentially
+            for i in 0..<size {
+                let elementOffset = offset + (i * 64)
+                let decoded = try decodeParameter(data: cleanData, type: elementType, offset: elementOffset, components: elementComponents)
+                results.append(decoded)
+            }
+        }
+
+        return results
+    }
+
     // MARK: - Utility Functions
 
     private func parseIntegerBits(_ type: String) -> Int {
@@ -859,7 +1279,7 @@ extension AbiFunction {
 
 // MARK: - Encoding Errors
 
-public enum AbiEncodingError: Error, LocalizedError {
+public enum AbiEncodingError: Error, LocalizedError, Equatable {
     case invalidSignature
     case argumentCountMismatch(expected: Int, got: Int)
     case unsupportedType(String)
@@ -868,6 +1288,7 @@ public enum AbiEncodingError: Error, LocalizedError {
     case invalidHexString
     case insufficientData
     case noOutputs
+    case noData
     case decodingFailed(String)
 
     public var errorDescription: String? {
@@ -888,6 +1309,8 @@ public enum AbiEncodingError: Error, LocalizedError {
             return "Insufficient data for decoding"
         case .noOutputs:
             return "Function has no outputs to decode"
+        case .noData:
+            return "No data to decode (received empty 0x)"
         case .decodingFailed(let message):
             return "Decoding failed: \(message)"
         }

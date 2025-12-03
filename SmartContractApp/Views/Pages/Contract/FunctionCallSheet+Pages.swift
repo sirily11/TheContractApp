@@ -192,19 +192,14 @@ extension FunctionCallSheet {
                 .foregroundColor(resultColor)
                 .accessibilityIdentifier(executionState == .completed ? .functionCall.successMessage : .functionCall.errorMessage)
 
-            // Result details
+            // Result details with labels
             if let result = result {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Result:")
                         .font(.caption)
                         .foregroundColor(.secondary)
 
-                    Text(result)
-                        .font(.body)
-                        .padding()
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color.secondary.opacity(0.1))
-                        .cornerRadius(8)
+                    labeledResultView(result: result)
                 }
                 .padding(.horizontal)
             }
@@ -324,6 +319,88 @@ extension FunctionCallSheet {
 
     private var resultTitle: String {
         executionState == .completed ? "Success!" : "Failed"
+    }
+
+    // MARK: - Labeled Result View
+
+    @ViewBuilder
+    private func labeledResultView(result: String) -> some View {
+        let outputs = function.outputs
+
+        if outputs.isEmpty {
+            // No output definition, just show raw result
+            resultBox(value: result, type: nil, name: nil)
+        } else if outputs.count == 1 {
+            // Single output - show with label
+            let output = outputs[0]
+            resultBox(
+                value: result,
+                type: output.type,
+                name: output.name.isEmpty ? nil : output.name
+            )
+        } else {
+            // Multiple outputs - try to parse array
+            let values = parseResultArray(result)
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(Array(outputs.enumerated()), id: \.offset) { index, output in
+                    let value = index < values.count ? values[index] : "—"
+                    resultBox(
+                        value: value,
+                        type: output.type,
+                        name: output.name.isEmpty ? nil : output.name
+                    )
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func resultBox(value: String, type: String?, name: String?) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            if let name = name {
+                Text("\(name):")
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundColor(.secondary)
+            }
+
+            Text(value)
+                .font(.body.monospaced())
+                .foregroundColor(.primary)
+
+            Spacer()
+
+            if let type = type {
+                Text(type)
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color.secondary.opacity(0.15))
+                    .cornerRadius(4)
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.secondary.opacity(0.1))
+        .cornerRadius(8)
+    }
+
+    /// Parse a result string that might be an array like "[val1, val2, val3]"
+    private func parseResultArray(_ result: String) -> [String] {
+        let trimmed = result.trimmingCharacters(in: .whitespaces)
+
+        // Check if it looks like an array
+        if trimmed.hasPrefix("[") && trimmed.hasSuffix("]") {
+            let inner = String(trimmed.dropFirst().dropLast())
+            // Simple split - handles most cases but not nested arrays
+            return inner.components(separatedBy: ", ").map {
+                $0.trimmingCharacters(in: .whitespaces)
+            }
+        }
+
+        // Not an array, return as single value
+        return [result]
     }
 
     // MARK: - Validation

@@ -102,6 +102,14 @@ struct A11yID {
         static let cancelButton = A11yID(rawValue: "contract-cancel-button")
         static let endpointButton = A11yID(rawValue: "contract-endpoint-button")
 
+        // Pickers
+        static let abiPicker = A11yID(rawValue: "contract-abi-picker")
+        static let endpointPicker = A11yID(rawValue: "contract-endpoint-picker")
+
+        // Create buttons for inline creation
+        static let createAbiButton = A11yID(rawValue: "contract-create-abi-button")
+        static let createEndpointButton = A11yID(rawValue: "contract-create-endpoint-button")
+
         // Menu items
         static let solidityMenuItem = A11yID(rawValue: "contract-solidity-menu-item")
         static let bytecodeMenuItem = A11yID(rawValue: "contract-bytecode-menu-item")

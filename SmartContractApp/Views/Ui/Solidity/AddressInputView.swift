@@ -42,14 +42,6 @@ struct AddressInputView: View {
                     .font(.caption)
                     .foregroundColor(.orange)
             }
-
-            // Display with copy button when valid
-            if validationError == nil && !addressValue.isEmpty {
-                CopyableView(
-                    text: addressValue,
-                    style: .compact
-                )
-            }
         }
         .onAppear {
             loadValue()

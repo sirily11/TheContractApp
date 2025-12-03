@@ -19,13 +19,14 @@ struct FunctionRowView: View {
 
     @Query(sort: \ContractFunctionCall.timestamp, order: .reverse) private var allCalls: [ContractFunctionCall]
     @Environment(ContractInteractionViewModel.self) private var viewModel
+    @State private var showingDetailPopover = false
 
     /// Last successful call for this function (auto-updates via SwiftData)
     private var lastCall: ContractFunctionCall? {
         allCalls.first { call in
             call.contractId == contract.id &&
-            call.functionName == function.name &&
-            call.status == .success
+                call.functionName == function.name &&
+                call.status == .success
         }
     }
 
@@ -41,14 +42,18 @@ struct FunctionRowView: View {
                             .foregroundColor(.primary)
 
                         stateMutabilityBadge
-                    }
 
-                    // Function signature (parameter types)
-                    if !function.inputs.isEmpty {
-                        Text(functionSignature)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .lineLimit(2)
+                        Button {
+                            showingDetailPopover.toggle()
+                        } label: {
+                            Image(systemName: "info.circle")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .popover(isPresented: $showingDetailPopover) {
+                            functionDetailPopover
+                        }
                     }
                 }
 
@@ -78,10 +83,7 @@ struct FunctionRowView: View {
                         .foregroundColor(.secondary)
 
                     HStack {
-                        Text(result)
-                            .font(.caption)
-                            .foregroundColor(.primary)
-                            .lineLimit(2)
+                        labeledResultView(result: result)
 
                         Spacer()
 
@@ -154,6 +156,175 @@ struct FunctionRowView: View {
             }
         }
         return "(\(paramTypes.joined(separator: ", ")))"
+    }
+
+    /// Return type signature showing output types
+    private var returnTypeSignature: String? {
+        guard !function.outputs.isEmpty else { return nil }
+
+        if function.outputs.count == 1 {
+            let output = function.outputs[0]
+            if output.name.isEmpty {
+                return output.type
+            } else {
+                return "\(output.type) \(output.name)"
+            }
+        } else {
+            let outputTypes = function.outputs.map { output in
+                if output.name.isEmpty {
+                    return output.type
+                } else {
+                    return "\(output.type) \(output.name)"
+                }
+            }
+            return "(\(outputTypes.joined(separator: ", ")))"
+        }
+    }
+
+    // MARK: - Labeled Result View
+
+    @ViewBuilder
+    private func labeledResultView(result: String) -> some View {
+        let outputs = function.outputs
+
+        if outputs.isEmpty {
+            // No output definition, just show raw result
+            Text(result)
+                .font(.caption)
+                .foregroundColor(.primary)
+                .lineLimit(2)
+        } else if outputs.count == 1 {
+            // Single output - show with label
+            let output = outputs[0]
+            HStack(spacing: 4) {
+                if !output.name.isEmpty {
+                    Text("\(output.name):")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+                Text(result)
+                    .font(.caption)
+                    .foregroundColor(.primary)
+                    .lineLimit(2)
+            }
+        } else {
+            // Multiple outputs - show compact
+            let values = parseResultArray(result)
+            HStack(spacing: 6) {
+                ForEach(Array(outputs.enumerated()), id: \.offset) { index, output in
+                    if index > 0 {
+                        Text("·")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                    HStack(spacing: 2) {
+                        if !output.name.isEmpty {
+                            Text("\(output.name):")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                        Text(index < values.count ? values[index] : "—")
+                            .font(.caption)
+                            .foregroundColor(.primary)
+                            .lineLimit(1)
+                    }
+                }
+            }
+        }
+    }
+
+    /// Parse a result string that might be an array like "[val1, val2, val3]"
+    private func parseResultArray(_ result: String) -> [String] {
+        let trimmed = result.trimmingCharacters(in: .whitespaces)
+
+        if trimmed.hasPrefix("[") && trimmed.hasSuffix("]") {
+            let inner = String(trimmed.dropFirst().dropLast())
+            return inner.components(separatedBy: ", ").map {
+                $0.trimmingCharacters(in: .whitespaces)
+            }
+        }
+
+        return [result]
+    }
+
+    // MARK: - Detail Popover
+
+    private var functionDetailPopover: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // Header
+            HStack {
+                Text(function.name)
+                    .font(.headline)
+                Spacer()
+                stateMutabilityBadge
+            }
+
+            Divider()
+
+            // Inputs section
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Inputs")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.secondary)
+
+                if function.inputs.isEmpty {
+                    Text("No inputs")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .italic()
+                } else {
+                    ForEach(Array(function.inputs.enumerated()), id: \.offset) { _, input in
+                        HStack {
+                            Text(input.name.isEmpty ? "(unnamed)" : input.name)
+                                .font(.body)
+                            Spacer()
+                            Text(input.type)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.blue.opacity(0.1))
+                                .cornerRadius(4)
+                        }
+                    }
+                }
+            }
+
+            Divider()
+
+            // Outputs section
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Outputs")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.secondary)
+
+                if function.outputs.isEmpty {
+                    Text("No outputs")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .italic()
+                } else {
+                    ForEach(Array(function.outputs.enumerated()), id: \.offset) { _, output in
+                        HStack {
+                            Text(output.name.isEmpty ? "(unnamed)" : output.name)
+                                .font(.body)
+                            Spacer()
+                            Text(output.type)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.green.opacity(0.1))
+                                .cornerRadius(4)
+                        }
+                    }
+                }
+            }
+        }
+        .padding()
+        .frame(minWidth: 280)
     }
 }
 

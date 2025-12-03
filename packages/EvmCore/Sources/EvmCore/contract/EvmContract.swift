@@ -186,7 +186,15 @@ public struct EvmContract: Contract {
             let outputType = function.outputs[0].type
 
             // Determine the concrete type to decode
-            if outputType.starts(with: "uint") || outputType.starts(with: "int") {
+            // IMPORTANT: Check array and tuple types BEFORE primitive types
+            // because "uint256[]" would match "starts(with: uint)"
+            if outputType == "tuple" || outputType.hasPrefix("tuple[") {
+                // For tuples/structs, use the non-generic method
+                return try function.decodeResultToAny(data: data)
+            } else if outputType.hasSuffix("[]") || (outputType.contains("[") && outputType.contains("]")) {
+                // For arrays, use the non-generic method
+                return try function.decodeResultToAny(data: data)
+            } else if outputType.starts(with: "uint") || outputType.starts(with: "int") {
                 return try function.decodeResult(data: data) as BigInt
             } else if outputType == "string" {
                 return try function.decodeResult(data: data) as String
@@ -197,15 +205,13 @@ public struct EvmContract: Contract {
             } else if outputType == "bytes" || outputType.starts(with: "bytes") {
                 return try function.decodeResult(data: data) as String
             } else {
-                // For complex types, try as String
+                // For other complex types, try as String
                 return try function.decodeResult(data: data) as String
             }
         }
 
-        // Multiple outputs - decode as array of AnyCodable
-        // For now, try to decode as an array of strings as a fallback
-        // A more complete implementation would decode each output based on its type
-        return try function.decodeResult(data: data) as [String]
+        // Multiple outputs - decode using the non-generic method
+        return try function.decodeResultToAny(data: data)
     }
 
     /// Private helper: Write data by sending a transaction for nonpayable/payable functions

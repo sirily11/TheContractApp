@@ -5,6 +5,7 @@ import Foundation
 
 /// Represents a transaction value that can be specified in either Ether or Wei
 public enum TransactionValue: Codable, Equatable, Hashable {
+    case zero
     case ether(Ethers)
     case wei(Wei)
 
@@ -25,6 +26,8 @@ public enum TransactionValue: Codable, Equatable, Hashable {
             return ethers.toWei()
         case .wei(let wei):
             return wei
+        case .zero:
+            return Wei(bigInt: 0)
         }
     }
 
@@ -35,6 +38,8 @@ public enum TransactionValue: Codable, Equatable, Hashable {
             return ethers
         case .wei(let wei):
             return wei.toEthers()
+        case .zero:
+            return Ethers(bigInt: 0)
         }
     }
 

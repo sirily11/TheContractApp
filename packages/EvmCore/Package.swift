@@ -55,7 +55,10 @@ let package = Package(
         ),
         .testTarget(
             name: "EvmCoreTests",
-            dependencies: ["EvmCore"]
+            dependencies: ["EvmCore"],
+            resources: [
+                .copy("e2e/uniswap")
+            ]
         ),
         .testTarget(
             name: "SolidityTests",

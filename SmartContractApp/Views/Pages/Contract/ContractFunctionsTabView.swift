@@ -42,6 +42,7 @@ struct ContractFunctionsTabView: View {
             }
             .tag(FunctionTab.history)
         }
+        .frame(minWidth: 500)
         .padding()
         .tabViewStyle(.grouped)
         .navigationTitle(contract.name)

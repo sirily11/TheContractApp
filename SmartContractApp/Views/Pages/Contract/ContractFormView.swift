@@ -16,16 +16,15 @@ struct ContractFormView: View {
     // Form state
     @State private var name: String = ""
     @State private var address: String = ""
-    @State private var selectedAbiId: UUID?
-    @State private var selectedEndpointId: UUID?
+    @State private var selectedAbi: EvmAbi?
+    @State private var selectedEndpoint: Endpoint?
     @State private var contractType: ContractType = .import
     @State private var sourceCode: String = ""
     @State private var bytecode: String = ""
 
-    // Direct input for import mode
-    @State private var abiContent: String = ""
-    @State private var endpointUrl: String = ""
-    @State private var endpointChainId: String = ""
+    // Sheet states for inline creation
+    @State private var showingCreateAbiSheet = false
+    @State private var showingCreateEndpointSheet = false
 
     // Validation states
     @State private var showingValidationAlert = false
@@ -97,56 +96,97 @@ struct ContractFormView: View {
             if contractType == .import || (isEditing && contract?.status == .deployed) {
                 Section(header: Text("ABI Configuration")) {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("ABI JSON")
+                        Text("Contract ABI")
                             .font(.caption)
                             .foregroundColor(.secondary)
 
-                        #if os(macOS)
-                        TextEditor(text: $abiContent)
-                            .font(.system(.body, design: .monospaced))
-                            .frame(minHeight: 150, maxHeight: 300)
-                            .border(Color.gray.opacity(0.3), width: 1)
-                        #else
-                        TextEditor(text: $abiContent)
-                            .font(.system(.body, design: .monospaced))
-                            .frame(minHeight: 150, maxHeight: 300)
-                            .autocapitalization(.none)
-                            .disableAutocorrection(true)
-                        #endif
+                        HStack {
+                            Picker("Select ABI", selection: $selectedAbi) {
+                                Text("Select ABI...").tag(nil as EvmAbi?)
+                                ForEach(abis, id: \.id) { abi in
+                                    Text(abi.name).tag(abi as EvmAbi?)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                            .accessibilityIdentifier(.contract.abiPicker)
 
-                        Text("Paste the contract ABI JSON")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
+                            Button(action: { showingCreateAbiSheet = true }) {
+                                Image(systemName: "plus.circle.fill")
+                            }
+                            .buttonStyle(.borderless)
+                            .accessibilityIdentifier(.contract.createAbiButton)
+                        }
+
+                        if selectedAbi == nil {
+                            HStack(spacing: 4) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .font(.caption2)
+                                Text("Please select an ABI")
+                                    .font(.caption2)
+                            }
+                            .foregroundColor(.orange)
+                        } else if let abi = selectedAbi {
+                            HStack(spacing: 4) {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.caption2)
+                                    .foregroundColor(.green)
+                                Text("Selected: \(abi.name)")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
                     }
                 }
 
                 Section(header: Text("Endpoint Configuration")) {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("RPC URL")
+                        Text("Endpoint")
                             .font(.caption)
                             .foregroundColor(.secondary)
-                        TextField("https://...", text: $endpointUrl)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                        #if os(iOS)
-                            .keyboardType(.URL)
-                            .autocapitalization(.none)
-                            .disableAutocorrection(true)
-                        #endif
-                    }
 
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Chain ID")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        TextField("1", text: $endpointChainId)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                        #if os(iOS)
-                            .keyboardType(.numberPad)
-                        #endif
+                        HStack {
+                            Picker("Select Endpoint", selection: $selectedEndpoint) {
+                                Text("Select Endpoint...").tag(nil as Endpoint?)
+                                ForEach(endpoints, id: \.id) { endpoint in
+                                    HStack {
+                                        Text(endpoint.name)
+                                        Text("(Chain \(endpoint.chainId))")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    .tag(endpoint as Endpoint?)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                            .accessibilityIdentifier(.contract.endpointPicker)
 
-                        Text("Network chain ID (e.g., 1 for Ethereum Mainnet)")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
+                            Button(action: { showingCreateEndpointSheet = true }) {
+                                Image(systemName: "plus.circle.fill")
+                            }
+                            .buttonStyle(.borderless)
+                            .accessibilityIdentifier(.contract.createEndpointButton)
+                        }
+
+                        if selectedEndpoint == nil {
+                            HStack(spacing: 4) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .font(.caption2)
+                                Text("Please select an endpoint")
+                                    .font(.caption2)
+                            }
+                            .foregroundColor(.orange)
+                        } else if let endpoint = selectedEndpoint {
+                            HStack(spacing: 4) {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.caption2)
+                                    .foregroundColor(.green)
+                                Text("Selected: \(endpoint.name) - \(endpoint.url)")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                            }
+                        }
                     }
                 }
             }
@@ -230,6 +270,34 @@ struct ContractFormView: View {
             .sheet(isPresented: $showingDeploymentSheet) {
                 deploymentSheet
             }
+            .sheet(isPresented: $showingCreateAbiSheet) {
+                NavigationStack {
+                    AbiFormView()
+                }
+                .frame(minWidth: 700, minHeight: 500)
+            }
+            .sheet(isPresented: $showingCreateEndpointSheet) {
+                NavigationStack {
+                    EndpointFormView()
+                }
+                .frame(minWidth: 500, minHeight: 400)
+            }
+            .onChange(of: abis) { oldValue, newValue in
+                // Auto-select newly created ABI
+                if newValue.count > oldValue.count {
+                    if let newAbi = newValue.first(where: { abi in !oldValue.contains(where: { $0.id == abi.id }) }) {
+                        selectedAbi = newAbi
+                    }
+                }
+            }
+            .onChange(of: endpoints) { oldValue, newValue in
+                // Auto-select newly created Endpoint
+                if newValue.count > oldValue.count {
+                    if let newEndpoint = newValue.first(where: { ep in !oldValue.contains(where: { $0.id == ep.id }) }) {
+                        selectedEndpoint = newEndpoint
+                    }
+                }
+            }
             .onAppear {
                 if let contract = contract {
                     loadContract(contract)
@@ -256,9 +324,8 @@ struct ContractFormView: View {
             return nameValid &&
                 !address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
                 isValidAddress(address) &&
-                !abiContent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-                !endpointUrl.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-                !endpointChainId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                selectedAbi != nil &&
+                selectedEndpoint != nil
         case .solidity:
             return nameValid && !sourceCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         case .bytecode:
@@ -386,17 +453,14 @@ struct ContractFormView: View {
     private func loadContract(_ contract: EVMContract) {
         name = contract.name
         address = contract.address
-        selectedAbiId = contract.abiId
-        selectedEndpointId = contract.endpointId
         contractType = contract.type
         sourceCode = contract.sourceCode ?? ""
         bytecode = contract.bytecode ?? ""
 
-        // Load direct input fields for import type
+        // Load selected objects for import type
         if contract.type == .import {
-            abiContent = contract.abi?.abiContent ?? ""
-            endpointUrl = contract.endpoint?.url ?? ""
-            endpointChainId = contract.endpoint?.chainId ?? ""
+            selectedAbi = contract.abi
+            selectedEndpoint = contract.endpoint
         }
     }
 
@@ -416,35 +480,16 @@ struct ContractFormView: View {
             case .import:
                 existingContract.address = trimmedAddress
 
-                // Create or find ABI
-                let trimmedAbi = abiContent.trimmingCharacters(in: .whitespacesAndNewlines)
-                let abiName = "\(trimmedName)_ABI"
+                // Use the selected ABI and Endpoint directly
+                if let abi = selectedAbi {
+                    existingContract.abiId = abi.id
+                    existingContract.abi = abi
+                }
 
-                let abiDescriptor = FetchDescriptor<EvmAbi>()
-                let existingAbis = (try? modelContext.fetch(abiDescriptor)) ?? []
-                let abi = existingAbis.first { $0.abiContent == trimmedAbi } ?? {
-                    let newAbi = EvmAbi(name: abiName, abiContent: trimmedAbi)
-                    modelContext.insert(newAbi)
-                    return newAbi
-                }()
-
-                // Create or find Endpoint
-                let trimmedUrl = endpointUrl.trimmingCharacters(in: .whitespacesAndNewlines)
-                let trimmedChainId = endpointChainId.trimmingCharacters(in: .whitespacesAndNewlines)
-                let endpointName = "Chain \(trimmedChainId)"
-
-                let endpointDescriptor = FetchDescriptor<Endpoint>()
-                let existingEndpoints = (try? modelContext.fetch(endpointDescriptor)) ?? []
-                let endpoint = existingEndpoints.first { $0.url == trimmedUrl && $0.chainId == trimmedChainId } ?? {
-                    let newEndpoint = Endpoint(name: endpointName, url: trimmedUrl, chainId: trimmedChainId)
-                    modelContext.insert(newEndpoint)
-                    return newEndpoint
-                }()
-
-                existingContract.abiId = abi.id
-                existingContract.abi = abi
-                existingContract.endpointId = endpoint.id
-                existingContract.endpoint = endpoint
+                if let endpoint = selectedEndpoint {
+                    existingContract.endpointId = endpoint.id
+                    existingContract.endpoint = endpoint
+                }
 
             case .solidity:
                 existingContract.sourceCode = sourceCode
@@ -452,9 +497,9 @@ struct ContractFormView: View {
             case .bytecode:
                 existingContract.bytecode = bytecode
                 // Allow updating ABI association for bytecode contracts
-                if let abiId = selectedAbiId {
-                    existingContract.abiId = abiId
-                    existingContract.abi = abis.first { $0.id == abiId }
+                if let abi = selectedAbi {
+                    existingContract.abiId = abi.id
+                    existingContract.abi = abi
                 }
             }
         } else {
@@ -465,32 +510,18 @@ struct ContractFormView: View {
                 return
             }
 
-            // Create or find ABI
-            let trimmedAbi = abiContent.trimmingCharacters(in: .whitespacesAndNewlines)
-            let abiName = "\(trimmedName)_ABI"
+            // Use the selected ABI and Endpoint directly
+            guard let abi = selectedAbi else {
+                validationMessage = "Please select an ABI"
+                showingValidationAlert = true
+                return
+            }
 
-            // Check if an ABI with the same content already exists
-            let abiDescriptor = FetchDescriptor<EvmAbi>()
-            let existingAbis = (try? modelContext.fetch(abiDescriptor)) ?? []
-            let abi = existingAbis.first { $0.abiContent == trimmedAbi } ?? {
-                let newAbi = EvmAbi(name: abiName, abiContent: trimmedAbi)
-                modelContext.insert(newAbi)
-                return newAbi
-            }()
-
-            // Create or find Endpoint
-            let trimmedUrl = endpointUrl.trimmingCharacters(in: .whitespacesAndNewlines)
-            let trimmedChainId = endpointChainId.trimmingCharacters(in: .whitespacesAndNewlines)
-            let endpointName = "Chain \(trimmedChainId)"
-
-            // Check if an endpoint with the same URL and chainId already exists
-            let endpointDescriptor = FetchDescriptor<Endpoint>()
-            let existingEndpoints = (try? modelContext.fetch(endpointDescriptor)) ?? []
-            let endpoint = existingEndpoints.first { $0.url == trimmedUrl && $0.chainId == trimmedChainId } ?? {
-                let newEndpoint = Endpoint(name: endpointName, url: trimmedUrl, chainId: trimmedChainId)
-                modelContext.insert(newEndpoint)
-                return newEndpoint
-            }()
+            guard let endpoint = selectedEndpoint else {
+                validationMessage = "Please select an endpoint"
+                showingValidationAlert = true
+                return
+            }
 
             let newContract = EVMContract(
                 name: trimmedName,
@@ -542,64 +573,30 @@ struct ContractFormView: View {
                 return false
             }
 
-            let trimmedAbi = abiContent.trimmingCharacters(in: .whitespacesAndNewlines)
-            if trimmedAbi.isEmpty {
-                validationMessage = "Please enter the contract ABI JSON."
+            if selectedAbi == nil {
+                validationMessage = "Please select an ABI."
                 showingValidationAlert = true
                 return false
             }
 
-            // Validate ABI is valid JSON
-            if let data = trimmedAbi.data(using: .utf8) {
-                do {
-                    _ = try JSONSerialization.jsonObject(with: data)
-                } catch {
-                    validationMessage = "Invalid ABI JSON format: \(error.localizedDescription)"
-                    showingValidationAlert = true
-                    return false
-                }
-            }
-
-            let trimmedUrl = endpointUrl.trimmingCharacters(in: .whitespacesAndNewlines)
-            if trimmedUrl.isEmpty {
-                validationMessage = "Please enter an endpoint URL."
-                showingValidationAlert = true
-                return false
-            }
-
-            // Validate URL format
-            guard let _ = URL(string: trimmedUrl), trimmedUrl.hasPrefix("http") else {
-                validationMessage = "Please enter a valid HTTP/HTTPS URL."
-                showingValidationAlert = true
-                return false
-            }
-
-            let trimmedChainId = endpointChainId.trimmingCharacters(in: .whitespacesAndNewlines)
-            if trimmedChainId.isEmpty {
-                validationMessage = "Please enter a chain ID."
-                showingValidationAlert = true
-                return false
-            }
-
-            // Validate chain ID is a number
-            guard Int(trimmedChainId) != nil else {
-                validationMessage = "Chain ID must be a number."
+            if selectedEndpoint == nil {
+                validationMessage = "Please select an endpoint."
                 showingValidationAlert = true
                 return false
             }
 
         case .solidity:
             let trimmedSource = sourceCode.trimmingCharacters(in: .whitespacesAndNewlines)
-            
+
             if trimmedSource.isEmpty {
                 validationMessage = "Please enter Solidity source code."
                 showingValidationAlert = true
                 return false
             }
-            
+
         case .bytecode:
             let trimmedBytecode = bytecode.trimmingCharacters(in: .whitespacesAndNewlines)
-            
+
             if trimmedBytecode.isEmpty {
                 validationMessage = "Please enter contract bytecode."
                 showingValidationAlert = true
