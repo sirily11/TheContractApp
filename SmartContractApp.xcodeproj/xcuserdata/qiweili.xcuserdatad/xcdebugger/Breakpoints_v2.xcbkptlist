@@ -446,64 +446,86 @@
             endingLineNumber = "93"
             landmarkName = "callFunction(name:args:value:gasLimit:gasPrice:)"
             landmarkType = "7">
-            <Locations>
-               <Location
-                  uuid = "EFFC86AC-7456-4A17-8176-D9F0318D7A69 - e4ac9affae8b665a"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "(1) suspend resume partial function for EvmCore.EvmContract.callFunction(name: Swift.String, args: Swift.Array&lt;EvmCore.AnyCodable&gt;, value: EvmCore.TransactionValue, gasLimit: Swift.Optional&lt;EvmCore.GasLimit&gt;, gasPrice: Swift.Optional&lt;EvmCore.Gwei&gt;) async throws -&gt; EvmCore.ContractCallResult"
-                  moduleName = "SmartContractApp.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/qiweili/Desktop/rxlab/SmartContractApp/packages/EvmCore/Sources/EvmCore/contract/EvmContract.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "93"
-                  endingLineNumber = "93">
-               </Location>
-               <Location
-                  uuid = "EFFC86AC-7456-4A17-8176-D9F0318D7A69 - 8f711d6ff1b56ade"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "(2) await resume partial function for EvmCore.EvmContract.callFunction(name: Swift.String, args: Swift.Array&lt;EvmCore.AnyCodable&gt;, value: EvmCore.TransactionValue, gasLimit: Swift.Optional&lt;EvmCore.GasLimit&gt;, gasPrice: Swift.Optional&lt;EvmCore.Gwei&gt;) async throws -&gt; EvmCore.ContractCallResult"
-                  moduleName = "SmartContractApp.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/qiweili/Desktop/rxlab/SmartContractApp/packages/EvmCore/Sources/EvmCore/contract/EvmContract.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "93"
-                  endingLineNumber = "93">
-               </Location>
-               <Location
-                  uuid = "EFFC86AC-7456-4A17-8176-D9F0318D7A69 - 713b7fa1d2578a6c"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "(3) suspend resume partial function for EvmCore.EvmContract.callFunction(name: Swift.String, args: Swift.Array&lt;EvmCore.AnyCodable&gt;, value: EvmCore.TransactionValue, gasLimit: Swift.Optional&lt;EvmCore.GasLimit&gt;, gasPrice: Swift.Optional&lt;EvmCore.Gwei&gt;) async throws -&gt; EvmCore.ContractCallResult"
-                  moduleName = "SmartContractApp.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/qiweili/Desktop/rxlab/SmartContractApp/packages/EvmCore/Sources/EvmCore/contract/EvmContract.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "93"
-                  endingLineNumber = "93">
-               </Location>
-               <Location
-                  uuid = "EFFC86AC-7456-4A17-8176-D9F0318D7A69 - 5112c3821162ff89"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "(6) suspend resume partial function for EvmCore.EvmContract.callFunction(name: Swift.String, args: Swift.Array&lt;EvmCore.AnyCodable&gt;, value: EvmCore.TransactionValue, gasLimit: Swift.Optional&lt;EvmCore.GasLimit&gt;, gasPrice: Swift.Optional&lt;EvmCore.Gwei&gt;) async throws -&gt; EvmCore.ContractCallResult"
-                  moduleName = "SmartContractApp.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/qiweili/Desktop/rxlab/SmartContractApp/packages/EvmCore/Sources/EvmCore/contract/EvmContract.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "93"
-                  endingLineNumber = "93">
-               </Location>
-            </Locations>
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "D98215DA-AAC1-4A8A-A7E9-C989319CB1DC"
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../AgentLayout/Sources/AgentLayout/AgentLayout.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "207"
+            endingLineNumber = "207"
+            landmarkName = "body"
+            landmarkType = "24">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "1B58D401-CB73-4E2C-A7E2-1FA3E4215918"
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../AgentLayout/Sources/AgentLayout/AgentLayout.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "180"
+            endingLineNumber = "180"
+            landmarkName = "body"
+            landmarkType = "24">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "708CF622-FD5E-4484-B002-C2926D7A01A1"
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../AgentLayout/Sources/AgentLayout/AgentLayout.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "153"
+            endingLineNumber = "153"
+            landmarkName = "body"
+            landmarkType = "24">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "F26CA855-DA34-48A9-A607-F1A84F8649C0"
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../AgentLayout/Sources/AgentLayout/ChatProvider.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "583"
+            endingLineNumber = "583"
+            landmarkName = "regenerate(messageId:)"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "8B05513B-7A8B-405B-8894-5B851B0205BA"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../AgentLayout/Sources/AgentLayout/ChatProvider.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "407"
+            endingLineNumber = "407"
+            landmarkName = "startGeneration(source:model:userMessage:)"
+            landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
    </Breakpoints>

@@ -39,6 +39,7 @@ enum ContractTools {
                             "abiId": .string(description: "ABI ID to attach"),
                             "endpointId": .string(description: "Endpoint ID"),
                             "sourceCode": .string(description: "Solidity source code"),
+                            "solidityCompilerVersion": .string(description: "Solidity compiler version"),
                             "type": .enum(
                                 description: "Contract type",
                                 values: [.string("import"), .string("solidity")]
@@ -227,7 +228,7 @@ enum ContractTools {
             type: contract.type.rawValue,
             abiId: contract.abiId?.uuidString,
             endpointId: contract.endpointId.uuidString,
-            endpointName: endpoint.name
+            endpointName: endpoint.name,
         )
 
         return ContractManagerOutput(

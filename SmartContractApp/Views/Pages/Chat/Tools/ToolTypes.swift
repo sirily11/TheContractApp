@@ -192,7 +192,6 @@ struct ContractData: Codable, Sendable {
     let abiId: String?
     let endpointId: String?
     let sourceCode: String?
-    let bytecode: String?
     let type: String? // import, solidity, bytecode
 
     nonisolated init(from decoder: Decoder) throws {
@@ -202,12 +201,11 @@ struct ContractData: Codable, Sendable {
         abiId = try container.decodeIfPresent(String.self, forKey: .abiId)
         endpointId = try container.decodeIfPresent(String.self, forKey: .endpointId)
         sourceCode = try container.decodeIfPresent(String.self, forKey: .sourceCode)
-        bytecode = try container.decodeIfPresent(String.self, forKey: .bytecode)
         type = try container.decodeIfPresent(String.self, forKey: .type)
     }
 
     private enum CodingKeys: String, CodingKey {
-        case name, address, abiId, endpointId, sourceCode, bytecode, type
+        case name, address, abiId, endpointId, sourceCode, type
     }
 }
 
@@ -267,6 +265,7 @@ struct CompileOutput: Codable, Sendable {
 struct DeployInput: Codable, Sendable {
     let sourceCode: String?
     let constructorArgs: [String: String]?
+    let solidityCompilerVersion: String?
     let endpointId: String?
     let name: String?
     let value: String?
@@ -276,13 +275,15 @@ struct DeployInput: Codable, Sendable {
         constructorArgs: [String: String]? = nil,
         endpointId: String? = nil,
         name: String? = nil,
-        value: String? = nil
+        value: String? = nil,
+        solidityCompilerVersion: String? = nil
     ) {
         self.sourceCode = sourceCode
         self.constructorArgs = constructorArgs
         self.endpointId = endpointId
         self.name = name
         self.value = value
+        self.solidityCompilerVersion = solidityCompilerVersion
     }
 
     nonisolated init(from decoder: Decoder) throws {
@@ -292,10 +293,11 @@ struct DeployInput: Codable, Sendable {
         endpointId = try container.decodeIfPresent(String.self, forKey: .endpointId)
         name = try container.decodeIfPresent(String.self, forKey: .name)
         value = try container.decodeIfPresent(String.self, forKey: .value)
+        solidityCompilerVersion = try container.decodeIfPresent(String.self, forKey: .solidityCompilerVersion)
     }
 
     private enum CodingKeys: String, CodingKey {
-        case sourceCode, constructorArgs, endpointId, name, value
+        case sourceCode, constructorArgs, endpointId, name, value, solidityCompilerVersion
     }
 }
 

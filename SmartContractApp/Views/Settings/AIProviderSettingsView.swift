@@ -161,6 +161,9 @@ struct AIProviderFormView: View {
 
             HStack {
                 Spacer()
+                Button("Cancel") {
+                    dismiss()
+                }
                 Button(isEditing ? "Save" : "Add") {
                     saveProvider()
                 }
@@ -304,8 +307,8 @@ struct AIProviderFormView: View {
     private func saveProvider() {
         let effectiveEndpoint =
             type.supportsCustomEndpoint
-            ? endpoint.trimmingCharacters(in: .whitespacesAndNewlines)
-            : type.defaultEndpoint
+                ? endpoint.trimmingCharacters(in: .whitespacesAndNewlines)
+                : type.defaultEndpoint
 
         if let provider = editingProvider {
             // Update existing

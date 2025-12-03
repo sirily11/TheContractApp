@@ -323,7 +323,7 @@ final class ToolRegistry {
         // 3. Compile source code
         let compilationResult: (bytecode: String, abi: String)
         do {
-            compilationResult = try await provider.compileSolidity(sourceCode, contractName: nil, version: "0.8.21")
+            compilationResult = try await provider.compileSolidity(sourceCode, contractName: nil, version: input.solidityCompilerVersion ?? "0.8.21")
         } catch {
             return .failed("Compilation failed: \(error.localizedDescription)")
         }

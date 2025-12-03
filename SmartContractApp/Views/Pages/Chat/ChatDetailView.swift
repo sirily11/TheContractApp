@@ -19,6 +19,7 @@ struct ChatDetailView: View {
     @Query(sort: \AIProvider.name) private var providers: [AIProvider]
     @Environment(\.openSettings) private var openSettingsWindow
     @Environment(\.modelContext) private var modelContext
+    @Environment(ChatContextViewModel.self) private var chatContextViewModel
 
     @State private var agentChat: Chat?
     @State private var currentChatId: UUID? // Track which chat is initialized to prevent unnecessary re-initialization
@@ -111,6 +112,7 @@ struct ChatDetailView: View {
                     }
                 ),
                 sources: chatViewModel.sources,
+                systemPrompt: chatContextViewModel.getSystemPrompt(),
                 tools: toolRegistry.createTools(),
                 onSend: { _ in
                 },
@@ -152,7 +154,6 @@ struct ChatDetailView: View {
         // would cause setupChat to be called again and reinitialize agentChat from persistent storage
         if currentChatId != chat.id {
             agentChat = chatViewModel.convertToChat(chat)
-            print("Messages: \(agentChat?.messages)")
             currentChatId = chat.id
         }
 
